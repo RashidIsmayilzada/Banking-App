@@ -33,7 +33,7 @@ public class Transaction {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "transaction_type", nullable = false)
+    @Column(name = "transaction_type", nullable = false, length = 20)
     private TransactionType transactionType;
 
     @ManyToOne
@@ -47,11 +47,11 @@ public class Transaction {
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 3)
     private String currency;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private Channel channel;
 
     @ManyToOne(optional = false)
@@ -61,6 +61,6 @@ public class Transaction {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String description;
 }

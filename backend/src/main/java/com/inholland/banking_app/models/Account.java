@@ -38,11 +38,11 @@ public class Account {
     @JoinColumn(name = "customer_user_id", nullable = false)
     private User customer;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 34)
     private String iban;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "account_type", nullable = false)
+    @Column(name = "account_type", nullable = false, length = 20)
     private AccountType accountType;
 
     @Column(nullable = false, precision = 15, scale = 2)
