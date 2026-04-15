@@ -59,12 +59,12 @@ CustomerRegistrationResponse:
 LoginRequest:
   type: object
   required:
-    - identifier
+    - email
     - password
   properties:
-    identifier:
+    email:
       type: string
-      description: Email or username.
+      format: email
       maxLength: 255
     password:
       type: string

@@ -10,4 +10,5 @@ public interface CustomerProfileRepository extends JpaRepository<CustomerProfile
     Optional<CustomerProfile> findByBsn(String bsn);
 
     boolean existsByBsn(String bsn);
+
 }
