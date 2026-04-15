@@ -1,0 +1,90 @@
+startAtmSession:
+  post:
+    tags: [ATM]
+    summary: Log in to the ATM using email and password
+    operationId: startAtmSession
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/atm.yaml#/AtmSessionStartRequest
+    responses:
+      '201':
+        description: ATM session started.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/atm.yaml#/AtmSessionResponse
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+
+endAtmSession:
+  delete:
+    tags: [ATM]
+    summary: End an ATM session
+    operationId: endAtmSession
+    security:
+      - atmSessionAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/SessionId
+    responses:
+      '204':
+        description: ATM session ended.
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+
+createAtmDeposit:
+  post:
+    tags: [ATM]
+    summary: Deposit money into a customer account from the ATM
+    operationId: createAtmDeposit
+    security:
+      - atmSessionAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/atm.yaml#/AtmDepositRequest
+    responses:
+      '201':
+        description: Deposit recorded.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/transactions.yaml#/TransferResult
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError
+
+createAtmWithdrawal:
+  post:
+    tags: [ATM]
+    summary: Withdraw money from a customer account at the ATM
+    operationId: createAtmWithdrawal
+    security:
+      - atmSessionAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/atm.yaml#/AtmWithdrawalRequest
+    responses:
+      '201':
+        description: Withdrawal recorded.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/transactions.yaml#/TransferResult
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError

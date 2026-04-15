@@ -1,0 +1,88 @@
+registerCustomer:
+  post:
+    tags: [Authentication]
+    summary: Register a new customer
+    description: |
+      Aligned with the customer registration story. Registration creates the user and customer profile,
+      but does not create bank accounts. Employee approval is required before banking features are enabled.
+    operationId: registerCustomer
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/auth.yaml#/CustomerRegistrationRequest
+    responses:
+      '201':
+        description: Registration succeeded.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/CustomerRegistrationResponse
+      '409':
+        $ref: ../components/schemas/common.yaml#/Conflict
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError
+
+login:
+  post:
+    tags: [Authentication]
+    summary: Authenticate using email or username and receive a JWT
+    operationId: login
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/auth.yaml#/LoginRequest
+    responses:
+      '200':
+        description: Login succeeded.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/LoginResponse
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        description: The user exists but is not allowed to access the application.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+
+logout:
+  post:
+    tags: [Authentication]
+    summary: Invalidate the current JWT-backed session
+    operationId: logout
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Logout completed.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/LogoutResponse
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+
+me:
+  get:
+    tags: [Authentication]
+    summary: Get the current authenticated user's authorization context
+    operationId: getCurrentUser
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Current user returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/AuthContext
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized

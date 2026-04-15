@@ -1,0 +1,228 @@
+listCustomers:
+  get:
+    tags: [Employee Customers]
+    summary: View customers, including filters for approval state and whether accounts exist
+    operationId: listCustomers
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/Page
+      - $ref: ../components/schemas/common.yaml#/Size
+      - $ref: ../components/schemas/common.yaml#/Sort
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas/common.yaml#/CustomerStatus
+      - name: hasAccounts
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Customer page returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/employee.yaml#/EmployeeCustomerPage
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+
+listCustomerTransactions:
+  get:
+    tags: [Employee Transactions]
+    summary: View a single customer's paginated transaction history
+    operationId: listCustomerTransactions
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/CustomerUserId
+      - $ref: ../components/schemas/common.yaml#/Page
+      - $ref: ../components/schemas/common.yaml#/Size
+      - $ref: ../components/schemas/common.yaml#/Sort
+      - $ref: ../components/schemas/common.yaml#/StartDateTime
+      - $ref: ../components/schemas/common.yaml#/EndDateTime
+    responses:
+      '200':
+        description: Customer transaction page returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/transactions.yaml#/EmployeeTransactionPage
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+
+approveCustomer:
+  post:
+    tags: [Employee Customers]
+    summary: Approve or reject a customer and create default checking and savings accounts
+    description: |
+      On approval, the employee must create both a checking and a savings account and assign
+      absolute and daily transfer limits. This reflects the approval and account-creation stories.
+    operationId: approveCustomer
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/CustomerUserId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/employee.yaml#/CustomerApprovalRequest
+    responses:
+      '200':
+        description: Approval decision recorded.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/employee.yaml#/CustomerApprovalResponse
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+      '409':
+        $ref: ../components/schemas/common.yaml#/Conflict
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError
+
+updateAccountLimits:
+  patch:
+    tags: [Employee Customers]
+    summary: Update a customer's account transfer limits
+    operationId: updateAccountLimits
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/AccountId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/employee.yaml#/AccountLimitUpdateRequest
+    responses:
+      '200':
+        description: Updated account returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/customer.yaml#/CustomerAccount
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError
+
+closeAccount:
+  post:
+    tags: [Employee Customers]
+    summary: Close a customer account
+    operationId: closeAccount
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/AccountId
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/employee.yaml#/AccountClosureRequest
+    responses:
+      '200':
+        description: Closed account returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/customer.yaml#/CustomerAccount
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+      '409':
+        $ref: ../components/schemas/common.yaml#/Conflict
+
+createEmployeeTransfer:
+  post:
+    tags: [Employee Transactions]
+    summary: Transfer funds between customer accounts as an employee
+    operationId: createEmployeeTransfer
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/employee.yaml#/EmployeeTransferRequest
+    responses:
+      '201':
+        description: Transfer recorded.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/transactions.yaml#/TransferResult
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError
+
+listAllTransactions:
+  get:
+    tags: [Employee Transactions]
+    summary: View all transactions in the system, including ATM and user-initiated activity
+    operationId: listAllTransactions
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/Page
+      - $ref: ../components/schemas/common.yaml#/Size
+      - $ref: ../components/schemas/common.yaml#/Sort
+      - $ref: ../components/schemas/common.yaml#/StartDateTime
+      - $ref: ../components/schemas/common.yaml#/EndDateTime
+      - $ref: ../components/schemas/common.yaml#/AmountMin
+      - $ref: ../components/schemas/common.yaml#/AmountMax
+      - name: initiatedByUserId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: channel
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas/common.yaml#/Channel
+    responses:
+      '200':
+        description: Transaction page returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/transactions.yaml#/EmployeeTransactionPage
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden

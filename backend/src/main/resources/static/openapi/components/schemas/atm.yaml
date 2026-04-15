@@ -1,0 +1,69 @@
+AtmSessionStartRequest:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+      format: password
+      maxLength: 128
+AtmSessionResponse:
+  type: object
+  required:
+    - sessionId
+    - sessionToken
+    - customerUserId
+    - startedAt
+    - successfulLogin
+  properties:
+    sessionId:
+      type: integer
+      format: int64
+    sessionToken:
+      type: string
+    customerUserId:
+      type: integer
+      format: int64
+    startedAt:
+      type: string
+      format: date-time
+    successfulLogin:
+      type: boolean
+AtmDepositRequest:
+  type: object
+  required:
+    - accountId
+    - amount
+    - description
+  properties:
+    accountId:
+      type: integer
+      format: int64
+    amount:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    description:
+      type: string
+      maxLength: 255
+AtmWithdrawalRequest:
+  type: object
+  required:
+    - accountId
+    - amount
+    - description
+  properties:
+    accountId:
+      type: integer
+      format: int64
+    amount:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    description:
+      type: string
+      maxLength: 255

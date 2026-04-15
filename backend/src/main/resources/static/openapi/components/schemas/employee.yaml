@@ -1,0 +1,133 @@
+EmployeeCustomerSummary:
+  type: object
+  required:
+    - customerUserId
+    - firstName
+    - lastName
+    - email
+    - username
+    - status
+    - hasAccounts
+  properties:
+    customerUserId:
+      type: integer
+      format: int64
+    firstName:
+      type: string
+    lastName:
+      type: string
+    email:
+      type: string
+      format: email
+    username:
+      type: string
+    phoneNumber:
+      type: string
+    status:
+      $ref: ./common.yaml#/CustomerStatus
+    hasAccounts:
+      type: boolean
+    accountCount:
+      type: integer
+    combinedBalance:
+      $ref: ./transactions.yaml#/Money
+EmployeeCustomerPage:
+  type: object
+  required:
+    - items
+    - page
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/EmployeeCustomerSummary'
+    page:
+      $ref: ./common.yaml#/PageMetadata
+CustomerApprovalRequest:
+  type: object
+  required:
+    - decision
+  properties:
+    decision:
+      $ref: ./common.yaml#/ApprovalDecision
+    note:
+      type: string
+      maxLength: 4000
+    checkingAbsoluteTransferLimit:
+      type: number
+      format: double
+    checkingDailyTransferLimit:
+      type: number
+      format: double
+    savingsAbsoluteTransferLimit:
+      type: number
+      format: double
+    savingsDailyTransferLimit:
+      type: number
+      format: double
+CustomerApprovalResponse:
+  type: object
+  required:
+    - approvalId
+    - customerUserId
+    - decision
+    - resultingCustomerStatus
+    - createdAccounts
+    - decidedAt
+  properties:
+    approvalId:
+      type: integer
+      format: int64
+    customerUserId:
+      type: integer
+      format: int64
+    decision:
+      $ref: ./common.yaml#/ApprovalDecision
+    resultingCustomerStatus:
+      $ref: ./common.yaml#/CustomerStatus
+    createdAccounts:
+      type: array
+      items:
+        $ref: ./customer.yaml#/CustomerAccount
+    decidedAt:
+      type: string
+      format: date-time
+AccountLimitUpdateRequest:
+  type: object
+  required:
+    - absoluteTransferLimit
+    - dailyTransferLimit
+  properties:
+    absoluteTransferLimit:
+      type: number
+      format: double
+    dailyTransferLimit:
+      type: number
+      format: double
+AccountClosureRequest:
+  type: object
+  properties:
+    reason:
+      type: string
+      maxLength: 500
+EmployeeTransferRequest:
+  type: object
+  required:
+    - fromAccountId
+    - toAccountId
+    - amount
+    - description
+  properties:
+    fromAccountId:
+      type: integer
+      format: int64
+    toAccountId:
+      type: integer
+      format: int64
+    amount:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    description:
+      type: string
+      maxLength: 255

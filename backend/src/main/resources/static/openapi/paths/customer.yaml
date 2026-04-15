@@ -1,0 +1,185 @@
+getMyProfile:
+  get:
+    tags: [Customer Accounts]
+    summary: Get the current customer's profile
+    operationId: getMyCustomerProfile
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Customer profile returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/customer.yaml#/CustomerProfile
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+
+listMyAccounts:
+  get:
+    tags: [Customer Accounts]
+    summary: Get the current customer's accounts and combined totals
+    operationId: listMyAccounts
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Accounts returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/customer.yaml#/CustomerAccountListResponse
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+
+getMyAccount:
+  get:
+    tags: [Customer Accounts]
+    summary: Get a single account owned by the current customer
+    operationId: getMyAccount
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/AccountId
+    responses:
+      '200':
+        description: Account returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/customer.yaml#/CustomerAccount
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+
+searchCustomerIban:
+  get:
+    tags: [Customer Accounts]
+    summary: Find another customer's IBAN by name
+    operationId: searchCustomerIban
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: firstName
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: lastName
+        in: query
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Matching IBANs returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/customer.yaml#/IbanLookupResponse
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+
+createInternalTransfer:
+  post:
+    tags: [Customer Transfers]
+    summary: Transfer funds between the current customer's own accounts
+    operationId: createInternalTransfer
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/customer.yaml#/InternalTransferRequest
+    responses:
+      '201':
+        description: Transfer recorded.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/transactions.yaml#/TransferResult
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError
+
+createExternalTransfer:
+  post:
+    tags: [Customer Transfers]
+    summary: Transfer funds from the customer's checking account to another customer's account
+    operationId: createExternalTransfer
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/customer.yaml#/ExternalTransferRequest
+    responses:
+      '201':
+        description: Transfer recorded.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/transactions.yaml#/TransferResult
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError
+
+listMyTransactions:
+  get:
+    tags: [Customer Transactions]
+    summary: View and filter the current customer's paginated transaction history
+    operationId: listMyTransactions
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/Page
+      - $ref: ../components/schemas/common.yaml#/Size
+      - $ref: ../components/schemas/common.yaml#/Sort
+      - $ref: ../components/schemas/common.yaml#/StartDateTime
+      - $ref: ../components/schemas/common.yaml#/EndDateTime
+      - $ref: ../components/schemas/common.yaml#/AmountMin
+      - $ref: ../components/schemas/common.yaml#/AmountMax
+      - $ref: ../components/schemas/common.yaml#/Iban
+      - name: accountId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: amountEquals
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+          minimum: 0
+    responses:
+      '200':
+        description: Transaction page returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/transactions.yaml#/CustomerTransactionPage
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden

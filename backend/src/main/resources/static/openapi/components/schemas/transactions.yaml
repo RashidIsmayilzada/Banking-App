@@ -1,0 +1,93 @@
+Money:
+  type: object
+  required:
+    - amount
+    - currency
+  properties:
+    amount:
+      type: number
+      format: double
+    currency:
+      type: string
+      const: EUR
+TransactionParty:
+  type: object
+  properties:
+    accountId:
+      type: integer
+      format: int64
+    iban:
+      type: string
+    name:
+      type: string
+    userId:
+      type: integer
+      format: int64
+Transaction:
+  type: object
+  required:
+    - transactionId
+    - transactionType
+    - amount
+    - channel
+    - initiatedByUserId
+    - createdAt
+    - description
+  properties:
+    transactionId:
+      type: integer
+      format: int64
+    transactionType:
+      $ref: ./common.yaml#/TransactionType
+    amount:
+      $ref: '#/Money'
+    fromAccount:
+      $ref: '#/TransactionParty'
+    toAccount:
+      $ref: '#/TransactionParty'
+    channel:
+      $ref: ./common.yaml#/Channel
+    initiatedByUserId:
+      type: integer
+      format: int64
+    createdAt:
+      type: string
+      format: date-time
+    description:
+      type: string
+CustomerTransactionPage:
+  type: object
+  required:
+    - items
+    - page
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Transaction'
+    page:
+      $ref: ./common.yaml#/PageMetadata
+EmployeeTransactionPage:
+  type: object
+  required:
+    - items
+    - page
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Transaction'
+    page:
+      $ref: ./common.yaml#/PageMetadata
+TransferResult:
+  type: object
+  required:
+    - transaction
+    - sourceBalance
+  properties:
+    transaction:
+      $ref: '#/Transaction'
+    sourceBalance:
+      $ref: '#/Money'
+    destinationBalance:
+      $ref: '#/Money'

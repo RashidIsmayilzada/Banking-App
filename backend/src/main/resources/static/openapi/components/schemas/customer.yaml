@@ -1,0 +1,145 @@
+CustomerProfile:
+  type: object
+  required:
+    - userId
+    - firstName
+    - lastName
+    - email
+    - username
+    - phoneNumber
+    - status
+  properties:
+    userId:
+      type: integer
+      format: int64
+    firstName:
+      type: string
+    lastName:
+      type: string
+    email:
+      type: string
+      format: email
+    username:
+      type: string
+    phoneNumber:
+      type: string
+    status:
+      $ref: ./common.yaml#/CustomerStatus
+    registeredAt:
+      type: string
+      format: date-time
+CustomerAccount:
+  type: object
+  required:
+    - accountId
+    - iban
+    - accountType
+    - balance
+    - absoluteTransferLimit
+    - dailyTransferLimit
+    - active
+  properties:
+    accountId:
+      type: integer
+      format: int64
+    iban:
+      type: string
+      pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
+    accountType:
+      $ref: ./common.yaml#/AccountType
+    balance:
+      $ref: ./transactions.yaml#/Money
+    absoluteTransferLimit:
+      $ref: ./transactions.yaml#/Money
+    dailyTransferLimit:
+      $ref: ./transactions.yaml#/Money
+    active:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+    closedAt:
+      type: string
+      format: date-time
+AccountTotals:
+  type: object
+  required:
+    - combinedBalance
+  properties:
+    combinedBalance:
+      $ref: ./transactions.yaml#/Money
+CustomerAccountListResponse:
+  type: object
+  required:
+    - customer
+    - totals
+    - accounts
+  properties:
+    customer:
+      $ref: '#/CustomerProfile'
+    totals:
+      $ref: '#/AccountTotals'
+    accounts:
+      type: array
+      items:
+        $ref: '#/CustomerAccount'
+IbanLookupResponse:
+  type: object
+  required:
+    - results
+  properties:
+    results:
+      type: array
+      items:
+        type: object
+        required:
+          - fullName
+          - iban
+        properties:
+          fullName:
+            type: string
+          iban:
+            type: string
+            pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
+InternalTransferRequest:
+  type: object
+  required:
+    - fromAccountId
+    - toAccountId
+    - amount
+    - description
+  properties:
+    fromAccountId:
+      type: integer
+      format: int64
+    toAccountId:
+      type: integer
+      format: int64
+    amount:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    description:
+      type: string
+      maxLength: 255
+ExternalTransferRequest:
+  type: object
+  required:
+    - fromAccountId
+    - toIban
+    - amount
+    - description
+  properties:
+    fromAccountId:
+      type: integer
+      format: int64
+    toIban:
+      type: string
+      pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
+    amount:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    description:
+      type: string
+      maxLength: 255
