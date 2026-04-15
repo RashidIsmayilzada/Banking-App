@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RestController
 @Slf4j
+
+// TODO: Add the username login possibility as well as currently its only via email.
 public class AuthController {
 
     private final AuthService authService;
