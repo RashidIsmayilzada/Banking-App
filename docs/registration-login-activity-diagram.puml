@@ -1,0 +1,67 @@
+@startuml
+title User Registration and Login Activity Diagram
+
+start
+
+:Open application;
+
+if (Choose action) then (Register)
+  :Open customer registration form;
+  :Enter first name, last name,\nemail, BSN, phone number,\nusername and password;
+
+  if (Input valid?) then (Yes)
+    if (Email or username already used?) then (Yes)
+      :Show validation/conflict error;
+      :Return to registration form;
+    else (No)
+      :Create customer user account;
+      :Create customer profile;
+      :Set role = CUSTOMER;
+      :Set customer status = PENDING_APPROVAL;
+      :Do not create bank accounts yet;
+      :Show registration success message;
+      note right
+        Based on the user stories:
+        customer accounts require
+        employee approval before
+        checking and savings accounts
+        are created.
+      end note
+    endif
+  else (No)
+    :Show validation errors;
+    :Return to registration form;
+  endif
+
+elseif (Login)
+  :Open login form;
+  :Enter username/email and password;
+  :Submit login request;
+
+  if (Credentials valid?) then (Yes)
+    :Authenticate user;
+    :Issue JWT token;
+    :Load user role and status;
+
+    if (Role = EMPLOYEE?) then (Yes)
+      :Grant access to employee features;
+    else (No)
+      if (Customer approved?) then (Yes)
+        :Grant access to customer banking features;
+      else (No)
+        :Show basic welcome page only;
+        note right
+          Registered customers can log in
+          before approval, but they cannot
+          use banking features yet.
+        end note
+      endif
+    endif
+  else (No)
+    :Show unauthorized login error;
+    :Return to login form;
+  endif
+endif
+
+stop
+@enduml
