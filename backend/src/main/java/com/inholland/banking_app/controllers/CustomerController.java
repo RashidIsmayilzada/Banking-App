@@ -35,4 +35,21 @@ public class CustomerController {
         return null;
     }
 
+    // TODO: implement the makeInternalTransfer method to allow the current customer to make an internal transfer between their own accounts. The request body should contain the source account ID, destination account ID, and the amount to transfer. This should only allow transfers between accounts that belong to the current customer.
+    @PostMapping("/me/transfers/internal")
+    public ResponseEntity<?> makeInternalTransfer() {
+        return null;
+    }
+
+    // TODO: implement the makeExternalTransfer method to allow the current customer to make an external transfer to another customer's account. The request body should contain the source account ID, destination IBAN, and the amount to transfer. This should only allow transfers from accounts that belong to the current customer.
+    @PostMapping("/transfers/external")
+    public ResponseEntity<?> makeExternalTransfer() {
+        return null;
+    }
+
+    // TODO: implement the getMyTransactions method to return the current customer's transaction history. This should return a list of transactions for all accounts that belong to the current customer.
+    @GetMapping("/me/transactions")
+    public ResponseEntity<?> getMyTransactions() {
+        return null;
+    }
 }
