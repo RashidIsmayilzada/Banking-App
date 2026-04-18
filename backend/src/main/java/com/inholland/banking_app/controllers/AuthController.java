@@ -1,8 +1,8 @@
 package com.inholland.banking_app.controllers;
 
-import com.inholland.banking_app.dtos.AuthContextResponse;
-import com.inholland.banking_app.dtos.LoginRequest;
-import com.inholland.banking_app.dtos.RegisterCustomerRequest;
+import com.inholland.banking_app.dtos.auth.AuthContextResponse;
+import com.inholland.banking_app.dtos.auth.LoginRequest;
+import com.inholland.banking_app.dtos.auth.RegisterCustomerRequest;
 import com.inholland.banking_app.services.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package com.inholland.banking_app.dtos;
+package com.inholland.banking_app.dtos.auth;
 
 import lombok.Getter;
 import lombok.Setter;

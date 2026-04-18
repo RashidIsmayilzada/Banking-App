@@ -1,6 +1,6 @@
 package com.inholland.banking_app.models.factory;
 
-import com.inholland.banking_app.dtos.RegisterCustomerRequest;
+import com.inholland.banking_app.dtos.auth.RegisterCustomerRequest;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.CustomerStatus;

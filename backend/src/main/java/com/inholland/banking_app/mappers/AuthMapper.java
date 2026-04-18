@@ -1,6 +1,6 @@
 package com.inholland.banking_app.mappers;
 
-import com.inholland.banking_app.dtos.AuthContextResponse;
+import com.inholland.banking_app.dtos.auth.AuthContextResponse;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import org.springframework.stereotype.Component;

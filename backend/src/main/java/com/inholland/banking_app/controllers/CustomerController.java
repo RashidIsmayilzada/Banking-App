@@ -1,18 +1,28 @@
 package com.inholland.banking_app.controllers;
 
-import com.inholland.banking_app.dtos.CustomerResponse;
-import org.apache.coyote.Response;
+import com.inholland.banking_app.dtos.customer.CustomerResponse;
+import com.inholland.banking_app.services.CustomerProfileService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+@RequiredArgsConstructor
 @RequestMapping("/api/customers")
 @RestController
 public class CustomerController {
 
-    // TODO: implement the getMyProfile method to return the current customer's profile information.
+    private final CustomerProfileService customerProfileService;
+
+    // TODO: Test the api endpoint
     @GetMapping("/me/profile")
-    public ResponseEntity<CustomerResponse> getMyProfile() {
-        return null;
+    public ResponseEntity<CustomerResponse> getMyProfile(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getName() == null) {
+            throw new BadCredentialsException("Authenticated user not found");
+        }
+
+        return ResponseEntity.ok(customerProfileService.getCurrentCustomerProfile(authentication.getName()));
     }
 
     // TODO: implement the getMyAccounts method to return the current customer's accounts information.
@@ -23,7 +33,7 @@ public class CustomerController {
 
     // TODO: implement the getAccountDetailWithID method to return the details of a specific account by its ID. This should only return the account details if the account belongs to the current customer.
     @GetMapping("/me/accounts/{accountId}")
-    public ResponseEntity<?> getAccoutnDetailWithID(@PathVariable Long accountId) {
+    public ResponseEntity<?> getAccountDetailWithID(@PathVariable Long accountId) {
         return null;
     }
 

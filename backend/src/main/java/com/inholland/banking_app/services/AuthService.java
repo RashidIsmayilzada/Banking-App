@@ -1,8 +1,8 @@
 package com.inholland.banking_app.services;
 
-import com.inholland.banking_app.dtos.AuthContextResponse;
+import com.inholland.banking_app.dtos.auth.AuthContextResponse;
+import com.inholland.banking_app.dtos.auth.RegisterCustomerRequest;
 import com.inholland.banking_app.mappers.AuthMapper;
-import com.inholland.banking_app.dtos.RegisterCustomerRequest;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;

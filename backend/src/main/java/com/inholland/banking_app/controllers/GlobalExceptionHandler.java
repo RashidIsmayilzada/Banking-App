@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 @Slf4j
@@ -33,6 +34,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleForbidden(RuntimeException exception) {
         log.warn("Forbidden: {}", exception.getMessage());
         return buildResponse(HttpStatus.FORBIDDEN, "FORBIDDEN", exception.getMessage());
+    }
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(NoSuchElementException exception) {
+        log.warn("Not found: {}", exception.getMessage());
+        return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

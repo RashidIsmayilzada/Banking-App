@@ -1,4 +1,4 @@
-package com.inholland.banking_app.dtos;
+package com.inholland.banking_app.dtos.auth;
 
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
