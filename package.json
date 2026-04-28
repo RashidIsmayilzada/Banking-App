@@ -1,0 +1,6 @@
+{
+  "name": "inholland-bank",
+  "scripts": {
+    "dev": "cd frontend && npm run dev"
+  }
+}
