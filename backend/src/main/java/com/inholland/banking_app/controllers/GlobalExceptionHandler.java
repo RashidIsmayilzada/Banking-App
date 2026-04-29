@@ -1,5 +1,7 @@
 package com.inholland.banking_app.controllers;
 
+import com.inholland.banking_app.exceptions.ApprovalFailedException;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,6 +46,20 @@ public class GlobalExceptionHandler {
                 "An unexpected error occurred"
         );
     }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(EntityNotFoundException exception) {
+        log.warn("Resource not found: {}", exception.getMessage());
+        return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", exception.getMessage());
+    }
+
+    @ExceptionHandler(ApprovalFailedException.class)
+    public ResponseEntity<Map<String, Object>> handleApprovalFailed(ApprovalFailedException exception) {
+        log.warn("Approval process failed: {}", exception.getMessage());
+        // Using UNPROCESSABLE_ENTITY (422) is common for business logic failures
+        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "APPROVAL_FAILED", exception.getMessage());
+    }
+
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String code, String message) {
         Map<String, Object> body = new LinkedHashMap<>();
