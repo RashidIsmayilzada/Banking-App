@@ -3,13 +3,16 @@ package com.inholland.banking_app.controllers;
 import com.inholland.banking_app.exceptions.ApprovalFailedException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -37,6 +40,12 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, "FORBIDDEN", exception.getMessage());
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException exception) {
+        log.warn("Access denied: {}", exception.getMessage());
+        return buildResponse(HttpStatus.FORBIDDEN, "ACCESS_DENIED", exception.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception exception) {
         log.error("Unexpected server error", exception);
@@ -60,6 +69,19 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "APPROVAL_FAILED", exception.getMessage());
     }
 
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResourceFound(NoResourceFoundException exception) {
+        log.warn("Endpoint not found: {}", exception.getMessage());
+        return buildResponse(HttpStatus.NOT_FOUND, "ENDPOINT_NOT_FOUND",
+            "The requested endpoint does not exist. Please check the URL and try again.");
+    }
+
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidSortProperty(PropertyReferenceException exception) {
+        log.warn("Invalid sort property: {}", exception.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_SORT_PROPERTY",
+            "Invalid sort property: " + exception.getMessage() + ". Please use a valid field name.");
+    }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String code, String message) {
         Map<String, Object> body = new LinkedHashMap<>();

@@ -14,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-@RestControllerAdvice
+
 @RestController
 @Slf4j
 public class EmployeeController {
@@ -26,7 +26,7 @@ public class EmployeeController {
     }
 
     // TODO: Employee can view a paginated list of all customer accounts.
-    @GetMapping("/employee/customers")
+    @GetMapping("/employees/customers")
     public ResponseEntity<@NonNull Page<@NonNull CustomerResponse>> getAllCustomers(
             @PageableDefault(size = 4, page = 0) Pageable pageable) {
         log.info("Retrieving customers with pagination: {}", pageable);
@@ -34,7 +34,7 @@ public class EmployeeController {
     }
 
     // TODO: Add pagination
-    @GetMapping("/employee/customers/pending")
+    @GetMapping("/employees/customers/pending")
     public ResponseEntity<@NonNull Page<@NonNull UserResponse>> getCustomersWithNoAccounts(
             @PageableDefault(size = 5, page = 0) Pageable pageable) {
         log.info("Retrieving customers with no accounts: {}", pageable);
@@ -44,7 +44,7 @@ public class EmployeeController {
     }
 
     // TODO: Get customer accounts
-    @GetMapping("/employee/customers/{customerId}/accounts")
+    @GetMapping("/employees/customers/{customerId}/accounts")
     public ResponseEntity<@NonNull Page<@NonNull AccountResponse>> getCustomerAccounts(
             @PageableDefault(size = 20, page = 0) Pageable pageable, @PathVariable Long customerId) {
         log.info("Retrieving accounts for customer ID: {}", customerId);
@@ -54,7 +54,7 @@ public class EmployeeController {
     }
 
     // TODO: Approve customer registration
-    @PostMapping("/employee/customers/{userId}/approve")
+    @PostMapping("/employees/customers/{userId}/approval")
     public  void approveCustomer(@RequestBody ApprovalRequestDTO approvalRequestDTO, @PathVariable Long userId) {
         log.info("Approving customer registration for ID: {}", userId);
         employeeService.approveCustomer(approvalRequestDTO, userId);
@@ -62,7 +62,7 @@ public class EmployeeController {
     }
 
     // TODO: employee can make transfer to customer
-    @GetMapping("/employee/transfer")
+    @PostMapping("/employee/transfer")
     public void makeTransfer(TransferRequest transferRequest) {
         log.info("Making transfer to customer: {}", transferRequest);
 //        employeeService.makeTransfer(transferRequest);

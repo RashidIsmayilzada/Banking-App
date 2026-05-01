@@ -111,7 +111,15 @@ public class EmployeeService {
         if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() instanceof String) {
             throw new AccessDeniedException("You must be logged in to perform this action.");
         }
-        return (User) auth.getPrincipal();
+
+        // Get username from Spring Security's UserDetails
+        org.springframework.security.core.userdetails.UserDetails userDetails =
+            (org.springframework.security.core.userdetails.UserDetails) auth.getPrincipal();
+        String username = userDetails.getUsername();
+
+        // Load the actual User entity from database
+        return userRepository.findByUsername(username)
+            .orElseThrow(() -> new AccessDeniedException("Authenticated user not found in database"));
     }
 
 }
