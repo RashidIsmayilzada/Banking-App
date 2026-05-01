@@ -12,10 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -24,6 +21,7 @@ import java.time.LocalDateTime;
 @Setter
 @Getter
 @Entity
+@Builder
 @Table(name = "customer_approvals")
 public class CustomerApproval {
 
@@ -48,4 +46,5 @@ public class CustomerApproval {
 
     @Column(name = "decided_at", nullable = false)
     private LocalDateTime decidedAt;
+
 }
