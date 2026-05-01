@@ -4,16 +4,13 @@ import com.inholland.banking_app.dtos.AtmDepositRequest;
 import com.inholland.banking_app.dtos.AtmSessionStartRequest;
 import com.inholland.banking_app.dtos.AtmSessionResponse;
 import com.inholland.banking_app.dtos.AtmWithdrawalRequest;
-import com.inholland.banking_app.dtos.MoneyResponse;
-import com.inholland.banking_app.dtos.TransactionPartyResponse;
-import com.inholland.banking_app.dtos.TransactionResponse;
 import com.inholland.banking_app.dtos.TransferResultResponse;
+import com.inholland.banking_app.mappers.AtmMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.AtmSession;
 import com.inholland.banking_app.models.DailyTransferUsage;
 import com.inholland.banking_app.models.Transaction;
 import com.inholland.banking_app.models.User;
-import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.Channel;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
@@ -42,8 +39,6 @@ import java.time.LocalDateTime;
 @Slf4j
 public class AtmService {
     private static final String INVALID_CREDENTIALS_MESSAGE = "Invalid email or password";
-    private static final String CURRENCY = "EUR";
-
     public final UserRepository userRepository;
     public final AccountRepository accountRepository;
     public final AtmSessionRepository atmSessionRepository;
@@ -51,6 +46,7 @@ public class AtmService {
     public final DailyTransferUsageRepository dailyTransferUsageRepository;
     public final PasswordEncoder passwordEncoder;
     public final JwtUtil jwtUtil;
+    public final AtmMapper atmMapper;
 
     @Transactional
     public AtmSessionResponse startSession(AtmSessionStartRequest request) {
@@ -83,15 +79,8 @@ public class AtmService {
 
         String token = jwtUtil.generateToken(user.getUsername());
 
-        AtmSessionResponse response = new AtmSessionResponse();
-        response.setSessionId(session.getId());
-        response.setSessionToken(token);
-        response.setCustomerUserId(user.getId());
-        response.setStartedAt(session.getStartedAt());
-        response.setSuccessfulLogin(true);
-
         log.info("ATM session started for customer userId={}", user.getId());
-        return response;
+        return atmMapper.toAtmSessionResponse(session, token);
     }
 
     @Transactional
@@ -129,7 +118,7 @@ public class AtmService {
         log.info("ATM deposit of {} EUR to account {} by userId={}",
                 request.getAmount(), account.getId(), user.getId());
 
-        return buildTransferResult(transaction, account);
+        return atmMapper.toTransferResultResponse(transaction, account);
     }
 
     @Transactional
@@ -157,7 +146,7 @@ public class AtmService {
         log.info("ATM withdrawal of {} EUR from account {} by userId={}",
                 request.getAmount(), account.getId(), user.getId());
 
-        return buildTransferResult(transaction, account);
+        return atmMapper.toTransferResultResponse(transaction, account);
     }
 
 
@@ -178,10 +167,6 @@ public class AtmService {
 
         if (!account.isActive()) {
             throw new IllegalArgumentException("Account is closed");
-        }
-
-        if (account.getAccountType() != AccountType.CHECKING) {
-            throw new IllegalArgumentException("ATM transactions are only allowed on checking accounts");
         }
 
         return account;
@@ -248,7 +233,7 @@ public class AtmService {
         transaction.setFromAccount(fromAccount);
         transaction.setToAccount(toAccount);
         transaction.setAmount(amount);
-        transaction.setCurrency(CURRENCY);
+        transaction.setCurrency("EUR");
         transaction.setChannel(Channel.ATM);
         transaction.setInitiatedBy(initiatedBy);
         transaction.setCreatedAt(LocalDateTime.now());
@@ -256,44 +241,4 @@ public class AtmService {
         return transactionRepository.save(transaction);
     }
 
-    private TransferResultResponse buildTransferResult(Transaction transaction, Account account) {
-        TransferResultResponse result = new TransferResultResponse();
-        result.setTransaction(mapTransaction(transaction));
-        result.setSourceBalance(buildMoney(account.getBalance()));
-        return result;
-    }
-
-    private TransactionResponse mapTransaction(Transaction transaction) {
-        TransactionResponse dto = new TransactionResponse();
-        dto.setTransactionId(transaction.getId());
-        dto.setTransactionType(transaction.getTransactionType());
-        dto.setAmount(buildMoney(transaction.getAmount()));
-        dto.setFromAccount(mapParty(transaction.getFromAccount()));
-        dto.setToAccount(mapParty(transaction.getToAccount()));
-        dto.setChannel(transaction.getChannel());
-        dto.setInitiatedByUserId(transaction.getInitiatedBy().getId());
-        dto.setCreatedAt(transaction.getCreatedAt());
-        dto.setDescription(transaction.getDescription());
-        return dto;
-    }
-
-    private TransactionPartyResponse mapParty(Account account) {
-        if (account == null) {
-            return null;
-        }
-        TransactionPartyResponse party = new TransactionPartyResponse();
-        party.setAccountId(account.getId());
-        party.setIban(account.getIban());
-        party.setName(account.getCustomer().getCustomerProfile().getFirstName()
-                + " " + account.getCustomer().getCustomerProfile().getLastName());
-        party.setUserId(account.getCustomer().getId());
-        return party;
-    }
-
-    private MoneyResponse buildMoney(BigDecimal amount) {
-        MoneyResponse money = new MoneyResponse();
-        money.setAmount(amount);
-        money.setCurrency(CURRENCY);
-        return money;
-    }
 }
