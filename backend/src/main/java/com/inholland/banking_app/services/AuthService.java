@@ -1,6 +1,7 @@
 package com.inholland.banking_app.services;
 
 import com.inholland.banking_app.dtos.AuthContextResponse;
+import com.inholland.banking_app.dtos.RegisterEmployeeRequest;
 import com.inholland.banking_app.mappers.AuthMapper;
 import com.inholland.banking_app.dtos.RegisterCustomerRequest;
 import com.inholland.banking_app.models.User;
@@ -29,6 +30,13 @@ public class AuthService {
     public final PasswordEncoder passwordEncoder;
     public final JwtUtil jwtUtil;
     public final AuthMapper authMapper;
+
+    public void registerEmployeeProfile(RegisterEmployeeRequest request) {
+        validateEmployeeRegistrationRequest(request);
+        String passwordHash = passwordEncoder.encode(request.getPassword());
+        User user = UserFactory.createEmployee(request, passwordHash);
+        userRepository.save(user);
+    }
 
     public void registerCustomerProfile(RegisterCustomerRequest request) {
         validateRegistrationRequest(request);
@@ -67,6 +75,12 @@ public class AuthService {
         validateUniqueEmail(request.getEmail());
         validateUniqueUsername(request.getUsername());
         validateUniqueBsn(request.getBsn());
+        validatePasswordStrength(request.getPassword());
+    }
+
+    private void validateEmployeeRegistrationRequest(RegisterEmployeeRequest request) {
+        validateUniqueEmail(request.getEmail());
+        validateUniqueUsername(request.getUsername());
         validatePasswordStrength(request.getPassword());
     }
 
