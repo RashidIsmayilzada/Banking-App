@@ -2,12 +2,7 @@ bearerAuth:
   type: http
   scheme: bearer
   bearerFormat: JWT
-  description: JWT access token used for all authenticated HTTP API requests.
-atmSessionAuth:
-  type: apiKey
-  in: header
-  name: X-ATM-Session-Token
-  description: Opaque token representing an authenticated ATM session.
+  description: JWT access token used for all authenticated requests.
 
 AccountId:
   name: accountId
@@ -17,16 +12,8 @@ AccountId:
     type: integer
     format: int64
     minimum: 1
-CustomerUserId:
-  name: customerUserId
-  in: path
-  required: true
-  schema:
-    type: integer
-    format: int64
-    minimum: 1
-SessionId:
-  name: sessionId
+UserId:
+  name: id
   in: path
   required: true
   schema:
@@ -190,12 +177,12 @@ PageMetadata:
 Role:
   type: string
   enum: [CUSTOMER, EMPLOYEE]
-CustomerStatus:
+UserStatus:
   type: string
   enum: [PENDING_APPROVAL, APPROVED, REJECTED, CLOSED]
-ApprovalDecision:
+AccountStatus:
   type: string
-  enum: [APPROVED, REJECTED]
+  enum: [ACTIVE, CLOSED]
 AccountType:
   type: string
   enum: [CHECKING, SAVINGS]

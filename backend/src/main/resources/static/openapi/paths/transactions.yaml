@@ -1,0 +1,82 @@
+transactions:
+  get:
+    tags: [Transactions]
+    summary: >
+      List transactions. Customers see only their own; employees see all
+      and may filter by userId, channel, or date range.
+    operationId: listTransactions
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/Page
+      - $ref: ../components/schemas/common.yaml#/Size
+      - $ref: ../components/schemas/common.yaml#/Sort
+      - $ref: ../components/schemas/common.yaml#/StartDateTime
+      - $ref: ../components/schemas/common.yaml#/EndDateTime
+      - $ref: ../components/schemas/common.yaml#/AmountMin
+      - $ref: ../components/schemas/common.yaml#/AmountMax
+      - $ref: ../components/schemas/common.yaml#/Iban
+      - name: userId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: accountId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: channel
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas/common.yaml#/Channel
+      - name: amountEquals
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+          minimum: 0
+    responses:
+      '200':
+        description: Transaction page returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/transactions.yaml#/TransactionPage
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+  post:
+    tags: [Transactions]
+    summary: >
+      Create a transaction. Type TRANSFER moves funds between accounts;
+      DEPOSIT and WITHDRAWAL are ATM cash operations.
+    operationId: createTransaction
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/transactions.yaml#/TransactionRequest
+    responses:
+      '201':
+        description: Transaction recorded.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/transactions.yaml#/TransactionResult
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError

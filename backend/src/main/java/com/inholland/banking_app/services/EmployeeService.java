@@ -44,7 +44,7 @@ public class EmployeeService {
 
     public Page<@NonNull UserResponse> customersWithoutAccounts(Pageable pageable) {
         log.info("Retrieving customers without accounts with pagination: {}", pageable);
-        Page<@NonNull User> customers = userRepository.findAllByAccountsIsEmpty(pageable);
+        Page<@NonNull User> customers = userRepository.findAllWithNoAccounts(pageable);
         if (!customers.hasContent()) {
             log.error("No customers without an accounts was found");
             throw new EntityNotFoundException("No customers without an accounts was found");
@@ -87,10 +87,8 @@ public class EmployeeService {
         log.info("User with id: {} found", user.getUsername());
 
         log.info("Beginning user registration: {} ", requestDTO.getDecision());
-         CustomerProfile customerProfile = user.getCustomerProfile();
-         if (customerProfile == null) {
-             throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
-         }
+         CustomerProfile customerProfile = customerProfileRepository.findById(user.getId())
+                 .orElseThrow(() -> new EntityNotFoundException("Customer profile not found for user: " + user.getUsername()));
          customerProfile.setStatus(CustomerStatus.APPROVED);
          log.info("Customer profile status updated for user: {}", user.getUsername());
 

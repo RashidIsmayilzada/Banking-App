@@ -4,10 +4,15 @@ import com.inholland.banking_app.dtos.CustomerResponse;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.repositories.CustomerProfileRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class UserMapper {
+
+    private final CustomerProfileRepository customerProfileRepository;
 
     public UserResponse toUserResponse(User user) {
         if (user == null) {
@@ -24,9 +29,8 @@ public class UserMapper {
         response.setUpdatedAt(user.getUpdatedAt());
         response.setLastLoginAt(user.getLastLoginAt());
 
-        if (user.getCustomerProfile() != null) {
-            response.setCustomerProfile(toCustomerResponse(user.getCustomerProfile()));
-        }
+        customerProfileRepository.findById(user.getId())
+                .ifPresent(profile -> response.setCustomerProfile(toCustomerResponse(profile)));
 
         return response;
     }

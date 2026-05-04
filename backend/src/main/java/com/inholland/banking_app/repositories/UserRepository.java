@@ -4,6 +4,7 @@ import com.inholland.banking_app.models.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
@@ -17,5 +18,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByUsername(String username);
 
-   Page<User> findAllByAccountsIsEmpty(Pageable pageable);
+    @Query("SELECT u FROM User u WHERE NOT EXISTS (SELECT a FROM Account a WHERE a.customer = u)")
+    Page<User> findAllWithNoAccounts(Pageable pageable);
 }

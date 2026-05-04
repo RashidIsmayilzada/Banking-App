@@ -17,6 +17,7 @@ import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.models.enums.TransactionType;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.AtmSessionRepository;
+import com.inholland.banking_app.repositories.CustomerProfileRepository;
 import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
 import com.inholland.banking_app.repositories.TransactionRepository;
 import com.inholland.banking_app.repositories.UserRepository;
@@ -44,6 +45,7 @@ public class AtmService {
     public final AtmSessionRepository atmSessionRepository;
     public final TransactionRepository transactionRepository;
     public final DailyTransferUsageRepository dailyTransferUsageRepository;
+    public final CustomerProfileRepository customerProfileRepository;
     public final PasswordEncoder passwordEncoder;
     public final JwtUtil jwtUtil;
     public final AtmMapper atmMapper;
@@ -66,8 +68,10 @@ public class AtmService {
             throw new LockedException("Only customers can use the ATM");
         }
 
-        if (user.getCustomerProfile() == null
-                || user.getCustomerProfile().getStatus() != CustomerStatus.APPROVED) {
+        boolean approved = customerProfileRepository.findById(user.getId())
+                .map(p -> p.getStatus() == CustomerStatus.APPROVED)
+                .orElse(false);
+        if (!approved) {
             throw new LockedException("Customer account is not approved");
         }
 

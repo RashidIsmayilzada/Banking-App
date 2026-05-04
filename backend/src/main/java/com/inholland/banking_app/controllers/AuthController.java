@@ -50,6 +50,7 @@ public class AuthController {
     }
 
     @PostMapping("/auth/logout")
+    //return Json
     public ResponseEntity<String> logoutCustomer() {
         // Since we're using JWTs, we can't really "log out" on the server side
         // In a real application, we would implement token blacklisting or use short-lived tokens with refresh tokens

@@ -8,13 +8,17 @@ import com.inholland.banking_app.dtos.TransferResultResponse;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.AtmSession;
 import com.inholland.banking_app.models.Transaction;
+import com.inholland.banking_app.repositories.CustomerProfileRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
 @Component
+@RequiredArgsConstructor
 public class AtmMapper {
 
+    private final CustomerProfileRepository customerProfileRepository;
     private static final String CURRENCY = "EUR";
 
     public AtmSessionResponse toAtmSessionResponse(AtmSession session, String token) {
@@ -55,8 +59,8 @@ public class AtmMapper {
         TransactionPartyResponse party = new TransactionPartyResponse();
         party.setAccountId(account.getId());
         party.setIban(account.getIban());
-        party.setName(account.getCustomer().getCustomerProfile().getFirstName()
-                + " " + account.getCustomer().getCustomerProfile().getLastName());
+        customerProfileRepository.findById(account.getCustomer().getId()).ifPresent(profile ->
+                party.setName(profile.getFirstName() + " " + profile.getLastName()));
         party.setUserId(account.getCustomer().getId());
         return party;
     }

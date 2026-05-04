@@ -1,0 +1,74 @@
+Account:
+  type: object
+  required:
+    - accountId
+    - iban
+    - accountType
+    - balance
+    - absoluteTransferLimit
+    - dailyTransferLimit
+    - status
+  properties:
+    accountId:
+      type: integer
+      format: int64
+    iban:
+      type: string
+      pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
+    accountType:
+      $ref: ./common.yaml#/AccountType
+    balance:
+      $ref: ./transactions.yaml#/Money
+    absoluteTransferLimit:
+      $ref: ./transactions.yaml#/Money
+    dailyTransferLimit:
+      $ref: ./transactions.yaml#/Money
+    status:
+      $ref: ./common.yaml#/AccountStatus
+    createdAt:
+      type: string
+      format: date-time
+    closedAt:
+      type: string
+      format: date-time
+
+AccountTotals:
+  type: object
+  required:
+    - combinedBalance
+  properties:
+    combinedBalance:
+      $ref: ./transactions.yaml#/Money
+
+AccountListResponse:
+  type: object
+  required:
+    - accounts
+    - totals
+  properties:
+    accounts:
+      type: array
+      items:
+        $ref: '#/Account'
+    totals:
+      $ref: '#/AccountTotals'
+
+AccountUpdateRequest:
+  type: object
+  description: |
+    All fields are optional. Send only the fields you want to change.
+    Set status to CLOSED to close the account. Limit fields are employee-only.
+  properties:
+    absoluteTransferLimit:
+      type: number
+      format: double
+      minimum: 0
+    dailyTransferLimit:
+      type: number
+      format: double
+      minimum: 0
+    status:
+      $ref: ./common.yaml#/AccountStatus
+    reason:
+      type: string
+      maxLength: 500

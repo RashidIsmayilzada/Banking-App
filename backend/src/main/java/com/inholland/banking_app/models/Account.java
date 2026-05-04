@@ -10,7 +10,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,8 +18,6 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -63,12 +60,4 @@ public class Account {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
-    @OneToMany(mappedBy = "fromAccount")
-    private List<Transaction> outgoingTransactions = new ArrayList<>();
-
-    @OneToMany(mappedBy = "toAccount")
-    private List<Transaction> incomingTransactions = new ArrayList<>();
-
-    @OneToMany(mappedBy = "account")
-    private List<DailyTransferUsage> dailyTransferUsages = new ArrayList<>();
 }

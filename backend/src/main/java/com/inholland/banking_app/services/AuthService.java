@@ -122,12 +122,14 @@ public class AuthService {
     }
 
     private void validateApprovedCustomer(User user) {
-        if (user.getRole() != Role.CUSTOMER || user.getCustomerProfile() == null) {
+        if (user.getRole() != Role.CUSTOMER) {
             return;
         }
 
-        CustomerStatus status = user.getCustomerProfile().getStatus();
-        if (status != CustomerStatus.APPROVED) {
+        CustomerStatus status = customerProfileRepository.findById(user.getId())
+                .map(p -> p.getStatus())
+                .orElse(null);
+        if (status != null && status != CustomerStatus.APPROVED) {
             throw new LockedException("Customer account is not approved");
         }
     }
