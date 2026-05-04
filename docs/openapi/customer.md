@@ -176,7 +176,7 @@ Used for transaction history and other paginated endpoints:
 ## Example Requests
 
 ### Update Profile
-```json
+```http request
 PUT /api/customers/me/profile
 {
   "phoneNumber": "+31612345678"
@@ -184,7 +184,7 @@ PUT /api/customers/me/profile
 ```
 
 ### Change Password
-```json
+```http request
 PUT /api/customers/me/password
 {
   "currentPassword": "OldPassword123!",
@@ -193,7 +193,7 @@ PUT /api/customers/me/password
 ```
 
 ### Internal Transfer
-```json
+```http request
 POST /api/customers/me/transfers/internal
 {
   "fromAccountId": 123,
@@ -204,7 +204,7 @@ POST /api/customers/me/transfers/internal
 ```
 
 ### External Transfer
-```json
+```http request
 POST /api/customers/me/transfers/external
 {
   "fromAccountId": 123,
