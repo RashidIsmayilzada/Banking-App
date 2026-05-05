@@ -3,6 +3,7 @@ package com.inholland.banking_app.config;
 import com.inholland.banking_app.security.JwtAuthenticationFilter;
 import com.inholland.banking_app.security.JwtEntryPoint;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -40,9 +41,9 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtEntryPoint))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST, "/users").permitAll()
                         .requestMatchers(
                                 "/auth/**",
-                                "/atm/sessions",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/openapi/**",
