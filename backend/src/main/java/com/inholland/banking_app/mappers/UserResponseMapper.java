@@ -7,7 +7,7 @@ import com.inholland.banking_app.models.User;
 import org.springframework.stereotype.Component;
 
 @Component
-public class UserMapper {
+public class UserResponseMapper {
 
     public UserResponse toUserResponse(User user) {
         if (user == null) {
