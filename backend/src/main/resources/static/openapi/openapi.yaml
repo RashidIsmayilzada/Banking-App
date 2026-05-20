@@ -63,6 +63,8 @@ paths:
     $ref: ./paths/employee.yaml#/createEmployeeTransfer
   /employees/transactions:
     $ref: ./paths/employee.yaml#/listAllTransactions
+  /transactions:
+    $ref: ./paths/transactions.yaml#/transactions
   /atm/sessions:
     $ref: ./paths/atm.yaml#/startAtmSession
   /atm/sessions/{sessionId}:
@@ -172,6 +174,10 @@ components:
       $ref: ./components/schemas/transactions.yaml#/EmployeeTransactionPage
     TransferResult:
       $ref: ./components/schemas/transactions.yaml#/TransferResult
+    TransactionRequest:
+      $ref: ./components/schemas/transactions.yaml#/TransactionRequest
+    TransactionPage:
+      $ref: ./components/schemas/transactions.yaml#/TransactionPage
     EmployeeCustomerPage:
       $ref: ./components/schemas/employee.yaml#/EmployeeCustomerPage
     EmployeeCustomerSummary:

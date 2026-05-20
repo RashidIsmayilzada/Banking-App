@@ -91,3 +91,50 @@ TransferResult:
       $ref: '#/Money'
     destinationBalance:
       $ref: '#/Money'
+TransactionRequest:
+  type: object
+  required:
+    - type
+    - amount
+  description: |
+    Unified transaction request. Required fields vary by type:
+    - TRANSFER: provide fromAccountId and either toAccountId (internal) or toIban (external).
+    - DEPOSIT / WITHDRAWAL: provide accountId (ATM cash operation).
+  properties:
+    type:
+      $ref: ./common.yaml#/TransactionType
+    fromAccountId:
+      type: integer
+      format: int64
+      description: Required for TRANSFER.
+    toAccountId:
+      type: integer
+      format: int64
+      description: Required for an internal TRANSFER between accounts.
+    toIban:
+      type: string
+      pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
+      description: Required for an external TRANSFER to another customer's IBAN.
+    accountId:
+      type: integer
+      format: int64
+      description: Required for DEPOSIT and WITHDRAWAL.
+    amount:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    description:
+      type: string
+      maxLength: 255
+TransactionPage:
+  type: object
+  required:
+    - items
+    - page
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Transaction'
+    page:
+      $ref: ./common.yaml#/PageMetadata
