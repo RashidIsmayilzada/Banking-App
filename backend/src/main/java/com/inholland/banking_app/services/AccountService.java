@@ -63,13 +63,17 @@ public class AccountService {
     public AccountResponse updateAccount(Long accountId, AccountUpdateRequest request) {
         Account account = findAccountOrThrow(accountId);
 
+        if (account.getStatus() == AccountStatus.CLOSED) {
+            throw new IllegalArgumentException("Cannot update a closed account");
+        }
+
         if (request.getAbsoluteTransferLimit() != null) {
             account.setAbsoluteTransferLimit(request.getAbsoluteTransferLimit());
         }
         if (request.getDailyTransferLimit() != null) {
             account.setDailyTransferLimit(request.getDailyTransferLimit());
         }
-        if (request.getStatus() == AccountStatus.CLOSED) {
+        if (request.getStatus() != null && request.getStatus() == AccountStatus.CLOSED) {
             account.setStatus(AccountStatus.CLOSED);
             account.setClosedAt(LocalDateTime.now());
         }
