@@ -5,7 +5,6 @@ import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.mappers.UserResponseMapper;
 import com.inholland.banking_app.models.Account;
-import com.inholland.banking_app.models.CustomerApproval;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.DailyTransferUsage;
 import com.inholland.banking_app.models.User;
@@ -81,7 +80,12 @@ public class UserService {
             if (role == null || role.isBlank()) {
                 return null;
             }
-            return criteriaBuilder.equal(root.get("role"), Role.valueOf(role.trim().toUpperCase()));
+            try {
+                Role enumRole = Role.valueOf(role.trim().toUpperCase());
+                return criteriaBuilder.equal(root.get("role"), enumRole);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
         };
     }
 
@@ -105,6 +109,7 @@ public class UserService {
 
     private Specification<User> containsSearch(String search) {
         return (root, query, criteriaBuilder) -> {
+            query.distinct(true);
             if (search == null || search.isBlank()) {
                 return null;
             }
@@ -112,7 +117,16 @@ public class UserService {
             String pattern = "%" + search.trim().toLowerCase() + "%";
             return criteriaBuilder.or(
                     criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), pattern),
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("username")), pattern));
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("username")), pattern),
+                    criteriaBuilder.like(
+                            criteriaBuilder.lower(root.get("customerProfile").get("firstName")),
+                            pattern
+                    ),
+                    criteriaBuilder.like(
+                            criteriaBuilder.lower(root.get("customerProfile").get("lastName")),
+                            pattern
+                    )
+            );
         };
     }
 

@@ -18,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springdoc.core.annotations.ParameterObject;
 
@@ -45,6 +46,7 @@ public class UserController {
 
         @Operation(summary = "Get all users")
         @GetMapping
+        @PreAuthorize("hasRole('EMPLOYEE')")
         public ResponseEntity<@NonNull Page<@NonNull UserResponse>> getAllUsers(
                         @ParameterObject @PageableDefault(size = 10, page = 0) Pageable pageable,
                         @RequestParam(required = false) String role,
