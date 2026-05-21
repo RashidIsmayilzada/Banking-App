@@ -1,7 +1,6 @@
 package com.inholland.banking_app.models.factory;
 
-import com.inholland.banking_app.dtos.RegisterCustomerRequest;
-import com.inholland.banking_app.dtos.RegisterEmployeeRequest;
+import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.EmployeeProfile;
 import com.inholland.banking_app.models.User;
@@ -15,15 +14,15 @@ public final class UserFactory {
     private UserFactory() {
     }
 
-    public static User createPendingCustomer(RegisterCustomerRequest request, String passwordHash) {
+    public static User createPendingCustomer(UserRequest request, String passwordHash) {
         return createPendingCustomer(request, passwordHash, LocalDateTime.now());
     }
 
-    public static User createEmployee(RegisterEmployeeRequest request, String passwordHash) {
+    public static User createEmployee(UserRequest request, String passwordHash) {
         return createEmployee(request, passwordHash, LocalDateTime.now());
     }
 
-    public static User createPendingCustomer(RegisterCustomerRequest request, String passwordHash, LocalDateTime now) {
+    public static User createPendingCustomer(UserRequest request, String passwordHash, LocalDateTime now) {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setUsername(request.getUsername());
@@ -46,7 +45,8 @@ public final class UserFactory {
         return user;
     }
 
-    public static User createEmployee(RegisterEmployeeRequest request, String passwordHash, LocalDateTime now) {
+
+    public static User createEmployee(UserRequest request, String passwordHash, LocalDateTime now) {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setUsername(request.getUsername());

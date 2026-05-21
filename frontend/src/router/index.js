@@ -26,20 +26,21 @@ import ApproveFormView       from '@/views/employee/ApproveFormView.vue'
 import AllTransactionsView   from '@/views/employee/AllTransactionsView.vue'
 import EmployeeTransferView  from '@/views/employee/EmployeeTransferView.vue'
 import SetLimitsView         from '@/views/employee/SetLimitsView.vue'
+import { getCurrentUser, homePathFor, isAuthenticated, restoreAuth } from '@/services/auth.js'
 
 const routes = [
   { path: '/', redirect: '/login' },
 
   // ── Auth ───────────────────────────────────────────
-  { path: '/login',    component: LoginView    },
-  { path: '/register', component: RegisterView },
-  { path: '/pending',  component: PendingView  },
+  { path: '/login',    component: LoginView,    meta: { guestOnly: true } },
+  { path: '/register', component: RegisterView, meta: { guestOnly: true } },
+  { path: '/pending',  component: PendingView,  meta: { requiresAuth: true } },
 
   // ── Customer ───────────────────────────────────────
-  { path: '/customer/dashboard',    component: DashboardView     },
-  { path: '/customer/accounts',     component: AccountDetailView },
-  { path: '/customer/transfer',     component: TransferView      },
-  { path: '/customer/transactions', component: TransactionsView  },
+  { path: '/customer/dashboard',    component: DashboardView,     meta: { requiresAuth: true, role: 'CUSTOMER' } },
+  { path: '/customer/accounts',     component: AccountDetailView, meta: { requiresAuth: true, role: 'CUSTOMER' } },
+  { path: '/customer/transfer',     component: TransferView,      meta: { requiresAuth: true, role: 'CUSTOMER' } },
+  { path: '/customer/transactions', component: TransactionsView,  meta: { requiresAuth: true, role: 'CUSTOMER' } },
 
   // ── ATM ────────────────────────────────────────────
   { path: '/atm/login',    component: AtmLoginView    },
@@ -48,19 +49,39 @@ const routes = [
   { path: '/atm/confirm',  component: AtmConfirmView  },
 
   // ── Employee ───────────────────────────────────────
-  { path: '/employee/overview',                 component: OverviewView         },
-  { path: '/employee/customers',                component: CustomersView        },
-  { path: '/employee/customers/:id',            component: CustomerDetailView   },
-  { path: '/employee/approvals',                component: ApprovalsView        },
-  { path: '/employee/approvals/:id',            component: ApproveFormView      },
-  { path: '/employee/transactions',             component: AllTransactionsView  },
-  { path: '/employee/transfer',                 component: EmployeeTransferView },
-  { path: '/employee/limits',                   component: SetLimitsView        },
+  { path: '/employee/overview',                 component: OverviewView,         meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/customers',                component: CustomersView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/customers/:id',            component: CustomerDetailView,   meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/approvals',                component: ApprovalsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/approvals/:id',            component: ApproveFormView,      meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/transactions',             component: AllTransactionsView,  meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/transfer',                 component: EmployeeTransferView, meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/limits',                   component: SetLimitsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach(async (to) => {
+  let user = getCurrentUser()
+
+  if (isAuthenticated() && !user) {
+    user = await restoreAuth()
+  }
+
+  if (to.meta.requiresAuth && !isAuthenticated()) {
+    return '/login'
+  }
+
+  if (to.meta.guestOnly && isAuthenticated()) {
+    return homePathFor(user)
+  }
+
+  if (to.meta.role && user?.role !== to.meta.role) {
+    return homePathFor(user)
+  }
 })
 
 export default router

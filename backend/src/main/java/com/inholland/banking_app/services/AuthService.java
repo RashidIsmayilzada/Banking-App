@@ -1,14 +1,13 @@
 package com.inholland.banking_app.services;
 
 import com.inholland.banking_app.dtos.AuthContextResponse;
-import com.inholland.banking_app.dtos.RegisterEmployeeRequest;
 import com.inholland.banking_app.mappers.AuthMapper;
-import com.inholland.banking_app.dtos.RegisterCustomerRequest;
+import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
-import com.inholland.banking_app.models.factory.UserFactory;
 import com.inholland.banking_app.repositories.CustomerProfileRepository;
+import com.inholland.banking_app.repositories.EmployeeProfileRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import com.inholland.banking_app.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -27,24 +26,10 @@ public class AuthService {
 
     public final UserRepository userRepository;
     public final CustomerProfileRepository customerProfileRepository;
+    public final EmployeeProfileRepository employeeProfileRepository;
     public final PasswordEncoder passwordEncoder;
     public final JwtUtil jwtUtil;
     public final AuthMapper authMapper;
-
-    public void registerEmployeeProfile(RegisterEmployeeRequest request) {
-        validateEmployeeRegistrationRequest(request);
-        String passwordHash = passwordEncoder.encode(request.getPassword());
-        User user = UserFactory.createEmployee(request, passwordHash);
-        userRepository.save(user);
-    }
-
-    public void registerCustomerProfile(RegisterCustomerRequest request) {
-        validateRegistrationRequest(request);
-
-        String passwordHash = passwordEncoder.encode(request.getPassword());
-        User user = UserFactory.createPendingCustomer(request, passwordHash);
-        userRepository.save(user);
-    }
 
     public String loginCustomer(String email, String password) {
         User user = userRepository.findByEmail(normalizeEmail(email))
@@ -67,18 +52,22 @@ public class AuthService {
         return authMapper.toAuthContextResponse(user);
     }
 
-
     // HELPER METHODS
 
     // Validation orchestator
-    private void validateRegistrationRequest(RegisterCustomerRequest request) {
-        validateUniqueEmail(request.getEmail());
-        validateUniqueUsername(request.getUsername());
-        validateUniqueBsn(request.getBsn());
-        validatePasswordStrength(request.getPassword());
+    public void validateRegistrationRequest(UserRequest request) {
+        validateUser(request);
+
+        Role role = resolveRegistrationRole(request);
+        if (role == Role.CUSTOMER) {
+            validateUniqueBsn(request.getBsn());
+            return;
+        }
+
+        validateUniqueEmployeeNumber(request.getEmployeeNumber());
     }
 
-    private void validateEmployeeRegistrationRequest(RegisterEmployeeRequest request) {
+    private void validateUser(UserRequest request) {
         validateUniqueEmail(request.getEmail());
         validateUniqueUsername(request.getUsername());
         validatePasswordStrength(request.getPassword());
@@ -100,6 +89,12 @@ public class AuthService {
     private void validateUniqueBsn(String bsn) {
         if (customerProfileRepository.existsByBsn(bsn)) {
             throw new IllegalArgumentException("BSN already exists");
+        }
+    }
+
+    private void validateUniqueEmployeeNumber(String employeeNumber) {
+        if (employeeProfileRepository.existsByEmployeeNumber(employeeNumber)) {
+            throw new IllegalArgumentException("Employee number already exists");
         }
     }
 
@@ -135,6 +130,10 @@ public class AuthService {
     // Utility methods
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim();
+    }
+
+    private Role resolveRegistrationRole(UserRequest request) {
+        return request.getRole() == null ? Role.CUSTOMER : request.getRole();
     }
 
     private boolean isPasswordStrong(String password) {

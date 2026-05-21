@@ -27,8 +27,9 @@
             </a>
           </div>
           <button class="btn btn--primary btn--lg btn--block" style="margin-top:8px" @click="handleLogin">
-            Sign in <AppIcon name="arrowRight" :size="16" />
+            {{ loading ? 'Signing in...' : 'Sign in' }} <AppIcon name="arrowRight" :size="16" />
           </button>
+          <p v-if="error" class="t-body" style="margin:0;color:#b42318">{{ error }}</p>
           <div class="row" style="justify-content:center;font-size:14px;color:var(--ink-soft);margin-top:8px">
             New to InHolland?&nbsp;
             <RouterLink to="/register" style="color:var(--ink);font-weight:500;text-decoration:none;border-bottom:1.5px solid currentColor">
@@ -73,15 +74,26 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
+import { homePathFor, login } from '@/services/auth.js'
 
 const router = useRouter()
 
 const form = ref({ email: '', password: '' })
 const keepSigned = ref(true)
+const error = ref('')
+const loading = ref(false)
 
-// TODO: POST /api/auth/login with form.value, then route based on returned role
-function handleLogin() {
-  // Temporary demo routing — replace with real auth
-  router.push('/customer/dashboard')
+async function handleLogin() {
+  error.value = ''
+  loading.value = true
+
+  try {
+    const user = await login(form.value, keepSigned.value)
+    router.push(homePathFor(user))
+  } catch (loginError) {
+    error.value = loginError.message
+  } finally {
+    loading.value = false
+  }
 }
 </script>

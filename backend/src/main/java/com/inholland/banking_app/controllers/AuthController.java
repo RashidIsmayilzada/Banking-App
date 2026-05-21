@@ -2,8 +2,6 @@ package com.inholland.banking_app.controllers;
 
 import com.inholland.banking_app.dtos.AuthContextResponse;
 import com.inholland.banking_app.dtos.LoginRequest;
-import com.inholland.banking_app.dtos.RegisterCustomerRequest;
-import com.inholland.banking_app.dtos.RegisterEmployeeRequest;
 import com.inholland.banking_app.services.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,21 +21,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/auth/register/employee")
-    public ResponseEntity<String> registerEmployeeProfile(@RequestBody RegisterEmployeeRequest request) {
-        authService.registerEmployeeProfile(request);
-        log.info("Employee profile registered successfully: {}", request.getEmail());
-        return ResponseEntity.status(201)
-                .body("Employee profile registered successfully");
-    }
-
-    @PostMapping("/auth/register/customer")
-    public ResponseEntity<String> registerCustomerProfile(@RequestBody RegisterCustomerRequest request) {
-        authService.registerCustomerProfile(request);
-        log.info("Customer profile registered successfully: {}", request.getEmail());
-        return ResponseEntity.status(201)
-                .body("Customer profile registered successfully");
-    }
 
     @PostMapping("/auth/login")
     public ResponseEntity<String> loginCustomer(@RequestBody LoginRequest request) {
