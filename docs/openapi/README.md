@@ -14,6 +14,7 @@ Available sections:
 - [Customer API](./customer.md)
 - [Employee API](./employee.md)
 - [ATM API](./atm.md)
+- [Transactions API](./transactions.md)
 
 Shared conventions:
 - Web API auth uses `Bearer <JWT>` via `bearerAuth`

@@ -1,6 +1,8 @@
 package com.inholland.banking_app.controllers;
 
 import com.inholland.banking_app.exceptions.ApprovalFailedException;
+import com.inholland.banking_app.exceptions.DuplicateResourceException;
+import com.inholland.banking_app.exceptions.ForbiddenException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.core.PropertyReferenceException;
@@ -10,17 +12,46 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationError(MethodArgumentNotValidException exception) {
+        List<Map<String, String>> errors = exception.getBindingResult().getFieldErrors().stream()
+                .map(fe -> Map.of("field", fe.getField(), "message", fe.getDefaultMessage()))
+                .collect(Collectors.toList());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", "VALIDATION_ERROR");
+        body.put("message", "Input validation failed");
+        body.put("errors", errors);
+        body.put("timestamp", Instant.now().toString());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+    }
+
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(DuplicateResourceException exception) {
+        log.warn("Conflict: {}", exception.getMessage());
+        return buildResponse(HttpStatus.CONFLICT, "CONFLICT", exception.getMessage());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleForbiddenException(ForbiddenException exception) {
+        log.warn("Forbidden: {}", exception.getMessage());
+        return buildResponse(HttpStatus.FORBIDDEN, "FORBIDDEN", exception.getMessage());
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException exception) {

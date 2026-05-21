@@ -1,14 +1,13 @@
 <template>
   <div class="app" style="height:100vh">
-    <AppTopBar user="Jane Doe" role="Pending" initials="JD" avatar-tone="avatar--blue" />
+    <AppTopBar :user="fullName" role="Pending" :initials="initials" avatar-tone="avatar--blue" />
     <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px">
       <div style="max-width:520px;text-align:center">
         <div style="width:72px;height:72px;border-radius:50%;background:var(--warning-tint);color:var(--warning);display:grid;place-items:center;margin:0 auto 24px">
           <AppIcon name="clock" :size="32" :stroke="1.6" />
         </div>
         <h1 class="t-h1" style="margin:0 0 12px">
-          <!-- TODO: Fetch user name from GET /api/user/profile -->
-          Welcome, Jane.
+          Welcome, {{ firstName }}.
         </h1>
         <p class="t-body muted" style="margin:0 0 24px;font-size:16px">
           Your registration is in. An InHolland employee is reviewing your documents and will set up your checking and savings accounts shortly.
@@ -27,14 +26,12 @@
             <span style="font-weight:500">Within 24 hours</span>
           </div>
           <div class="row" style="justify-content:space-between;font-size:14px;margin-top:8px">
-            <!-- TODO: Display actual submission timestamp from GET /api/user/profile -->
             <span class="muted">Submitted</span>
-            <span style="font-weight:500">28 Apr 2026 · 14:02</span>
+            <span style="font-weight:500">{{ submittedAt }}</span>
           </div>
         </div>
         <div class="t-body-sm" style="margin-bottom:24px">
-          <!-- TODO: Display actual email from GET /api/user/profile -->
-          We'll email <strong style="color:var(--ink)">jane.doe@example.com</strong> the moment your accounts are ready.
+          We'll email <strong style="color:var(--ink)">{{ email }}</strong> the moment your accounts are ready.
         </div>
         <div class="row" style="justify-content:center;gap:8px">
           <button class="btn btn--secondary" @click="refreshStatus">
@@ -48,12 +45,31 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import AppTopBar from '@/components/shared/AppTopBar.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 
-// TODO: Poll GET /api/user/profile to detect when status changes to APPROVED
-// and then redirect to /customer/dashboard
+const user = JSON.parse(sessionStorage.getItem('pending_user') || 'null')
+
+const firstName  = computed(() => user?.firstName || user?.username || 'there')
+const fullName   = computed(() => [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.username || 'Pending User')
+const initials   = computed(() => {
+  if (user?.firstName) return [user.firstName[0], user?.lastName?.[0]].filter(Boolean).join('').toUpperCase()
+  return (user?.username?.[0] ?? '?').toUpperCase()
+})
+const email      = computed(() => user?.email || '')
+const submittedAt = computed(() => {
+  const raw = user?.registeredAt ?? user?.lastLoginAt
+  if (!raw) return '—'
+  const date = Array.isArray(raw)
+    ? new Date(raw[0], raw[1] - 1, raw[2], raw[3] ?? 0, raw[4] ?? 0)
+    : new Date(raw)
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    + ' · '
+    + date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+})
+
 function refreshStatus() {
-  // TODO: Fetch updated approval status from GET /api/user/profile
+  // future: poll GET /api/users/{id} and redirect when status changes to APPROVED
 }
 </script>

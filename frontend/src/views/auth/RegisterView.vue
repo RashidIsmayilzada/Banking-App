@@ -25,6 +25,14 @@
             :error="errors.email"
           />
         </div>
+        <div style="grid-column:1/-1">
+          <AppField
+            label="Username"
+            v-model="form.username"
+            placeholder="3–50 characters"
+            :error="errors.username"
+          />
+        </div>
         <AppField
           label="BSN"
           v-model="form.bsn"
@@ -34,7 +42,7 @@
         />
         <AppField
           label="Phone"
-          v-model="form.phone"
+          v-model="form.phoneNumber"
           placeholder="+31 6 …"
           hint="Used for SMS verification"
         />
@@ -44,11 +52,8 @@
             v-model="form.password"
             type="password"
             :error="errors.password"
-            hint="Min 8 chars · 1 number · 1 symbol"
+            hint="Min 12 chars · 1 number · 1 symbol"
           />
-        </div>
-        <div style="grid-column:1/-1">
-          <AppField label="Date of birth" v-model="form.dob" placeholder="DD / MM / YYYY" />
         </div>
       </div>
 
@@ -64,13 +69,18 @@
         </label>
       </div>
 
+      <p v-if="serverError" style="margin:16px 0 0;padding:10px 14px;background:var(--red-soft,#fef2f2);color:var(--red,#dc2626);border-radius:8px;font-size:13px">
+        {{ serverError }}
+      </p>
+
       <div class="row" style="margin-top:28px">
         <RouterLink to="/login" class="btn btn--ghost">
           <AppIcon name="arrowLeft" :size="16" /> Back
         </RouterLink>
         <span class="spacer" />
-        <button class="btn btn--primary btn--lg" @click="handleRegister">
-          Continue <AppIcon name="arrowRight" :size="16" />
+        <button class="btn btn--primary btn--lg" :disabled="loading" @click="handleRegister">
+          <span v-if="loading">Creating account…</span>
+          <template v-else>Continue <AppIcon name="arrowRight" :size="16" /></template>
         </button>
       </div>
 
@@ -86,18 +96,55 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
+import { register } from '@/services/auth.js'
 
 const router = useRouter()
 
 const form = ref({
-  firstName: '', lastName: '', email: '', bsn: '',
-  phone: '', password: '', dob: '',
+  firstName: '', lastName: '', email: '',
+  username: '', bsn: '', phoneNumber: '', password: '',
 })
-const errors = ref({ email: '', bsn: '', password: '' })
+const errors = ref({ email: '', bsn: '', password: '', username: '' })
 const agreed = ref(false)
+const serverError = ref('')
+const loading = ref(false)
 
-// TODO: POST /api/auth/register with form.value, then route to /pending
-function handleRegister() {
-  router.push('/pending')
+function validate() {
+  errors.value = { email: '', bsn: '', password: '', username: '' }
+  let valid = true
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
+    errors.value.email = 'Enter a valid email address'
+    valid = false
+  }
+  if (!/^\d{9}$/.test(form.value.bsn)) {
+    errors.value.bsn = 'BSN must be exactly 9 digits'
+    valid = false
+  }
+  if (form.value.password.length < 12) {
+    errors.value.password = 'Password must be at least 12 characters'
+    valid = false
+  }
+  if (form.value.username.length < 3) {
+    errors.value.username = 'Username must be at least 3 characters'
+    valid = false
+  }
+  return valid
+}
+
+async function handleRegister() {
+  serverError.value = ''
+  if (!validate()) return
+
+  loading.value = true
+  try {
+    const userData = await register({ ...form.value, role: 'CUSTOMER' })
+    sessionStorage.setItem('pending_user', JSON.stringify(userData))
+    router.push('/pending')
+  } catch (err) {
+    serverError.value = err.message || 'Registration failed. Please try again.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>

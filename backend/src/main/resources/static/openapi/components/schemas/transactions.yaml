@@ -10,6 +10,7 @@ Money:
     currency:
       type: string
       const: EUR
+
 TransactionParty:
   type: object
   properties:
@@ -23,6 +24,7 @@ TransactionParty:
     userId:
       type: integer
       format: int64
+
 Transaction:
   type: object
   required:
@@ -55,7 +57,8 @@ Transaction:
       format: date-time
     description:
       type: string
-CustomerTransactionPage:
+
+TransactionPage:
   type: object
   required:
     - items
@@ -67,19 +70,45 @@ CustomerTransactionPage:
         $ref: '#/Transaction'
     page:
       $ref: ./common.yaml#/PageMetadata
-EmployeeTransactionPage:
+
+TransactionRequest:
   type: object
   required:
-    - items
-    - page
+    - type
+    - amount
+    - description
+  description: |
+    Unified transaction request. Required fields vary by type:
+    - TRANSFER: provide fromAccountId and either toAccountId (own accounts) or toIban (external).
+    - DEPOSIT / WITHDRAWAL: provide accountId (ATM cash operations).
   properties:
-    items:
-      type: array
-      items:
-        $ref: '#/Transaction'
-    page:
-      $ref: ./common.yaml#/PageMetadata
-TransferResult:
+    type:
+      $ref: ./common.yaml#/TransactionType
+    fromAccountId:
+      type: integer
+      format: int64
+      description: Required for TRANSFER.
+    toAccountId:
+      type: integer
+      format: int64
+      description: Required for internal TRANSFER (between own accounts).
+    toIban:
+      type: string
+      pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
+      description: Required for external TRANSFER (to another customer).
+    accountId:
+      type: integer
+      format: int64
+      description: Required for DEPOSIT and WITHDRAWAL.
+    amount:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    description:
+      type: string
+      maxLength: 255
+
+TransactionResult:
   type: object
   required:
     - transaction
@@ -91,3 +120,50 @@ TransferResult:
       $ref: '#/Money'
     destinationBalance:
       $ref: '#/Money'
+TransactionRequest:
+  type: object
+  required:
+    - type
+    - amount
+  description: |
+    Unified transaction request. Required fields vary by type:
+    - TRANSFER: provide fromAccountId and either toAccountId (internal) or toIban (external).
+    - DEPOSIT / WITHDRAWAL: provide accountId (ATM cash operation).
+  properties:
+    type:
+      $ref: ./common.yaml#/TransactionType
+    fromAccountId:
+      type: integer
+      format: int64
+      description: Required for TRANSFER.
+    toAccountId:
+      type: integer
+      format: int64
+      description: Required for an internal TRANSFER between accounts.
+    toIban:
+      type: string
+      pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
+      description: Required for an external TRANSFER to another customer's IBAN.
+    accountId:
+      type: integer
+      format: int64
+      description: Required for DEPOSIT and WITHDRAWAL.
+    amount:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    description:
+      type: string
+      maxLength: 255
+TransactionPage:
+  type: object
+  required:
+    - items
+    - page
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Transaction'
+    page:
+      $ref: ./common.yaml#/PageMetadata
