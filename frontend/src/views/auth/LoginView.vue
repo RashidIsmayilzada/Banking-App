@@ -26,8 +26,12 @@
               Forgot password?
             </a>
           </div>
-          <button class="btn btn--primary btn--lg btn--block" style="margin-top:8px" @click="handleLogin">
-            Sign in <AppIcon name="arrowRight" :size="16" />
+          <p v-if="error" style="margin:0;padding:10px 14px;background:var(--red-soft,#fef2f2);color:var(--red,#dc2626);border-radius:8px;font-size:13px">
+            {{ error }}
+          </p>
+          <button class="btn btn--primary btn--lg btn--block" style="margin-top:8px" :disabled="loading" @click="handleLogin">
+            <span v-if="loading">Signing in…</span>
+            <template v-else>Sign in <AppIcon name="arrowRight" :size="16" /></template>
           </button>
           <div class="row" style="justify-content:center;font-size:14px;color:var(--ink-soft);margin-top:8px">
             New to InHolland?&nbsp;
@@ -73,15 +77,42 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
+import { login } from '@/services/auth.js'
+import { useAuth } from '@/stores/auth.js'
 
 const router = useRouter()
+const { setSession } = useAuth()
 
 const form = ref({ email: '', password: '' })
 const keepSigned = ref(true)
+const error = ref('')
+const loading = ref(false)
 
-// TODO: POST /api/auth/login with form.value, then route based on returned role
-function handleLogin() {
-  // Temporary demo routing — replace with real auth
-  router.push('/customer/dashboard')
+const ROLE_ROUTES = {
+  CUSTOMER: '/customer/dashboard',
+  EMPLOYEE: '/employee/overview',
+  ATM:      '/atm/home',
+}
+
+async function handleLogin() {
+  error.value = ''
+  loading.value = true
+  try {
+    const response = await login(form.value.email, form.value.password)
+    setSession(response)
+
+    const { role, userStatus } = response.user ?? {}
+
+    if (role === 'CUSTOMER' && userStatus === 'PENDING_APPROVAL') {
+      sessionStorage.setItem('pending_user', JSON.stringify(response.user))
+      router.push('/pending')
+    } else {
+      router.push(ROLE_ROUTES[role] || '/customer/dashboard')
+    }
+  } catch (err) {
+    error.value = err.message || 'Login failed. Please check your credentials.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
