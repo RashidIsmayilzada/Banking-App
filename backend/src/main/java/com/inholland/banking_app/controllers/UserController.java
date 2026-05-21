@@ -1,6 +1,6 @@
 package com.inholland.banking_app.controllers;
 
-import com.inholland.banking_app.dtos.ApprovalRequestDTO;
+import com.inholland.banking_app.dtos.ApproveCustomer;
 import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.services.UserService;
@@ -31,19 +31,6 @@ public class UserController {
 
         private final UserService userService;
 
-        @Operation(summary = "Register a new user account", description = "Creates a pending user account")
-        @ApiResponses({
-                        @ApiResponse(responseCode = "200", description = "User registered successfully"),
-                        @ApiResponse(responseCode = "400", description = "Validation failed or duplicate email/username")
-        })
-        @PostMapping("/register")
-        public ResponseEntity<String> registerUser(@RequestBody UserRequest request) {
-                userService.registerUserProfile(request);
-                log.info("Customer profile registered successfully: {}", request.getEmail());
-                return ResponseEntity
-                                .ok("User registered successfully");
-        }
-
         @Operation(summary = "Get all users")
         @GetMapping
         @PreAuthorize("hasRole('EMPLOYEE')")
@@ -71,10 +58,11 @@ public class UserController {
         @ApiResponse(responseCode = "404", description = "User not found")
         @PatchMapping("/{id}/approval")
         public ResponseEntity<UserResponse> approveUser(
-                        @Parameter(description = "ID of the user to set approval status", example = "approved, denied") @RequestBody ApprovalRequestDTO request,
+                        @Parameter(description = "ID of the user to set approval status", example = "approved, denied")
+                        @RequestBody ApproveCustomer approveCustomer,
                         @PathVariable Long id) {
 
-                userService.approveCustomer(request, id);
+                userService.approveCustomer(approveCustomer, id);
                 return ResponseEntity
                                 .ok(userService.getUserById(id));
         }

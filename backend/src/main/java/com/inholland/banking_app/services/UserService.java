@@ -1,23 +1,24 @@
 package com.inholland.banking_app.services;
 
-import com.inholland.banking_app.dtos.ApprovalRequestDTO;
-import com.inholland.banking_app.dtos.UserRequest;
+import com.inholland.banking_app.dtos.ApproveCustomer;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.mappers.UserResponseMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.DailyTransferUsage;
 import com.inholland.banking_app.models.User;
-import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.factory.AccountFactory;
-import com.inholland.banking_app.models.factory.UserFactory;
 import com.inholland.banking_app.repositories.AccountRepository;
-import com.inholland.banking_app.repositories.CustomerApprovalRepository;
 import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,41 +26,22 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.inholland.banking_app.models.enums.CustomerStatus.APPROVED;
 
 @RequiredArgsConstructor
 @Service
 @Slf4j
 public class UserService {
 
-    private final AuthService authService;
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
-    private final CustomerApprovalRepository customerApprovalRepository;
     private final DailyTransferUsageRepository dailyTransferUsageRepository;
-    private final PasswordEncoder passwordEncoder;
     private final UserResponseMapper userResponseMapper;
 
-    public void registerUserProfile(UserRequest request) {
-        authService.validateRegistrationRequest(request);
-        String passwordHash = passwordEncoder.encode(request.getPassword());
-        User user = resolveRole(request) == Role.EMPLOYEE
-                ? UserFactory.createEmployee(request, passwordHash)
-                : UserFactory.createPendingCustomer(request, passwordHash);
-        userRepository.save(user);
-    }
-
-    private Role resolveRole(UserRequest request) {
-        return request.getRole() == null ? Role.CUSTOMER : request.getRole();
-    }
 
     public Page<UserResponse> getAllUsers(Pageable pageable, String role, Boolean active, Boolean hasAccount,
             String search) {
@@ -80,12 +62,8 @@ public class UserService {
             if (role == null || role.isBlank()) {
                 return null;
             }
-            try {
-                Role enumRole = Role.valueOf(role.trim().toUpperCase());
-                return criteriaBuilder.equal(root.get("role"), enumRole);
-            } catch (IllegalArgumentException e) {
-                return null;
-            }
+            Role enumRole = Role.valueOf(role.trim().toUpperCase());
+            return criteriaBuilder.equal(root.get("role"), enumRole);
         };
     }
 
@@ -137,7 +115,7 @@ public class UserService {
     }
 
     @Transactional
-    public void approveCustomer(ApprovalRequestDTO requestDTO, Long userId) {
+    public void approveCustomer(ApproveCustomer approveCustomer, Long userId) {
         User employee = currentUser();
 
         if (employee.getRole() != Role.EMPLOYEE) {
@@ -151,26 +129,12 @@ public class UserService {
         if (customerProfile == null) {
             throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
         }
-        CustomerStatus status = requestDTO.getDecision() == ApprovalDecision.APPROVED
-                ? CustomerStatus.APPROVED
-                : CustomerStatus.REJECTED;
-        customerProfile.setStatus(status);
+        customerProfile.setStatus(approveCustomer.getStatus());
 
-        if (status == CustomerStatus.APPROVED) {
+        if (customerProfile.getStatus() == APPROVED) {
             createDefaultAccounts(user);
             initializeDailyTransferUsage(user);
         }
-        log.info("Customer profile status updated for user: {}", user.getUsername());
-
-        CustomerApproval approval = CustomerApproval.builder()
-                .customer(user)
-                .approvedByEmployee(employee)
-                .decision(requestDTO.getDecision())
-                .note(requestDTO.getNote())
-                .decidedAt(LocalDateTime.now())
-                .build();
-        customerApprovalRepository.save(approval);
-        log.info("Approval saved for user: {}", user.getUsername());
     }
 
     private void createDefaultAccounts(User user) {

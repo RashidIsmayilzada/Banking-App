@@ -1,15 +1,15 @@
 package com.inholland.banking_app.dtos;
 
 
+import com.inholland.banking_app.models.enums.CustomerStatus;
 import lombok.Getter;
 import lombok.Setter;
 
+@Getter
+@Setter
 public class ApproveCustomer {
-
-    @Getter
-    @Setter
 
     private Long customerId;
 
-    private String status;
+    private CustomerStatus status;
 }
