@@ -21,4 +21,6 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
     @Query("SELECT u FROM User u WHERE NOT EXISTS (SELECT a FROM Account a WHERE a.customer = u)")
     Page<User> findAllWithNoAccounts(Pageable pageable);
+
+    Page<User> findAllByAccountsIsEmpty(Pageable pageable);
 }

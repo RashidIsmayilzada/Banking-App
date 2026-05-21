@@ -11,7 +11,6 @@ import com.inholland.banking_app.models.DailyTransferUsage;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
-import com.inholland.banking_app.models.enums.ApprovalDecision;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.models.factory.UserFactory;
@@ -131,14 +130,9 @@ public class UserService {
             throw new AccessDeniedException("Only employees can approve customers.");
         }
 
-        log.info("Processing approval for user ID: {} with decision: {}", userId, requestDTO.getDecision());
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("user with id: " + userId + " not found"));
 
-        log.info("User with id: {} found", user.getUsername());
-
-        log.info("starting user registration: {} ", requestDTO.getDecision());
         CustomerProfile customerProfile = user.getCustomerProfile();
         if (customerProfile == null) {
             throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());

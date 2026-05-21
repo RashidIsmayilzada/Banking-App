@@ -1,6 +1,5 @@
 package com.inholland.banking_app.models.factory;
 
-import com.inholland.banking_app.dtos.UserCreateRequest;
 import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.EmployeeProfile;
@@ -12,50 +11,19 @@ import java.time.LocalDateTime;
 
 public final class UserFactory {
 
-    private UserFactory() {}
-
-    public static User createUser(UserCreateRequest request, String passwordHash, Role role) {
-        LocalDateTime now = LocalDateTime.now();
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setUsername(request.getUsername());
-        user.setPasswordHash(passwordHash);
-        user.setRole(role);
-        user.setActive(true);
-        user.setCreatedAt(now);
-        user.setUpdatedAt(now);
-        return user;
+    public static User createPendingCustomer(UserRequest request, String passwordHash) {
+        return createPendingCustomer(request, passwordHash, LocalDateTime.now());
     }
 
-    public static CustomerProfile createCustomerProfile(User user, UserCreateRequest request) {
+    private static CustomerProfile createCustomer(UserRequest request, String passwordHash, LocalDateTime now) {
         CustomerProfile profile = new CustomerProfile();
-        profile.setUser(user);
         profile.setFirstName(request.getFirstName());
         profile.setLastName(request.getLastName());
         profile.setBsn(request.getBsn());
         profile.setPhoneNumber(request.getPhoneNumber());
         profile.setStatus(CustomerStatus.PENDING_APPROVAL);
-        profile.setRegisteredAt(LocalDateTime.now());
+        profile.setRegisteredAt(now);
         return profile;
-    }
-
-    public static EmployeeProfile createEmployeeProfile(User user, UserCreateRequest request) {
-        EmployeeProfile profile = new EmployeeProfile();
-        profile.setUser(user);
-        profile.setFirstName(request.getFirstName());
-        profile.setLastName(request.getLastName());
-        profile.setEmployeeNumber("EMP-" + user.getId());
-        profile.setEnabled(true);
-        profile.setCreatedAt(LocalDateTime.now());
-        return profile;
-    }
-
-    public static User createPendingCustomer(UserRequest request, String passwordHash) {
-        return createPendingCustomer(request, passwordHash, LocalDateTime.now());
-    }
-
-    public static User createEmployee(UserRequest request, String passwordHash) {
-        return createEmployee(request, passwordHash, LocalDateTime.now());
     }
 
     public static User createPendingCustomer(UserRequest request, String passwordHash, LocalDateTime now) {
@@ -67,10 +35,30 @@ public final class UserFactory {
         user.setActive(true);
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
+
+        CustomerProfile profile = createCustomer(request, passwordHash, now);
+        user.setCustomerProfile(profile);
         return user;
     }
 
-    public static User createEmployee(UserRequest request, String passwordHash, LocalDateTime now) {
+    // Employee factory
+
+    public static User createEmployee(UserRequest request, String passwordHash) {
+        return createEmployee(request, passwordHash, LocalDateTime.now());
+    }
+
+    private static EmployeeProfile createEmployeeProfile(User user, UserRequest request) {
+        EmployeeProfile profile = new EmployeeProfile();
+        profile.setUser(user);
+        profile.setFirstName(request.getFirstName());
+        profile.setLastName(request.getLastName());
+        profile.setEmployeeNumber("EMP-" + user.getId());
+        profile.setEnabled(true);
+        profile.setCreatedAt(LocalDateTime.now());
+        return profile;
+    }
+
+    private static User createEmployee(UserRequest request, String passwordHash, LocalDateTime now) {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setUsername(request.getUsername());
@@ -79,6 +67,9 @@ public final class UserFactory {
         user.setActive(true);
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
+
+        EmployeeProfile profile =  createEmployeeProfile(user, request);
+        user.setEmployeeProfile(profile);
         return user;
     }
 }

@@ -1,6 +1,5 @@
 package com.inholland.banking_app.models;
 
-import com.inholland.banking_app.models.enums.ApprovalDecision;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
