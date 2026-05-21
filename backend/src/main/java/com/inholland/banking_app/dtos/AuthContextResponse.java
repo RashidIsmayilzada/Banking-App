@@ -8,7 +8,6 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.List;
 
-
 @Getter
 @Setter
 public class AuthContextResponse {
@@ -18,7 +17,6 @@ public class AuthContextResponse {
     private Role role;
     private boolean active;
     private LocalDateTime lastLoginAt;
-    private CustomerStatus customerStatus;
-    private Boolean employeeEnabled;
+    private CustomerStatus userStatus;
     private List<String> authorizedFeatures;
 }

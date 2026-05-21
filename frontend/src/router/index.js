@@ -26,15 +26,14 @@ import ApproveFormView       from '@/views/employee/ApproveFormView.vue'
 import AllTransactionsView   from '@/views/employee/AllTransactionsView.vue'
 import EmployeeTransferView  from '@/views/employee/EmployeeTransferView.vue'
 import SetLimitsView         from '@/views/employee/SetLimitsView.vue'
-import { getCurrentUser, homePathFor, isAuthenticated, restoreAuth } from '@/services/auth.js'
 
 const routes = [
   { path: '/', redirect: '/login' },
 
   // ── Auth ───────────────────────────────────────────
-  { path: '/login',    component: LoginView,    meta: { guestOnly: true } },
-  { path: '/register', component: RegisterView, meta: { guestOnly: true } },
-  { path: '/pending',  component: PendingView,  meta: { requiresAuth: true } },
+  { path: '/login',    component: LoginView    },
+  { path: '/register', component: RegisterView },
+  { path: '/pending',  component: PendingView  },
 
   // ── Customer ───────────────────────────────────────
   { path: '/customer/dashboard',    component: DashboardView,     meta: { requiresAuth: true, role: 'CUSTOMER' } },
@@ -44,19 +43,19 @@ const routes = [
 
   // ── ATM ────────────────────────────────────────────
   { path: '/atm/login',    component: AtmLoginView    },
-  { path: '/atm/home',     component: AtmHomeView     },
-  { path: '/atm/withdraw', component: AtmWithdrawView },
-  { path: '/atm/confirm',  component: AtmConfirmView  },
+  { path: '/atm/home',     component: AtmHomeView,     meta: { requiresAuth: true, role: 'ATM' } },
+  { path: '/atm/withdraw', component: AtmWithdrawView, meta: { requiresAuth: true, role: 'ATM' } },
+  { path: '/atm/confirm',  component: AtmConfirmView,  meta: { requiresAuth: true, role: 'ATM' } },
 
   // ── Employee ───────────────────────────────────────
-  { path: '/employee/overview',                 component: OverviewView,         meta: { requiresAuth: true, role: 'EMPLOYEE' } },
-  { path: '/employee/customers',                component: CustomersView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
-  { path: '/employee/customers/:id',            component: CustomerDetailView,   meta: { requiresAuth: true, role: 'EMPLOYEE' } },
-  { path: '/employee/approvals',                component: ApprovalsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
-  { path: '/employee/approvals/:id',            component: ApproveFormView,      meta: { requiresAuth: true, role: 'EMPLOYEE' } },
-  { path: '/employee/transactions',             component: AllTransactionsView,  meta: { requiresAuth: true, role: 'EMPLOYEE' } },
-  { path: '/employee/transfer',                 component: EmployeeTransferView, meta: { requiresAuth: true, role: 'EMPLOYEE' } },
-  { path: '/employee/limits',                   component: SetLimitsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/overview',      component: OverviewView,         meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/customers',     component: CustomersView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/customers/:id', component: CustomerDetailView,   meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/approvals',     component: ApprovalsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/approvals/:id', component: ApproveFormView,      meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/transactions',  component: AllTransactionsView,  meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/transfer',      component: EmployeeTransferView, meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/limits',        component: SetLimitsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
 ]
 
 const router = createRouter({
@@ -64,23 +63,28 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach(async (to) => {
-  let user = getCurrentUser()
+const ROLE_ROUTES = {
+  CUSTOMER: '/customer/dashboard',
+  EMPLOYEE: '/employee/overview',
+  ATM:      '/atm/home',
+}
 
-  if (isAuthenticated() && !user) {
-    user = await restoreAuth()
-  }
+router.beforeEach((to) => {
+  const token = localStorage.getItem('auth_token')
+  const user = JSON.parse(localStorage.getItem('auth_user') || 'null')
+  const isLoggedIn = !!token
+  const role = user?.role || null
 
-  if (to.meta.requiresAuth && !isAuthenticated()) {
+  if (to.meta.requiresAuth && !isLoggedIn) {
     return '/login'
   }
 
-  if (to.meta.guestOnly && isAuthenticated()) {
-    return homePathFor(user)
+  if (to.meta.role && isLoggedIn && role !== to.meta.role) {
+    return ROLE_ROUTES[role] || '/login'
   }
 
-  if (to.meta.role && user?.role !== to.meta.role) {
-    return homePathFor(user)
+  if ((to.path === '/login' || to.path === '/register') && isLoggedIn) {
+    return ROLE_ROUTES[role] || '/customer/dashboard'
   }
 })
 

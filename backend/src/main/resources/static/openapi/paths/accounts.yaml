@@ -1,0 +1,80 @@
+accounts:
+  get:
+    tags: [Accounts]
+    summary: List accounts. Customers see their own; employees may filter by userId.
+    operationId: listAccounts
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: userId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+    responses:
+      '200':
+        description: Accounts returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/accounts.yaml#/AccountListResponse
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+
+accountById:
+  get:
+    tags: [Accounts]
+    summary: Get a single account by ID.
+    operationId: getAccount
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/AccountId
+    responses:
+      '200':
+        description: Account returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/accounts.yaml#/Account
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+  patch:
+    tags: [Accounts]
+    summary: Update account limits or status. Employees only.
+    operationId: updateAccount
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/AccountId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/accounts.yaml#/AccountUpdateRequest
+    responses:
+      '200':
+        description: Updated account returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/accounts.yaml#/Account
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+      '409':
+        $ref: ../components/schemas/common.yaml#/Conflict
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError
