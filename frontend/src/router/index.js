@@ -55,7 +55,7 @@ const routes = [
   { path: '/employee/approvals/:id', component: ApproveFormView,      meta: { requiresAuth: true, role: 'EMPLOYEE' } },
   { path: '/employee/transactions',  component: AllTransactionsView,  meta: { requiresAuth: true, role: 'EMPLOYEE' } },
   { path: '/employee/transfer',      component: EmployeeTransferView, meta: { requiresAuth: true, role: 'EMPLOYEE' } },
-  { path: '/employee/limits',        component: SetLimitsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/limits/:id?',   component: SetLimitsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
 ]
 
 const router = createRouter({

@@ -7,7 +7,7 @@
     </div>
 
     <h1 class="t-h1" style="margin:0 0 6px">
-      Approve · {{ applicant ? (applicant.customerProfile ? `${applicant.customerProfile.firstName} ${applicant.customerProfile.lastName}` : applicant.username) : 'Loading...' }}
+      Approve · {{ applicant ? applicantName : 'Loading...' }}
     </h1>
     <p class="t-body muted" style="margin:0 0 24px">Create a checking + savings account and set transfer limits.</p>
 
@@ -77,10 +77,10 @@
       <div class="col" style="gap:16px">
         <div class="card">
           <div class="row" style="margin-bottom:16px">
-            <AppAvatar :name="applicant.customerProfile ? `${applicant.customerProfile.firstName} ${applicant.customerProfile.lastName}` : applicant.username" size="lg" />
+            <AppAvatar :name="applicantName" size="lg" />
             <div>
-              <h3 class="t-h3" style="margin:0">{{ applicant.customerProfile ? `${applicant.customerProfile.firstName} ${applicant.customerProfile.lastName}` : applicant.username }}</h3>
-              <div class="t-body-sm">Applicant · {{ applicant.createdAt ? new Date(applicant.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '—' }}</div>
+              <h3 class="t-h3" style="margin:0">{{ applicantName }}</h3>
+              <div class="t-body-sm">Applicant · {{ applicant.registeredAt ? new Date(applicant.registeredAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '—' }}</div>
             </div>
           </div>
           <hr class="divider" style="margin:0 0 14px" />
@@ -119,6 +119,7 @@ const route = useRoute()
 const applicant = ref(null)
 const loading = ref(false)
 const error = ref(null)
+const applicantName = computed(() => applicant.value ? [applicant.value.firstName, applicant.value.lastName].filter(Boolean).join(' ') || applicant.value.username || applicant.value.email : '')
 
 const form = ref({
   checkingIban: '',
@@ -128,13 +129,12 @@ const form = ref({
 })
 
 const applicantInfo = computed(() => {
-  if (!applicant.value || !applicant.value.customerProfile) return []
-  const profile = applicant.value.customerProfile
+  if (!applicant.value) return []
   return [
-    ['Email', applicant.value.email,  false],
-    ['Phone', profile.phoneNumber,    false],
-    ['BSN',   profile.bsn,            true ],
-    ['DOB',   profile.dateOfBirth || '—', false],
+    ['Email', applicant.value.email || '—', false],
+    ['Phone', applicant.value.phoneNumber || '—', false],
+    ['BSN', applicant.value.bsn || '—', true],
+    ['Status', applicant.value.status || '—', false],
   ]
 })
 
@@ -180,7 +180,7 @@ async function reject() {
   if (!confirm('Are you sure you want to reject this application?')) return
   loading.value = true
   try {
-    await userService.approveUser(route.params.id, 'DENIED')
+    await userService.approveUser(route.params.id, 'REJECTED')
     router.push('/employee/approvals')
   } catch (err) {
     alert('Failed to reject: ' + err.message)

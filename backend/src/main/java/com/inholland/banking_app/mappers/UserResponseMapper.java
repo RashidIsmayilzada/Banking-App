@@ -5,10 +5,14 @@ import com.inholland.banking_app.dtos.CustomerResponse;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.EmployeeProfile;
 import com.inholland.banking_app.models.User;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class UserResponseMapper {
+
+    private final AccountMapper accountMapper;
 
     public UserResponse toUserResponse(User user) {
         if (user == null) {
@@ -48,6 +52,9 @@ public class UserResponseMapper {
                 .status(profile.getStatus())
                 .hasAccounts(accountCount > 0)
                 .accountCount(accountCount)
+                .accounts(user.getAccounts() == null
+                    ? java.util.List.of()
+                    : user.getAccounts().stream().map(accountMapper::toAccountResponse).toList())
                 .registeredAt(profile.getRegisteredAt())
                 .build();
     }

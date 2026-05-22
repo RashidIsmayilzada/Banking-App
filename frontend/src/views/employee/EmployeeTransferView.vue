@@ -6,10 +6,14 @@
     <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px;align-items:flex-start">
       <div class="card" style="padding:28px">
         <!-- From customer -->
-        <!-- TODO: GET /employees/customers?q=… to search customers -->
         <div class="field" style="margin-bottom:16px">
           <label class="field__label">From customer (checking)</label>
           <input class="input" placeholder="Search by name, email, or IBAN" v-model="fromSearch" @input="searchFrom" />
+          <div v-if="fromResults.length" class="card card--soft" style="padding:8px;margin-top:8px">
+            <button v-for="customer in fromResults" :key="customer.id" class="btn btn--ghost btn--block" style="justify-content:flex-start" @click="fromCustomer = customer; fromResults = []">
+              {{ customer.name }} · {{ customer.iban }}
+            </button>
+          </div>
           <div v-if="fromCustomer" class="card card--soft" style="padding:12px;margin-top:8px">
             <div class="row">
               <AppAvatar :name="fromCustomer.name" />
@@ -36,6 +40,11 @@
         <div class="field" style="margin-bottom:20px">
           <label class="field__label">To customer (checking)</label>
           <input class="input" placeholder="Search by name, email, or IBAN" v-model="toSearch" @input="searchTo" />
+          <div v-if="toResults.length" class="card card--soft" style="padding:8px;margin-top:8px">
+            <button v-for="customer in toResults" :key="customer.id" class="btn btn--ghost btn--block" style="justify-content:flex-start" @click="toCustomer = customer; toResults = []">
+              {{ customer.name }} · {{ customer.iban }}
+            </button>
+          </div>
           <div v-if="toCustomer" class="card card--soft" style="padding:12px;margin-top:8px">
             <div class="row">
               <AppAvatar :name="toCustomer.name" />
@@ -71,15 +80,13 @@
         <div class="row" style="margin-top:24px">
           <button class="btn btn--ghost" @click="$router.back()">Cancel</button>
           <span class="spacer" />
-          <!-- TODO: POST /employees/transfers with fromAccountId, toAccountId, amount, description -->
-          <button class="btn btn--primary btn--lg" @click="submitTransfer">
+          <button class="btn btn--primary btn--lg" :disabled="submitting || !fromCustomer || !toCustomer || !form.amount" @click="submitTransfer">
             Submit transfer <AppIcon name="arrowRight" :size="16" />
           </button>
         </div>
       </div>
 
       <!-- Recent employee transfers -->
-      <!-- TODO: Fetch from GET /employees/transactions?initiatedByUserId=employeeId -->
       <div class="card" style="padding:0">
         <div style="padding:16px 20px;border-bottom:1px solid var(--line)">
           <h3 class="t-h4" style="margin:0">Recent employee transfers</h3>
@@ -106,35 +113,75 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import EmployeeShell from '@/components/layout/EmployeeShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import AppAvatar from '@/components/shared/AppAvatar.vue'
+import * as userService from '@/services/user'
 
 const router = useRouter()
 
 const fromSearch = ref('')
 const toSearch   = ref('')
 const form = ref({ amount: '', reason: '' })
+const submitting = ref(false)
+const fromResults = ref([])
+const toResults = ref([])
 
-const fromCustomer = ref({ name: 'Jane Doe',        iban: 'NL42 INHO 0123 4567 89', balance: '€6 218,40' })
-const toCustomer   = ref({ name: 'Maarten Janssen', iban: 'NL11 INHO 0034 9921 07', balance: '€1 042,80' })
+const fromCustomer = ref(null)
+const toCustomer = ref(null)
+const recentTransfers = ref([])
 
-// TODO: GET /employees/customers?q=fromSearch to populate dropdown
-function searchFrom() {}
-// TODO: GET /employees/customers?q=toSearch to populate dropdown
-function searchTo()   {}
+function formatMoney(value) {
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(value || 0))
+}
 
-// TODO: POST /employees/transfers with fromAccountId, toAccountId, amount, description (audit reason)
-function submitTransfer() { router.push('/employee/overview') }
+function parseAmount(value) {
+  return Number(String(value || '').replace(/[€\s]/g, '').replace(',', '.')) || 0
+}
 
-// TODO: Fetch from GET /employees/transactions?channel=EMPLOYEE
-const recentTransfers = [
-  { id: 1, date: '28 Apr', from: 'Janssen', to: 'El-Amin',  amount: '€1 200,00', by: 'Sven van Berg' },
-  { id: 2, date: '25 Apr', from: 'Doe',     to: 'de Vries', amount: '€450,00',   by: 'L. Hartog'     },
-  { id: 3, date: '23 Apr', from: 'Vermeer', to: 'Patel',    amount: '€80,00',    by: 'Sven van Berg' },
-  { id: 4, date: '21 Apr', from: 'Demir',   to: 'Janssen',  amount: '€2 100,00', by: 'L. Hartog'     },
-]
+function displayName(user) {
+  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || user.email
+}
+
+function mapCustomer(user) {
+  const account = user.accounts?.find(item => item.accountType === 'CHECKING') || user.accounts?.[0]
+  return {
+    id: user.id,
+    name: displayName(user),
+    accountId: account?.id,
+    iban: account?.iban || '—',
+    balance: formatMoney(account?.balance),
+  }
+}
+
+async function searchCustomers(search, target) {
+  if (!search) {
+    target.value = []
+    return
+  }
+  const response = await userService.searchCustomers(search, { status: 'APPROVED', hasAccount: true })
+  target.value = (response.content || []).map(mapCustomer).filter(customer => customer.accountId)
+}
+
+function searchFrom() { searchCustomers(fromSearch.value, fromResults) }
+function searchTo() { searchCustomers(toSearch.value, toResults) }
+
+async function submitTransfer() {
+  submitting.value = true
+  try {
+    // Transaction submission is intentionally left for the transaction endpoint work.
+    router.push('/employee/overview')
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function fetchRecentTransfers() {
+  recentTransfers.value = []
+}
+
+onMounted(fetchRecentTransfers)
 </script>

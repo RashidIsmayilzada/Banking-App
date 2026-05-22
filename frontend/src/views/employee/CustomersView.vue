@@ -5,18 +5,18 @@
       <span class="spacer" />
       <div class="row" style="gap:8px;position:relative">
         <AppIcon name="search" :size="14" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--ink-faint)" />
-        <!-- TODO: GET /employees/customers?q=… to search -->
         <input class="input" placeholder="Search name, email, IBAN…" style="width:320px;padding-left:38px" v-model="search" @input="fetchCustomers" />
         <select class="select" style="width:160px" v-model="statusFilter" @change="fetchCustomers">
           <option value="">All statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="PENDING">Pending</option>
+          <option value="APPROVED">Active</option>
+          <option value="PENDING_APPROVAL">Pending</option>
+          <option value="REJECTED">Rejected</option>
           <option value="CLOSED">Closed</option>
         </select>
       </div>
     </div>
 
-    <!-- TODO: Fetch customers from GET /employees/customers?q=search&status=statusFilter&page=page&size=10 -->
+    <div v-if="error" class="banner banner--danger" style="margin-bottom:16px">{{ error }}</div>
     <div class="card" style="padding:0">
       <table class="table">
         <thead>
@@ -30,6 +30,12 @@
           </tr>
         </thead>
         <tbody>
+          <tr v-if="loading">
+            <td colspan="6" class="muted" style="padding:24px;text-align:center">Loading customers...</td>
+          </tr>
+          <tr v-else-if="customers.length === 0">
+            <td colspan="6" class="muted" style="padding:24px;text-align:center">No customers found.</td>
+          </tr>
           <tr v-for="c in customers" :key="c.id">
             <td style="padding-left:24px">
               <div class="row">
@@ -64,7 +70,7 @@
       <div style="padding:0 16px 12px" v-if="totalPages > 0">
         <AppPager 
           :current-page="page + 1" 
-          :total="totalElements" 
+          :total="totalPages" 
           :count="`${page * 10 + 1}–${Math.min((page + 1) * 10, totalElements)} of ${totalElements}`"
           @change="handlePageChange"
         />
@@ -91,6 +97,21 @@ const page = ref(0)
 const totalElements = ref(0)
 const totalPages = ref(0)
 
+function displayName(user) {
+  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || user.email
+}
+
+function statusKind(status) {
+  if (status === 'APPROVED') return 'active'
+  if (status === 'REJECTED') return 'rejected'
+  if (status === 'CLOSED') return 'closed'
+  return 'pending'
+}
+
+function formatDate(value) {
+  return value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+}
+
 async function fetchCustomers() {
   loading.value = true
   error.value = null
@@ -102,17 +123,16 @@ async function fetchCustomers() {
       search: search.value
     }
     
-    if (statusFilter.value === 'ACTIVE') params.active = true
-    if (statusFilter.value === 'PENDING') params.active = false
+    if (statusFilter.value) params.status = statusFilter.value
     
     const response = await userService.getAllUsers(params)
     customers.value = response.content.map(user => ({
       id: user.id,
-      name: user.customerProfile ? `${user.customerProfile.firstName} ${user.customerProfile.lastName}` : user.username,
+      name: displayName(user),
       email: user.email,
       ibans: user.accounts && user.accounts.length > 0 ? user.accounts.map(a => a.iban).join(', ') : '— (no accounts yet)',
-      status: user.active ? 'active' : (user.customerProfile && user.customerProfile.status === 'DENIED' ? 'denied' : 'pending'),
-      joined: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+      status: statusKind(user.status),
+      joined: formatDate(user.registeredAt)
     }))
     totalElements.value = response.totalElements
     totalPages.value = response.totalPages

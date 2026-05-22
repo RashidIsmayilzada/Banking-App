@@ -10,6 +10,7 @@ import com.inholland.banking_app.models.DailyTransferUsage;
 import com.inholland.banking_app.models.EmployeeProfile;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.Role;
+import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.factory.UserFactory;
 import com.inholland.banking_app.models.factory.AccountFactory;
@@ -79,16 +80,17 @@ public class UserService {
 
 
     public Page<UserResponse> getAllUsers(Pageable pageable, String role, Boolean active, Boolean hasAccount,
-            String search) {
-        return userRepository.findAll(buildUserFilter(role, active, hasAccount, search), pageable)
+            String status, String search) {
+        return userRepository.findAll(buildUserFilter(role, active, hasAccount, status, search), pageable)
                 .map(userResponseMapper::toUserResponse);
     }
 
-    private Specification<User> buildUserFilter(String role, Boolean active, Boolean hasAccount, String search) {
+    private Specification<User> buildUserFilter(String role, Boolean active, Boolean hasAccount, String status, String search) {
         return Specification.allOf(
                 hasRole(role),
                 hasActive(active),
                 hasAccount(hasAccount),
+                hasCustomerStatus(status),
                 containsSearch(search));
     }
 
@@ -117,6 +119,16 @@ public class UserService {
             return hasAccount
                     ? criteriaBuilder.isNotEmpty(root.get("accounts"))
                     : criteriaBuilder.isEmpty(root.get("accounts"));
+        };
+    }
+
+    private Specification<User> hasCustomerStatus(String status) {
+        return (root, query, criteriaBuilder) -> {
+            if (status == null || status.isBlank()) {
+                return null;
+            }
+            CustomerStatus customerStatus = CustomerStatus.valueOf(status.trim().toUpperCase());
+            return criteriaBuilder.equal(root.get("customerProfile").get("status"), customerStatus);
         };
     }
 

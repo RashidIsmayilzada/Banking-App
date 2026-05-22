@@ -39,9 +39,10 @@ public class UserController {
                         @RequestParam(required = false) String role,
                         @RequestParam(required = false) Boolean active,
                         @RequestParam(required = false) Boolean hasAccount,
+                        @RequestParam(required = false) String status,
                         @RequestParam(required = false) String search) {
                 return ResponseEntity
-                                .ok(userService.getAllUsers(pageable, role, active, hasAccount, search));
+                                .ok(userService.getAllUsers(pageable, role, active, hasAccount, status, search));
         }
 
         @Operation(summary = "Get user by ID")

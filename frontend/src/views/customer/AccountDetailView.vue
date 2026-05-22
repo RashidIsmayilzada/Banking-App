@@ -9,15 +9,14 @@
       <button class="btn btn--secondary btn--sm"><AppIcon name="settings" :size="14" /> Settings</button>
     </div>
 
-    <!-- TODO: Fetch account detail from GET /api/accounts/{accountId} -->
     <div class="row" style="margin-bottom:28px;gap:16px">
-      <span class="badge badge--dark">Checking</span>
-      <AppStatus kind="active" />
+      <span class="badge badge--dark">{{ formatAccountType(account?.accountType) }}</span>
+      <AppStatus :kind="account?.active ? 'active' : 'closed'" />
     </div>
     <div class="t-display" style="margin:0;font-size:64px">
-      €6 218<span style="opacity:0.4">,40</span>
+      {{ balanceParts.whole }}<span style="opacity:0.4">{{ balanceParts.cents }}</span>
     </div>
-    <div class="iban" style="margin-top:8px;font-size:14px">NL42 INHO 0123 4567 89 · BIC INHONL2A</div>
+    <div class="iban" style="margin-top:8px;font-size:14px">{{ formatIban(account?.iban) }} · BIC INHONL2A</div>
 
     <div class="row" style="margin-top:24px;margin-bottom:32px;gap:8px">
       <RouterLink to="/customer/transfer" class="btn btn--primary">
@@ -45,17 +44,16 @@
       </div>
 
       <div class="col" style="gap:16px">
-        <!-- TODO: Fetch monthly summary from GET /api/accounts/{accountId}/summary -->
         <div class="card">
           <h3 class="t-h3" style="margin:0 0 16px">This month</h3>
           <div class="row" style="justify-content:space-between">
             <span class="muted" style="font-size:14px">In</span>
-            <span style="color:var(--teal);font-weight:500">+€2 400,00</span>
+            <span style="color:var(--teal);font-weight:500">+{{ formatMoney(monthlyIn) }}</span>
           </div>
           <hr class="divider" style="margin:10px 0" />
           <div class="row" style="justify-content:space-between">
             <span class="muted" style="font-size:14px">Out</span>
-            <span style="font-weight:500">−€860,00</span>
+            <span style="font-weight:500">−{{ formatMoney(monthlyOut) }}</span>
           </div>
           <SparkChart :bars="[40,25,60,35,55,30,70,45,65,50,75,60,80]" :height="48" :dim-early="true" style="margin-top:16px" />
         </div>
@@ -77,18 +75,52 @@
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from 'vue'
 import CustomerShell from '@/components/layout/CustomerShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppStatus from '@/components/shared/AppStatus.vue'
 import SparkChart from '@/components/shared/SparkChart.vue'
+import * as userService from '@/services/user'
 
-// TODO: Fetch account detail from GET /api/accounts/{accountId}
-const accountDetails = [
-  ['Account holder',              'Jane Doe',     false],
-  ['Account type',                'Checking',     false],
-  ['Daily transfer limit',        '€2 500,00',    false],
-  ['Absolute limit (min balance)','−€500,00',     false],
-  ['Opened on',                   '12 January 2026', false],
-  ['BIC',                         'INHONL2A',     true ],
-]
+const user = ref(null)
+const account = computed(() => user.value?.accounts?.find(item => item.accountType === 'CHECKING') || user.value?.accounts?.[0] || null)
+const accountHolder = computed(() => user.value ? [user.value.firstName, user.value.lastName].filter(Boolean).join(' ') || user.value.username : '—')
+const balanceParts = computed(() => splitMoney(account.value?.balance || 0))
+const monthlyIn = computed(() => 0)
+const monthlyOut = computed(() => 0)
+
+const accountDetails = computed(() => [
+  ['Account holder', accountHolder.value, false],
+  ['Account type', formatAccountType(account.value?.accountType), false],
+  ['Daily transfer limit', formatMoney(account.value?.dailyTransferLimit), false],
+  ['Absolute limit (min balance)', formatMoney(account.value?.absoluteTransferLimit), false],
+  ['Opened on', formatDate(account.value?.createdAt), false],
+  ['BIC', 'INHONL2A', true],
+])
+
+function formatMoney(value) {
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(value || 0))
+}
+
+function splitMoney(value) {
+  const formatted = formatMoney(value)
+  const [whole, cents = '00'] = formatted.split(',')
+  return { whole, cents: `,${cents}` }
+}
+
+function formatAccountType(type) {
+  return type ? type.charAt(0) + type.slice(1).toLowerCase() : 'Account'
+}
+
+function formatIban(iban) {
+  return iban ? iban.replace(/(.{4})/g, '$1 ').trim() : '—'
+}
+
+function formatDate(value) {
+  return value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'
+}
+
+onMounted(async () => {
+  user.value = await userService.getCurrentUser()
+})
 </script>

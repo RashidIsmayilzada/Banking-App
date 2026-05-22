@@ -29,6 +29,7 @@ export function getAllUsers(params = {}) {
   if (params.role) query.append('role', params.role)
   if (params.active !== undefined) query.append('active', params.active)
   if (params.hasAccount !== undefined) query.append('hasAccount', params.hasAccount)
+  if (params.status) query.append('status', params.status)
   if (params.search) query.append('search', params.search)
 
   const queryString = query.toString()
@@ -37,6 +38,23 @@ export function getAllUsers(params = {}) {
 
 export function getUserById(id) {
   return request(`/users/${id}`)
+}
+
+export function getCurrentUser() {
+  const authUser = JSON.parse(localStorage.getItem('auth_user') || 'null')
+  const id = authUser?.userId || authUser?.id
+  if (!id) return Promise.reject(new Error('No authenticated user found'))
+  return getUserById(id)
+}
+
+export function searchCustomers(search, params = {}) {
+  return getAllUsers({
+    role: 'CUSTOMER',
+    size: 10,
+    page: 0,
+    search,
+    ...params,
+  })
 }
 
 export function approveUser(id, status) {

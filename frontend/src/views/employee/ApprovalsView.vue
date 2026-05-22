@@ -10,7 +10,7 @@
       <button class="btn btn--primary">Bulk approve…</button>
     </div>
 
-    <!-- TODO: Fetch from GET /employees/customers?status=PENDING&page=0&size=20 -->
+    <div v-if="error" class="banner banner--danger" style="margin-bottom:16px">{{ error }}</div>
     <div class="card" style="padding:0">
       <table class="table">
         <thead>
@@ -24,6 +24,12 @@
           </tr>
         </thead>
         <tbody>
+          <tr v-if="loading">
+            <td colspan="6" class="muted" style="padding:24px;text-align:center">Loading approvals...</td>
+          </tr>
+          <tr v-else-if="pending.length === 0">
+            <td colspan="6" class="muted" style="padding:24px;text-align:center">No pending approvals.</td>
+          </tr>
           <tr v-for="c in pending" :key="c.id">
             <td style="padding-left:24px">
               <div class="row">
@@ -74,25 +80,22 @@ async function fetchPending() {
   try {
     const response = await userService.getAllUsers({
       role: 'CUSTOMER',
-      active: false, // Pending users are inactive
-      size: 100 // Get all for now
+      status: 'PENDING_APPROVAL',
+      size: 100
     })
     
-    // Filter by customerProfile.status === 'PENDING' if possible, or just use active=false
     pending.value = response.content
-      .filter(user => user.customerProfile && user.customerProfile.status === 'PENDING')
       .map(user => {
-        const profile = user.customerProfile
-        const submittedDate = new Date(user.createdAt)
+        const submittedDate = user.registeredAt ? new Date(user.registeredAt) : new Date()
         const diffMs = new Date() - submittedDate
         const diffHours = diffMs / (1000 * 60 * 60)
         
         return {
           id: user.id,
-          name: `${profile.firstName} ${profile.lastName}`,
+          name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || user.email,
           email: user.email,
-          bsn: profile.bsn,
-          phone: profile.phoneNumber,
+          bsn: user.bsn || '—',
+          phone: user.phoneNumber || '—',
           submitted: submittedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' · ' + submittedDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
           ago: diffHours < 1 ? 'Just now' : (diffHours < 24 ? Math.floor(diffHours) + 'h ago' : Math.floor(diffHours/24) + 'd ago'),
           overdue: diffHours > 24
@@ -108,7 +111,7 @@ async function fetchPending() {
 async function rejectUser(id) {
   if (!confirm('Are you sure you want to reject this customer?')) return
   try {
-    await userService.approveUser(id, 'DENIED')
+    await userService.approveUser(id, 'REJECTED')
     await fetchPending()
   } catch (err) {
     alert('Failed to reject: ' + err.message)

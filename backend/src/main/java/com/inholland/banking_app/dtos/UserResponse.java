@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -27,5 +28,6 @@ public class UserResponse {
     private CustomerStatus status;
     private Boolean hasAccounts;
     private Integer accountCount;
+    private List<AccountResponse> accounts;
     private LocalDateTime registeredAt;
 }
