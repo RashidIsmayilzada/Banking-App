@@ -31,13 +31,6 @@ public class UserController {
 
         private final UserService userService;
 
-        @Operation(summary = "Register a new user")
-        @PostMapping
-        public ResponseEntity<UserResponse> registerUser(@RequestBody UserRequest request) {
-                log.info("Received registration request for: {}", request.getEmail());
-                return ResponseEntity.ok(userService.register(request));
-        }
-
         @Operation(summary = "Get all users")
         @GetMapping
         @PreAuthorize("hasRole('EMPLOYEE')")

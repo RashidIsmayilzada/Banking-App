@@ -9,7 +9,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - backend_h2_data:/app/data
+      - ./backend/data:/app/data
 
   frontend:
     build:
@@ -24,5 +24,3 @@ services:
     depends_on:
       - backend
 
-volumes:
-  backend_h2_data:

@@ -61,34 +61,74 @@
           </tr>
         </tbody>
       </table>
-      <div style="padding:0 16px 12px">
-        <AppPager :current-page="1" :total="36" count="1–7 of 247" />
+      <div style="padding:0 16px 12px" v-if="totalPages > 0">
+        <AppPager 
+          :current-page="page + 1" 
+          :total="totalElements" 
+          :count="`${page * 10 + 1}–${Math.min((page + 1) * 10, totalElements)} of ${totalElements}`"
+          @change="handlePageChange"
+        />
       </div>
     </div>
   </EmployeeShell>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import EmployeeShell from '@/components/layout/EmployeeShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppAvatar from '@/components/shared/AppAvatar.vue'
 import AppStatus from '@/components/shared/AppStatus.vue'
 import AppPager from '@/components/shared/AppPager.vue'
+import * as userService from '@/services/user'
 
 const search = ref('')
 const statusFilter = ref('')
+const customers = ref([])
+const loading = ref(false)
+const error = ref(null)
+const page = ref(0)
+const totalElements = ref(0)
+const totalPages = ref(0)
 
-// TODO: Fetch from GET /employees/customers with filters and pagination
-function fetchCustomers() {}
+async function fetchCustomers() {
+  loading.value = true
+  error.value = null
+  try {
+    const params = {
+      role: 'CUSTOMER',
+      page: page.value,
+      size: 10,
+      search: search.value
+    }
+    
+    if (statusFilter.value === 'ACTIVE') params.active = true
+    if (statusFilter.value === 'PENDING') params.active = false
+    
+    const response = await userService.getAllUsers(params)
+    customers.value = response.content.map(user => ({
+      id: user.id,
+      name: user.customerProfile ? `${user.customerProfile.firstName} ${user.customerProfile.lastName}` : user.username,
+      email: user.email,
+      ibans: user.accounts && user.accounts.length > 0 ? user.accounts.map(a => a.iban).join(', ') : '— (no accounts yet)',
+      status: user.active ? 'active' : (user.customerProfile && user.customerProfile.status === 'DENIED' ? 'denied' : 'pending'),
+      joined: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+    }))
+    totalElements.value = response.totalElements
+    totalPages.value = response.totalPages
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    loading.value = false
+  }
+}
 
-const customers = [
-  { id: '00247', name: 'Jane Doe',        email: 'jane.doe@example.com',    ibans: 'NL42 INHO …89  ·  …21', status: 'active',  joined: '12 Jan 2026' },
-  { id: '00198', name: 'Maarten Janssen', email: 'maarten.j@example.com',   ibans: 'NL11 INHO …07  ·  …08', status: 'active',  joined: '04 Mar 2026' },
-  { id: '00231', name: 'Sara El-Amin',    email: 'sara.e@example.com',      ibans: 'NL55 INHO …14',          status: 'active',  joined: '21 Mar 2026' },
-  { id: '00248', name: 'Tom Bakker',      email: 'tom.b@example.com',       ibans: '— (no accounts yet)',    status: 'pending', joined: '27 Apr 2026' },
-  { id: '00112', name: 'Lisa Vermeer',    email: 'lisa.v@example.com',      ibans: 'NL08 INHO …62  ·  …63', status: 'closed',  joined: '02 Feb 2025' },
-  { id: '00219', name: 'Pieter de Vries', email: 'pieter.dv@example.com',   ibans: 'NL77 INHO …40',          status: 'active',  joined: '15 Apr 2026' },
-  { id: '00249', name: 'Yusuf Demir',     email: 'yusuf.d@example.com',     ibans: '— (no accounts yet)',    status: 'pending', joined: '26 Apr 2026' },
-]
+function handlePageChange(newPage) {
+  page.value = newPage - 1
+  fetchCustomers()
+}
+
+onMounted(() => {
+  fetchCustomers()
+})
 </script>

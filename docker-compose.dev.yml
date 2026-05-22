@@ -11,7 +11,7 @@ services:
     volumes:
       - ./backend:/app
       - maven_cache:/root/.m2
-      - backend_h2_data:/app/backend/data
+      - ./backend/data:/app/backend/data
 
   frontend:
     image: node:20-alpine
@@ -30,6 +30,5 @@ services:
       - backend
 
 volumes:
-  backend_h2_data:
   maven_cache:
   frontend_node_modules:

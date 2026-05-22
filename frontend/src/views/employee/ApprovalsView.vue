@@ -3,8 +3,7 @@
     <div class="row" style="margin-bottom:24px">
       <div>
         <h1 class="t-h1" style="margin:0">Pending approvals</h1>
-        <!-- TODO: Fetch count from GET /employees/customers?status=PENDING -->
-        <p class="t-body muted" style="margin:6px 0 0">12 customers awaiting account creation.</p>
+        <p class="t-body muted" style="margin:6px 0 0">{{ pending.length }} customers awaiting account creation.</p>
       </div>
       <span class="spacer" />
       <button class="btn btn--secondary"><AppIcon name="filter" :size="16" /> Filter</button>
@@ -44,8 +43,7 @@
             <td class="num muted">{{ c.submitted }}</td>
             <td style="padding-right:24px;text-align:right">
               <div class="row" style="justify-content:flex-end;gap:6px">
-                <!-- TODO: POST /employees/customers/{customerUserId}/approval with decision=REJECTED -->
-                <button class="btn btn--ghost btn--xs">Reject</button>
+                <button class="btn btn--ghost btn--xs" @click="rejectUser(c.id)" :disabled="loading">Reject</button>
                 <!-- Navigate to approval form -->
                 <RouterLink :to="`/employee/approvals/${c.id}`" class="btn btn--primary btn--xs">
                   Approve →
@@ -60,15 +58,64 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import EmployeeShell from '@/components/layout/EmployeeShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppAvatar from '@/components/shared/AppAvatar.vue'
+import * as userService from '@/services/user'
 
-// TODO: Fetch from GET /employees/customers?status=PENDING
-const pending = [
-  { id: '00248', name: 'Tom Bakker',  email: 'tom.b@example.com',    bsn: '987-654-321', phone: '+31 6 5544 3322', submitted: '27 Apr · 14:02', ago: '20h ago', overdue: false },
-  { id: '00250', name: 'Anna Visser', email: 'a.visser@example.com', bsn: '112-233-445', phone: '+31 6 1212 3434', submitted: '27 Apr · 11:45', ago: '23h ago', overdue: false },
-  { id: '00249', name: 'Yusuf Demir', email: 'yusuf.d@example.com',  bsn: '556-778-990', phone: '+31 6 7788 1010', submitted: '26 Apr · 09:30', ago: '2d ago',  overdue: true  },
-  { id: '00251', name: 'Mira Patel',  email: 'mira.p@example.com',   bsn: '334-556-778', phone: '+31 6 9090 1212', submitted: '25 Apr · 16:08', ago: '3d ago',  overdue: true  },
-]
+const pending = ref([])
+const loading = ref(false)
+const error = ref(null)
+
+async function fetchPending() {
+  loading.value = true
+  error.value = null
+  try {
+    const response = await userService.getAllUsers({
+      role: 'CUSTOMER',
+      active: false, // Pending users are inactive
+      size: 100 // Get all for now
+    })
+    
+    // Filter by customerProfile.status === 'PENDING' if possible, or just use active=false
+    pending.value = response.content
+      .filter(user => user.customerProfile && user.customerProfile.status === 'PENDING')
+      .map(user => {
+        const profile = user.customerProfile
+        const submittedDate = new Date(user.createdAt)
+        const diffMs = new Date() - submittedDate
+        const diffHours = diffMs / (1000 * 60 * 60)
+        
+        return {
+          id: user.id,
+          name: `${profile.firstName} ${profile.lastName}`,
+          email: user.email,
+          bsn: profile.bsn,
+          phone: profile.phoneNumber,
+          submitted: submittedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' · ' + submittedDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          ago: diffHours < 1 ? 'Just now' : (diffHours < 24 ? Math.floor(diffHours) + 'h ago' : Math.floor(diffHours/24) + 'd ago'),
+          overdue: diffHours > 24
+        }
+      })
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    loading.value = false
+  }
+}
+
+async function rejectUser(id) {
+  if (!confirm('Are you sure you want to reject this customer?')) return
+  try {
+    await userService.approveUser(id, 'DENIED')
+    await fetchPending()
+  } catch (err) {
+    alert('Failed to reject: ' + err.message)
+  }
+}
+
+onMounted(() => {
+  fetchPending()
+})
 </script>

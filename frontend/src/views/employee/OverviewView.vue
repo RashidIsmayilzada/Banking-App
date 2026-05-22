@@ -3,8 +3,7 @@
     <div class="row" style="margin-bottom:24px">
       <div>
         <div class="t-body-sm" style="margin-bottom:4px">{{ todayLabel }}</div>
-        <!-- TODO: Fetch employee name from GET /api/user/profile -->
-        <h1 class="t-h1" style="margin:0">Hi Sven.</h1>
+        <h1 class="t-h1" style="margin:0">Hi {{ authStore.user?.username || 'Employee' }}.</h1>
       </div>
       <span class="spacer" />
       <RouterLink to="/employee/customers" class="btn btn--secondary">
@@ -107,20 +106,39 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import EmployeeShell from '@/components/layout/EmployeeShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
+import { useAuth } from '@/stores/auth'
+import * as userService from '@/services/user'
+
+const authStore = useAuth()
 
 const todayLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 
-// TODO: Fetch stats from GET /employees/customers and GET /employees/transactions
-const kpis = [
-  { label: 'Total customers',     value: '247',    sub: '+8 this month', deltaTone: 'pos',  icon: 'users', tone: '',     dark: true  },
-  { label: 'Pending approvals',   value: '12',     sub: '3 over 24h',   deltaTone: 'warn', icon: 'clock', tone: 'warn', dark: false },
+const totalCustomers = ref('...')
+const pendingApprovals = ref('...')
+
+const kpis = ref([
+  { label: 'Total customers',     value: totalCustomers,    sub: '+8 this month', deltaTone: 'pos',  icon: 'users', tone: '',     dark: true  },
+  { label: 'Pending approvals',   value: pendingApprovals,  sub: '3 over 24h',   deltaTone: 'warn', icon: 'clock', tone: 'warn', dark: false },
   { label: 'Transactions today',  value: '1 084',  sub: '+12% vs avg',  deltaTone: 'pos',  icon: 'list',  tone: 'blue', dark: false },
   { label: 'Volume today',        value: '€412k',  sub: '↑ €38k',       deltaTone: 'pos',  icon: 'euro',  tone: 'teal', dark: false },
-]
+])
 
-// TODO: Fetch from GET /employees/transactions?size=5
+async function fetchStats() {
+  try {
+    const allUsers = await userService.getAllUsers({ role: 'CUSTOMER', size: 1 })
+    totalCustomers.value = allUsers.totalElements.toString()
+    
+    const pending = await userService.getAllUsers({ role: 'CUSTOMER', active: false, size: 100 })
+    const pendingCount = pending.content.filter(u => u.customerProfile && u.customerProfile.status === 'PENDING').length
+    pendingApprovals.value = pendingCount.toString()
+  } catch (err) {
+    console.error('Failed to fetch stats:', err)
+  }
+}
+
 const activity = [
   { icon: 'user',     tone: 'pink',  title: 'New registration',              sub: 'Tom Bakker · BSN 987-654-321',      time: '14:02', status: 'Pending'  },
   { icon: 'arrowSwap',tone: 'blue',  title: 'Transfer · Janssen → El-Amin',  sub: '€1 200,00 · audited',               time: '13:55', status: 'Settled'  },
@@ -130,9 +148,13 @@ const activity = [
 ]
 
 const quickActions = [
-  { icon: 'users',    label: 'All customer accounts',       sub: '247 active',       to: '/employee/customers'   },
-  { icon: 'clock',    label: 'Pending approvals',           sub: '12 awaiting',      to: '/employee/approvals', tone: 'warn' },
+  { icon: 'users',    label: 'All customer accounts',       sub: 'Active database',       to: '/employee/customers'   },
+  { icon: 'clock',    label: 'Pending approvals',           sub: 'Awaiting review',      to: '/employee/approvals', tone: 'warn' },
   { icon: 'list',     label: 'System transactions',         sub: '1 084 today',      to: '/employee/transactions'},
   { icon: 'transfer', label: 'Transfer between customers',  sub: 'Audited move',     to: '/employee/transfer'   },
 ]
+
+onMounted(() => {
+  fetchStats()
+})
 </script>

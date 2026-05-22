@@ -6,11 +6,14 @@
       </RouterLink>
     </div>
 
-    <!-- TODO: Fetch applicant details from GET /employees/customers/{customerUserId} -->
-    <h1 class="t-h1" style="margin:0 0 6px">Approve · Tom Bakker</h1>
+    <h1 class="t-h1" style="margin:0 0 6px">
+      Approve · {{ applicant ? (applicant.customerProfile ? `${applicant.customerProfile.firstName} ${applicant.customerProfile.lastName}` : applicant.username) : 'Loading...' }}
+    </h1>
     <p class="t-body muted" style="margin:0 0 24px">Create a checking + savings account and set transfer limits.</p>
 
-    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px;align-items:flex-start">
+    <div v-if="loading" style="padding: 40px; text-align: center;">Loading applicant details...</div>
+    <div v-else-if="error" class="banner banner--danger" style="margin-bottom: 24px;">{{ error }}</div>
+    <div v-else-if="applicant" style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px;align-items:flex-start">
       <div class="card" style="padding:28px">
         <h3 class="t-h3" style="margin:0 0 16px">Accounts to create</h3>
 
@@ -74,10 +77,10 @@
       <div class="col" style="gap:16px">
         <div class="card">
           <div class="row" style="margin-bottom:16px">
-            <AppAvatar name="Tom Bakker" size="lg" />
+            <AppAvatar :name="applicant.customerProfile ? `${applicant.customerProfile.firstName} ${applicant.customerProfile.lastName}` : applicant.username" size="lg" />
             <div>
-              <h3 class="t-h3" style="margin:0">Tom Bakker</h3>
-              <div class="t-body-sm">Applicant · 27 Apr · 14:02</div>
+              <h3 class="t-h3" style="margin:0">{{ applicant.customerProfile ? `${applicant.customerProfile.firstName} ${applicant.customerProfile.lastName}` : applicant.username }}</h3>
+              <div class="t-body-sm">Applicant · {{ applicant.createdAt ? new Date(applicant.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '—' }}</div>
             </div>
           </div>
           <hr class="divider" style="margin:0 0 14px" />
@@ -102,39 +105,91 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import EmployeeShell from '@/components/layout/EmployeeShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import AppAvatar from '@/components/shared/AppAvatar.vue'
+import * as userService from '@/services/user'
 
 const router = useRouter()
+const route = useRoute()
 
-// TODO: Fetch applicant from GET /employees/customers/{route.params.id}
+const applicant = ref(null)
+const loading = ref(false)
+const error = ref(null)
+
 const form = ref({
-  checkingIban: 'NL42 INHO 0044 8821 03',
-  savingsIban:  'NL42 INHO 0044 8821 04',
-  absoluteLimit: '−500,00',
-  dailyLimit:    '2 500,00',
+  checkingIban: '',
+  savingsIban:  '',
+  absoluteLimit: '-500',
+  dailyLimit:    '2500',
 })
 
-const applicantInfo = [
-  ['Email', 'tom.b@example.com',  false],
-  ['Phone', '+31 6 5544 3322',    false],
-  ['BSN',   '987-654-321',        true ],
-  ['DOB',   '02 Jul 1995',        false],
-]
+const applicantInfo = computed(() => {
+  if (!applicant.value || !applicant.value.customerProfile) return []
+  const profile = applicant.value.customerProfile
+  return [
+    ['Email', applicant.value.email,  false],
+    ['Phone', profile.phoneNumber,    false],
+    ['BSN',   profile.bsn,            true ],
+    ['DOB',   profile.dateOfBirth || '—', false],
+  ]
+})
 
-function regenerate(type) {
-  // TODO: Generate a new IBAN for the given account type
+function generateIban() {
   const rnd = Math.floor(Math.random() * 9e9).toString().padStart(10, '0')
-  if (type === 'checking') form.value.checkingIban = `NL42 INHO 0${rnd.slice(0,3)} ${rnd.slice(3,7)} ${rnd.slice(7)}`
-  else form.value.savingsIban = `NL42 INHO 0${rnd.slice(0,3)} ${rnd.slice(3,7)} ${rnd.slice(7)}`
+  return `NL${Math.floor(Math.random()*90+10)} INHO 0${rnd.slice(0,3)} ${rnd.slice(3,7)} ${rnd.slice(7)}`
 }
 
-// TODO: POST /employees/customers/{id}/approval with decision=APPROVED + account limits
-function approve() { router.push('/employee/approvals') }
-// TODO: POST /employees/customers/{id}/approval with decision=REJECTED
-function reject()  { router.push('/employee/approvals') }
+function regenerate(type) {
+  if (type === 'checking') form.value.checkingIban = generateIban()
+  else form.value.savingsIban = generateIban()
+}
+
+async function fetchApplicant() {
+  loading.value = true
+  try {
+    applicant.value = await userService.getUserById(route.params.id)
+    form.value.checkingIban = generateIban()
+    form.value.savingsIban = generateIban()
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    loading.value = false
+  }
+}
+
+async function approve() {
+  if (!confirm('Are you sure you want to approve this customer and create their accounts?')) return
+  loading.value = true
+  try {
+    // Note: The backend approveUser might need enhancement to handle limits and IBANs 
+    // but for now we follow the existing API which just takes a status
+    await userService.approveUser(route.params.id, 'APPROVED')
+    router.push('/employee/approvals')
+  } catch (err) {
+    alert('Failed to approve: ' + err.message)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function reject() {
+  if (!confirm('Are you sure you want to reject this application?')) return
+  loading.value = true
+  try {
+    await userService.approveUser(route.params.id, 'DENIED')
+    router.push('/employee/approvals')
+  } catch (err) {
+    alert('Failed to reject: ' + err.message)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchApplicant()
+})
 </script>
