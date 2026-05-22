@@ -5,13 +5,13 @@ services:
     command: mvn spring-boot:run
     restart: unless-stopped
     environment:
-      H2_DB_PATH: /app/data/bankingdb
+      H2_DB_PATH: /app/backend/data/bankingdb
     ports:
       - "8080:8080"
     volumes:
       - ./backend:/app
       - maven_cache:/root/.m2
-      - backend_h2_data:/app/data
+      - backend_h2_data:/app/backend/data
 
   frontend:
     image: node:20-alpine

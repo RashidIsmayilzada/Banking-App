@@ -4,6 +4,8 @@ import com.inholland.banking_app.dtos.LoginRequest;
 import com.inholland.banking_app.dtos.LoginResponse;
 import com.inholland.banking_app.dtos.LogoutResponse;
 import com.inholland.banking_app.services.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Authentication", description = "Login and logout endpoints")
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/auth")
@@ -21,6 +24,7 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @Operation(summary = "Login to the application", description = "Returns an access token to be used in the Authorization header")
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request.getEmail(), request.getPassword());
@@ -28,6 +32,7 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Logout from the application")
     @PostMapping("/logout")
     public ResponseEntity<LogoutResponse> logout() {
         log.info("User logged out");

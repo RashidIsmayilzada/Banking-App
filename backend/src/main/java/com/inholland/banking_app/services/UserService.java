@@ -1,14 +1,17 @@
 package com.inholland.banking_app.services;
 
 import com.inholland.banking_app.dtos.ApproveCustomer;
+import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.mappers.UserResponseMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.DailyTransferUsage;
+import com.inholland.banking_app.models.EmployeeProfile;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.models.enums.AccountType;
+import com.inholland.banking_app.models.factory.UserFactory;
 import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
@@ -19,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,6 +45,37 @@ public class UserService {
     private final AccountRepository accountRepository;
     private final DailyTransferUsageRepository dailyTransferUsageRepository;
     private final UserResponseMapper userResponseMapper;
+    private final AuthService authService;
+    private final PasswordEncoder passwordEncoder;
+
+
+    @Transactional
+    public UserResponse register(UserRequest request) {
+        authService.validateRegistrationRequest(request);
+
+        String passwordHash = passwordEncoder.encode(request.getPassword());
+        Role role = request.getRole() == null ? Role.CUSTOMER : request.getRole();
+
+        User user;
+        if (role == Role.EMPLOYEE) {
+            user = UserFactory.createEmployee(request, passwordHash);
+            EmployeeProfile employeeProfile = user.getEmployeeProfile();
+            if (employeeProfile != null) {
+                employeeProfile.setUser(user);
+            }
+        } else {
+            user = UserFactory.createPendingCustomer(request, passwordHash);
+            CustomerProfile customerProfile = user.getCustomerProfile();
+            if (customerProfile != null) {
+                customerProfile.setUser(user);
+            }
+        }
+
+        User savedUser = userRepository.save(user);
+        log.info("Registered new user: {} with role: {}", savedUser.getUsername(), savedUser.getRole());
+
+        return userResponseMapper.toUserResponse(savedUser);
+    }
 
 
     public Page<UserResponse> getAllUsers(Pageable pageable, String role, Boolean active, Boolean hasAccount,
@@ -200,7 +235,6 @@ public class UserService {
                 .getPrincipal();
         String username = userDetails.getUsername();
 
-        // Load the actual User entity from database
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new AccessDeniedException("Authenticated user not found in database"));
     }
