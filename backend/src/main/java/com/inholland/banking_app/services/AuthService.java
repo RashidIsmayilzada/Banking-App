@@ -6,7 +6,6 @@ import com.inholland.banking_app.exceptions.ForbiddenException;
 import com.inholland.banking_app.mappers.AuthMapper;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
-import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.repositories.CustomerProfileRepository;
 import com.inholland.banking_app.repositories.UserRepository;
@@ -79,8 +78,7 @@ public class AuthService {
         if (profile.isEmpty()) {
             return;
         }
-        CustomerStatus status = profile.get().getStatus();
-        if (status == CustomerStatus.REJECTED || status == CustomerStatus.CLOSED) {
+        if (profile.get().isLoginBlocked()) {
             throw new ForbiddenException("This account is no longer allowed to access the application");
         }
     }

@@ -9,7 +9,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.*;
@@ -41,7 +40,7 @@ public class CustomerApproval {
     @Column(nullable = false, length = 20)
     private ApprovalDecision decision;
 
-    @Lob
+    @Column(columnDefinition = "TEXT")
     private String note;
 
     @Column(name = "decided_at", nullable = false)

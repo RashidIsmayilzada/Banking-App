@@ -32,9 +32,13 @@ public class UserService {
         validateUniqueEmail(request.getEmail());
         validateUniqueUsername(request.getUsername());
 
-        Role role = request.getRole() != null ? request.getRole() : Role.CUSTOMER;
-        String passwordHash = passwordEncoder.encode(request.getPassword());
+        Role role = request.getRole();
 
+        if (role == Role.CUSTOMER) {
+            validateUniqueBsn(request.getBsn());
+        }
+
+        String passwordHash = passwordEncoder.encode(request.getPassword());
         User user = UserFactory.createUser(request, passwordHash, role);
         userRepository.save(user);
 
@@ -44,7 +48,6 @@ public class UserService {
             return userMapper.toEmployeeResponse(user, profile);
         }
 
-        validateUniqueBsn(request.getBsn());
         CustomerProfile profile = UserFactory.createCustomerProfile(user, request);
         customerProfileRepository.save(profile);
         return userMapper.toCustomerResponse(user, profile);
