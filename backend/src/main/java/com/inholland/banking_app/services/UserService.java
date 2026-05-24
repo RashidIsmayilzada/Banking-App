@@ -1,73 +1,235 @@
 package com.inholland.banking_app.services;
 
-import com.inholland.banking_app.dtos.UserCreateRequest;
+import com.inholland.banking_app.dtos.ApprovalRequestDTO;
+import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
-import com.inholland.banking_app.exceptions.DuplicateResourceException;
-import com.inholland.banking_app.mappers.UserMapper;
+import com.inholland.banking_app.mappers.UserResponseMapper;
+import com.inholland.banking_app.models.Account;
+import com.inholland.banking_app.models.CustomerApproval;
 import com.inholland.banking_app.models.CustomerProfile;
-import com.inholland.banking_app.models.EmployeeProfile;
+import com.inholland.banking_app.models.DailyTransferUsage;
 import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
+import com.inholland.banking_app.models.enums.ApprovalDecision;
+import com.inholland.banking_app.models.enums.AccountType;
+import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.models.factory.UserFactory;
-import com.inholland.banking_app.repositories.CustomerProfileRepository;
-import com.inholland.banking_app.repositories.EmployeeProfileRepository;
+import com.inholland.banking_app.repositories.AccountRepository;
+import com.inholland.banking_app.repositories.CustomerApprovalRepository;
+import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
 import com.inholland.banking_app.repositories.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class UserService {
 
+    private final AuthService authService;
     private final UserRepository userRepository;
-    private final CustomerProfileRepository customerProfileRepository;
-    private final EmployeeProfileRepository employeeProfileRepository;
+    private final AccountRepository accountRepository;
+    private final CustomerApprovalRepository customerApprovalRepository;
+    private final DailyTransferUsageRepository dailyTransferUsageRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UserMapper userMapper;
+    private final UserResponseMapper userResponseMapper;
+
+    public void registerUserProfile(UserRequest request) {
+        authService.validateRegistrationRequest(request);
+        String passwordHash = passwordEncoder.encode(request.getPassword());
+        User user = resolveRole(request) == Role.EMPLOYEE
+                ? UserFactory.createEmployee(request, passwordHash)
+                : UserFactory.createPendingCustomer(request, passwordHash);
+        userRepository.save(user);
+    }
+
+    private Role resolveRole(UserRequest request) {
+        return request.getRole() == null ? Role.CUSTOMER : request.getRole();
+    }
+
+    public Page<UserResponse> getAllUsers(Pageable pageable, String role, Boolean active, Boolean hasAccount,
+            String search) {
+        return userRepository.findAll(buildUserFilter(role, active, hasAccount, search), pageable)
+                .map(userResponseMapper::toUserResponse);
+    }
+
+    private Specification<User> buildUserFilter(String role, Boolean active, Boolean hasAccount, String search) {
+        return Specification.allOf(
+                hasRole(role),
+                hasActive(active),
+                hasAccount(hasAccount),
+                containsSearch(search));
+    }
+
+    private Specification<User> hasRole(String role) {
+        return (root, query, criteriaBuilder) -> {
+            if (role == null || role.isBlank()) {
+                return null;
+            }
+            return criteriaBuilder.equal(root.get("role"), Role.valueOf(role.trim().toUpperCase()));
+        };
+    }
+
+    private Specification<User> hasActive(Boolean active) {
+        return (root, query, criteriaBuilder) -> active == null
+                ? null
+                : criteriaBuilder.equal(root.get("active"), active);
+    }
+
+    private Specification<User> hasAccount(Boolean hasAccount) {
+        return (root, query, criteriaBuilder) -> {
+            if (hasAccount == null) {
+                return null;
+            }
+
+            return hasAccount
+                    ? criteriaBuilder.isNotEmpty(root.get("accounts"))
+                    : criteriaBuilder.isEmpty(root.get("accounts"));
+        };
+    }
+
+    private Specification<User> containsSearch(String search) {
+        return (root, query, criteriaBuilder) -> {
+            if (search == null || search.isBlank()) {
+                return null;
+            }
+
+            String pattern = "%" + search.trim().toLowerCase() + "%";
+            return criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("username")), pattern));
+        };
+    }
+
+    public UserResponse getUserById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User with id " + userId + " not found"));
+        return userResponseMapper.toUserResponse(user);
+    }
 
     @Transactional
-    public UserResponse createUser(UserCreateRequest request) {
-        validateUniqueEmail(request.getEmail());
-        validateUniqueUsername(request.getUsername());
+    public void approveCustomer(ApprovalRequestDTO requestDTO, Long userId) {
+        User employee = currentUser();
 
-        Role role = request.getRole();
-
-        if (role == Role.CUSTOMER) {
-            validateUniqueBsn(request.getBsn());
+        if (employee.getRole() != Role.EMPLOYEE) {
+            throw new AccessDeniedException("Only employees can approve customers.");
         }
 
-        String passwordHash = passwordEncoder.encode(request.getPassword());
-        User user = UserFactory.createUser(request, passwordHash, role);
-        userRepository.save(user);
+        log.info("Processing approval for user ID: {} with decision: {}", userId, requestDTO.getDecision());
 
-        if (role == Role.EMPLOYEE) {
-            EmployeeProfile profile = UserFactory.createEmployeeProfile(user, request);
-            employeeProfileRepository.save(profile);
-            return userMapper.toEmployeeResponse(user, profile);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("user with id: " + userId + " not found"));
+
+        log.info("User with id: {} found", user.getUsername());
+
+        log.info("starting user registration: {} ", requestDTO.getDecision());
+        CustomerProfile customerProfile = user.getCustomerProfile();
+        if (customerProfile == null) {
+            throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
         }
+        CustomerStatus status = requestDTO.getDecision() == ApprovalDecision.APPROVED
+                ? CustomerStatus.APPROVED
+                : CustomerStatus.REJECTED;
+        customerProfile.setStatus(status);
 
-        CustomerProfile profile = UserFactory.createCustomerProfile(user, request);
-        customerProfileRepository.save(profile);
-        return userMapper.toCustomerResponse(user, profile);
+        if (status == CustomerStatus.APPROVED) {
+            createDefaultAccounts(user);
+            initializeDailyTransferUsage(user);
+        }
+        log.info("Customer profile status updated for user: {}", user.getUsername());
+
+        CustomerApproval approval = CustomerApproval.builder()
+                .customer(user)
+                .approvedByEmployee(employee)
+                .decision(requestDTO.getDecision())
+                .note(requestDTO.getNote())
+                .decidedAt(LocalDateTime.now())
+                .build();
+        customerApprovalRepository.save(approval);
+        log.info("Approval saved for user: {}", user.getUsername());
     }
 
-    private void validateUniqueEmail(String email) {
-        if (userRepository.existsByEmail(email)) {
-            throw new DuplicateResourceException("Email already exists");
+    private void createDefaultAccounts(User user) {
+        createAccountIfMissing(user, AccountType.CHECKING);
+        createAccountIfMissing(user, AccountType.SAVINGS);
+    }
+
+    private void createAccountIfMissing(User user, AccountType accountType) {
+        boolean accountExists = user.getAccounts().stream()
+                .anyMatch(account -> account.getAccountType() == accountType);
+
+        if (accountExists) {
+            return;
+        }
+
+        String iban = generateIban(user.getId(), accountType);
+        Account account = accountType == AccountType.CHECKING
+                ? AccountFactory.createCheckingAccount(user, iban)
+                : AccountFactory.createSavingsAccount(user, iban);
+
+        accountRepository.save(account);
+        user.getAccounts().add(account);
+    }
+
+    private String generateIban(Long userId, AccountType accountType) {
+        long accountNumber = userId * 10 + (accountType == AccountType.CHECKING ? 1 : 2);
+        String iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
+
+        while (accountRepository.existsByIban(iban)) {
+            accountNumber++;
+            iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
+        }
+
+        return iban;
+    }
+
+    private void initializeDailyTransferUsage(User user) {
+        LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (Account account : user.getAccounts()) {
+            dailyTransferUsageRepository.findByAccountIdAndUsageDate(account.getId(), today)
+                    .orElseGet(() -> {
+                        DailyTransferUsage usage = new DailyTransferUsage();
+                        usage.setAccount(account);
+                        usage.setUsageDate(today);
+                        usage.setTotalOutgoingAmount(BigDecimal.ZERO);
+                        usage.setUpdatedAt(now);
+                        return dailyTransferUsageRepository.save(usage);
+                    });
         }
     }
 
-    private void validateUniqueUsername(String username) {
-        if (userRepository.existsByUsername(username)) {
-            throw new DuplicateResourceException("Username already exists");
-        }
-    }
+    private User currentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-    private void validateUniqueBsn(String bsn) {
-        if (customerProfileRepository.existsByBsn(bsn)) {
-            throw new DuplicateResourceException("BSN already exists");
+        if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() instanceof String) {
+            throw new AccessDeniedException("You must be logged in to perform this action.");
         }
+
+        // Get username from Spring Security's UserDetails
+        org.springframework.security.core.userdetails.UserDetails userDetails = (org.springframework.security.core.userdetails.UserDetails) auth
+                .getPrincipal();
+        String username = userDetails.getUsername();
+
+        // Load the actual User entity from database
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new AccessDeniedException("Authenticated user not found in database"));
     }
 }

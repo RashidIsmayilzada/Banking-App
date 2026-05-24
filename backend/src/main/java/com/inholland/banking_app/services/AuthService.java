@@ -2,12 +2,14 @@ package com.inholland.banking_app.services;
 
 import com.inholland.banking_app.dtos.AuthContextResponse;
 import com.inholland.banking_app.dtos.LoginResponse;
+import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.exceptions.ForbiddenException;
 import com.inholland.banking_app.mappers.AuthMapper;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.repositories.CustomerProfileRepository;
+import com.inholland.banking_app.repositories.EmployeeProfileRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import com.inholland.banking_app.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final CustomerProfileRepository customerProfileRepository;
+    private final EmployeeProfileRepository employeeProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthMapper authMapper;
@@ -56,6 +59,59 @@ public class AuthService {
                 .orElseThrow(() -> new BadCredentialsException("Authenticated user not found"));
 
         return authMapper.toAuthContextResponse(user);
+    }
+
+    public void validateRegistrationRequest(UserRequest request) {
+        validateUniqueEmail(request.getEmail());
+        validateUniqueUsername(request.getUsername());
+        validatePasswordStrength(request.getPassword());
+
+        Role role = request.getRole() == null ? Role.CUSTOMER : request.getRole();
+        if (role == Role.CUSTOMER) {
+            validateUniqueBsn(request.getBsn());
+        } else {
+            validateUniqueEmployeeNumber(request.getEmployeeNumber());
+        }
+    }
+
+    private void validateUniqueEmail(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email already exists");
+        }
+    }
+
+    private void validateUniqueUsername(String username) {
+        if (userRepository.existsByUsername(username)) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+    }
+
+    private void validateUniqueBsn(String bsn) {
+        if (customerProfileRepository.existsByBsn(bsn)) {
+            throw new IllegalArgumentException("BSN already exists");
+        }
+    }
+
+    private void validateUniqueEmployeeNumber(String employeeNumber) {
+        if (employeeProfileRepository.existsByEmployeeNumber(employeeNumber)) {
+            throw new IllegalArgumentException("Employee number already exists");
+        }
+    }
+
+    private void validatePasswordStrength(String password) {
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("Password does not meet strength requirements");
+        }
+        boolean hasUppercase = false, hasLowercase = false, hasDigit = false, hasSpecial = false;
+        for (char c : password.toCharArray()) {
+            if (Character.isUpperCase(c)) hasUppercase = true;
+            else if (Character.isLowerCase(c)) hasLowercase = true;
+            else if (Character.isDigit(c)) hasDigit = true;
+            else hasSpecial = true;
+        }
+        if (!hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+            throw new IllegalArgumentException("Password does not meet strength requirements");
+        }
     }
 
     private void validatePassword(String password, User user) {

@@ -5,7 +5,7 @@
       role="Customer"
       initials="JD"
       avatar-tone="avatar--blue"
-      @sign-out="router.push('/login')"
+      @sign-out="handleSignOut"
     />
     <div class="shell">
       <AppSidebar :items="NAV" settings-to="/customer/settings" security-to="/customer/security" />
@@ -20,8 +20,14 @@
 import { useRouter } from 'vue-router'
 import AppTopBar from '@/components/shared/AppTopBar.vue'
 import AppSidebar from '@/components/shared/AppSidebar.vue'
+import { logout } from '@/services/auth.js'
 
 const router = useRouter()
+
+function handleSignOut() {
+  logout()
+  router.push('/login')
+}
 
 const NAV = [
   { label: 'Dashboard',    icon: 'home',       to: '/customer/dashboard' },

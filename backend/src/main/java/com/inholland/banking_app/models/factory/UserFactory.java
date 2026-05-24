@@ -1,6 +1,7 @@
 package com.inholland.banking_app.models.factory;
 
 import com.inholland.banking_app.dtos.UserCreateRequest;
+import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.EmployeeProfile;
 import com.inholland.banking_app.models.User;
@@ -48,5 +49,37 @@ public final class UserFactory {
         profile.setEnabled(true);
         profile.setCreatedAt(LocalDateTime.now());
         return profile;
+    }
+
+    public static User createPendingCustomer(UserRequest request, String passwordHash) {
+        return createPendingCustomer(request, passwordHash, LocalDateTime.now());
+    }
+
+    public static User createEmployee(UserRequest request, String passwordHash) {
+        return createEmployee(request, passwordHash, LocalDateTime.now());
+    }
+
+    public static User createPendingCustomer(UserRequest request, String passwordHash, LocalDateTime now) {
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setUsername(request.getUsername());
+        user.setPasswordHash(passwordHash);
+        user.setRole(Role.CUSTOMER);
+        user.setActive(true);
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
+        return user;
+    }
+
+    public static User createEmployee(UserRequest request, String passwordHash, LocalDateTime now) {
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setUsername(request.getUsername());
+        user.setPasswordHash(passwordHash);
+        user.setRole(Role.EMPLOYEE);
+        user.setActive(true);
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
+        return user;
     }
 }

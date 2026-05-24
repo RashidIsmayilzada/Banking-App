@@ -28,7 +28,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+            throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
@@ -44,14 +45,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/users").permitAll()
                         .requestMatchers(
                                 "/auth/**",
+                                "/users/register",
+                                "/atm/sessions",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/openapi/**",
                                 "/v3/api-docs/**",
-                                "/h2-console/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
+                                "/h2-console/**")
+                        .permitAll()
+                            .requestMatchers(HttpMethod.PATCH, "/users/*/approval").hasRole("EMPLOYEE")
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
