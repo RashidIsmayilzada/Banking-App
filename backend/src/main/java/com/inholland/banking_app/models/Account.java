@@ -62,4 +62,31 @@ public class Account {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
+    public boolean isOwnedBy(User user) {
+        return this.customer.getId().equals(user.getId());
+    }
+
+    public boolean isClosed() {
+        return this.status == AccountStatus.CLOSED;
+    }
+
+    public void updateLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
+        if (isClosed()) {
+            throw new IllegalStateException("Cannot update a closed account");
+        }
+        if (absoluteLimit != null) {
+            this.absoluteTransferLimit = absoluteLimit;
+        }
+        if (dailyLimit != null) {
+            this.dailyTransferLimit = dailyLimit;
+        }
+    }
+
+    public void close() {
+        if (isClosed()) {
+            throw new IllegalStateException("Account is already closed");
+        }
+        this.status = AccountStatus.CLOSED;
+        this.closedAt = LocalDateTime.now();
+    }
 }

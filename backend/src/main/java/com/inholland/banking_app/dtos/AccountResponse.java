@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 public class AccountResponse {
 
     private Long accountId;
+    private Long ownerId;
+    private String ownerUsername;
     private String iban;
     private AccountType accountType;
     private MoneyResponse balance;
