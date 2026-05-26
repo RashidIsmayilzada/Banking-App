@@ -1,6 +1,6 @@
 package com.inholland.banking_app.services;
 
-import com.inholland.banking_app.dtos.ApproveCustomer;
+import com.inholland.banking_app.dtos.ApproveCustomerRequest;
 import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.mappers.UserResponseMapper;
@@ -162,7 +162,7 @@ public class UserService {
     }
 
     @Transactional
-    public void approveCustomer(ApproveCustomer approveCustomer, Long userId) {
+    public void approveCustomer(ApproveCustomerRequest approveCustomerRequest, Long userId) {
         User employee = currentUser();
 
         if (employee.getRole() != Role.EMPLOYEE) {
@@ -176,7 +176,7 @@ public class UserService {
         if (customerProfile == null) {
             throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
         }
-        customerProfile.setStatus(approveCustomer.getStatus());
+        customerProfile.setStatus(approveCustomerRequest.getStatus());
 
         if (customerProfile.getStatus() == APPROVED) {
             createDefaultAccounts(user);

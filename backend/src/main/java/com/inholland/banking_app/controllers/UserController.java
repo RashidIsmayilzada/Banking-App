@@ -1,6 +1,6 @@
 package com.inholland.banking_app.controllers;
 
-import com.inholland.banking_app.dtos.ApproveCustomer;
+import com.inholland.banking_app.dtos.ApproveCustomerRequest;
 import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.services.UserService;
@@ -8,7 +8,6 @@ import com.inholland.banking_app.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -61,7 +60,7 @@ public class UserController {
         @PreAuthorize("hasRole('EMPLOYEE')")
         public ResponseEntity<UserResponse> approveUser(
                         @Parameter(description = "ID of the user to set approval status", example = "approved, denied")
-                        @RequestBody ApproveCustomer approveCustomer,
+                        @RequestBody ApproveCustomerRequest approveCustomer,
                         @PathVariable Long id) {
 
                 userService.approveCustomer(approveCustomer, id);

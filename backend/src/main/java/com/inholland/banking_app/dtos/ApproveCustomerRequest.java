@@ -7,7 +7,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ApproveCustomer {
+public class ApproveCustomerRequest {
 
     private Long customerId;
 

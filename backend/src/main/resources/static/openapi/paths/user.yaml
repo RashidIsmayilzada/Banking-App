@@ -1,0 +1,100 @@
+users:
+  get:
+    tags: [Users]
+    summary: Get all users. Employees only.
+    operationId: getAllUsers
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/Page
+      - $ref: ../components/schemas/common.yaml#/Size
+      - name: role
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas/common.yaml#/Role
+      - name: active
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: hasAccount
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas/common.yaml#/UserStatus
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Users returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/users.yaml#/UserPage
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+
+userById:
+  get:
+    tags: [Users]
+    summary: Get user by ID.
+    operationId: getUserById
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/UserId
+    responses:
+      '200':
+        description: User returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/users.yaml#/UserResponse
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+
+userApproval:
+  patch:
+    tags: [Users]
+    summary: Set customer approval status. Employees only.
+    operationId: approveUser
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/UserId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/users.yaml#/UserApprovalRequest
+    responses:
+      '200':
+        description: Updated user returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/users.yaml#/UserResponse
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+      '422':
+        $ref: ../components/schemas/common.yaml#/ValidationError

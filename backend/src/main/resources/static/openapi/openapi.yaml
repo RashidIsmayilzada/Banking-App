@@ -20,6 +20,7 @@ servers:
     description: Local Docker or local backend runtime
 tags:
   - name: Authentication
+  - name: Users
   - name: Customer Accounts
   - name: Customer Transfers
   - name: Customer Transactions
@@ -35,6 +36,12 @@ paths:
     $ref: ./paths/auth.yaml#/logout
   /auth/me:
     $ref: ./paths/auth.yaml#/me
+  /users:
+    $ref: ./paths/user.yaml#/users
+  /users/{id}:
+    $ref: ./paths/user.yaml#/userById
+  /users/{id}/approval:
+    $ref: ./paths/user.yaml#/userApproval
   /customers/me/profile:
     $ref: ./paths/customer.yaml#/getMyProfile
   /customers/me/accounts:
