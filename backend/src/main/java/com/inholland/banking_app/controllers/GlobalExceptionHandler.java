@@ -38,7 +38,7 @@ public class GlobalExceptionHandler {
         body.put("message", "Input validation failed");
         body.put("errors", errors);
         body.put("timestamp", Instant.now().toString());
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(body);
     }
 
     @ExceptionHandler(DuplicateResourceException.class)
@@ -97,7 +97,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleApprovalFailed(ApprovalFailedException exception) {
         log.warn("Approval process failed: {}", exception.getMessage());
         // Using UNPROCESSABLE_ENTITY (422) is common for business logic failures
-        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "APPROVAL_FAILED", exception.getMessage());
+        return buildResponse(HttpStatus.UNPROCESSABLE_CONTENT, "APPROVAL_FAILED", exception.getMessage());
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
