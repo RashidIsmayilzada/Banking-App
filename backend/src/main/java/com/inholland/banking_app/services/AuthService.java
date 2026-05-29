@@ -35,6 +35,7 @@ public class AuthService {
     private long jwtExpirationMs;
 
     public LoginResponse login(String email, String password) {
+        // Validates credentials, checks account status, records last login, and returns a JWT response
         User user = userRepository.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new BadCredentialsException(INVALID_CREDENTIALS_MESSAGE));
 
@@ -52,6 +53,7 @@ public class AuthService {
     }
 
     public AuthContextResponse getCurrentUser(String username) {
+        // Looks up the authenticated user by username and returns their context data
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new BadCredentialsException("Authenticated user not found"));
 
@@ -59,18 +61,21 @@ public class AuthService {
     }
 
     private void validatePassword(String password, User user) {
+        // Throws BadCredentialsException if the provided password does not match the stored hash
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new BadCredentialsException(INVALID_CREDENTIALS_MESSAGE);
         }
     }
 
     private void validateActiveUser(User user) {
+        // Throws DisabledException if the user account is marked as inactive
         if (!user.isActive()) {
             throw new DisabledException("User account is inactive");
         }
     }
 
     private void validateLoginAllowed(User user) {
+        // Blocks login for customers whose profile is marked as login-blocked; employees always pass
         if (user.getRole() != Role.CUSTOMER) {
             return;
         }
@@ -84,6 +89,7 @@ public class AuthService {
     }
 
     private String normalizeEmail(String email) {
+        // Trims whitespace from the email address before repository lookup
         return email == null ? null : email.trim();
     }
 }
