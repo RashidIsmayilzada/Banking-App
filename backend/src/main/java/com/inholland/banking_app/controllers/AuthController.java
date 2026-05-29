@@ -23,6 +23,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        // Authenticates the user and returns a JWT token
         LoginResponse response = authService.login(request.getEmail(), request.getPassword());
         log.info("User logged in: {}", request.getEmail());
         return ResponseEntity.ok(response);
@@ -30,6 +31,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<LogoutResponse> logout() {
+        // Logs out the current user and returns a confirmation message
         log.info("User logged out");
         return ResponseEntity.ok(new LogoutResponse("Logged out successfully."));
     }

@@ -22,6 +22,7 @@ public class UsersController {
 
     @PostMapping
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserCreateRequest request) {
+        // Creates a new user account and returns the created user
         UserResponse response = userService.createUser(request);
         log.info("User created: {} (role={})", response.getEmail(), response.getRole());
         return ResponseEntity.status(201).body(response);
