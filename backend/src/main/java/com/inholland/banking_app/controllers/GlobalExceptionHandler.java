@@ -1,5 +1,6 @@
 package com.inholland.banking_app.controllers;
 
+import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.exceptions.ApprovalFailedException;
 import com.inholland.banking_app.exceptions.DuplicateResourceException;
 import com.inholland.banking_app.exceptions.ForbiddenException;
@@ -46,6 +47,12 @@ public class GlobalExceptionHandler {
         // Handles duplicate resource conflicts and returns 409
         log.warn("Conflict: {}", exception.getMessage());
         return buildResponse(HttpStatus.CONFLICT, "CONFLICT", exception.getMessage());
+    }
+
+    @ExceptionHandler(AccountStateException.class)
+    public ResponseEntity<Map<String, Object>> handleAccountState(AccountStateException exception) {
+        log.warn("Invalid account state: {}", exception.getMessage());
+        return buildResponse(HttpStatus.CONFLICT, "ACCOUNT_STATE_CONFLICT", exception.getMessage());
     }
 
     @ExceptionHandler(ForbiddenException.class)
