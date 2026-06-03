@@ -17,6 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @RequiredArgsConstructor
+@EnableMethodSecurity
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {

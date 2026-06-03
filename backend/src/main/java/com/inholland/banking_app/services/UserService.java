@@ -29,12 +29,17 @@ public class UserService {
 
     @Transactional
     public UserResponse createUser(UserCreateRequest request) {
+        // Validates uniqueness constraints, creates the user and role-specific profile, and returns the response
         validateUniqueEmail(request.getEmail());
         validateUniqueUsername(request.getUsername());
 
-        Role role = request.getRole() != null ? request.getRole() : Role.CUSTOMER;
-        String passwordHash = passwordEncoder.encode(request.getPassword());
+        Role role = request.getRole();
 
+        if (role == Role.CUSTOMER) {
+            validateUniqueBsn(request.getBsn());
+        }
+
+        String passwordHash = passwordEncoder.encode(request.getPassword());
         User user = UserFactory.createUser(request, passwordHash, role);
         userRepository.save(user);
 
@@ -44,25 +49,27 @@ public class UserService {
             return userMapper.toEmployeeResponse(user, profile);
         }
 
-        validateUniqueBsn(request.getBsn());
         CustomerProfile profile = UserFactory.createCustomerProfile(user, request);
         customerProfileRepository.save(profile);
         return userMapper.toCustomerResponse(user, profile);
     }
 
     private void validateUniqueEmail(String email) {
+        // Throws DuplicateResourceException if the email is already registered
         if (userRepository.existsByEmail(email)) {
             throw new DuplicateResourceException("Email already exists");
         }
     }
 
     private void validateUniqueUsername(String username) {
+        // Throws DuplicateResourceException if the username is already taken
         if (userRepository.existsByUsername(username)) {
             throw new DuplicateResourceException("Username already exists");
         }
     }
 
     private void validateUniqueBsn(String bsn) {
+        // Throws DuplicateResourceException if the BSN is already in use
         if (customerProfileRepository.existsByBsn(bsn)) {
             throw new DuplicateResourceException("BSN already exists");
         }

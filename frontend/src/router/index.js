@@ -36,31 +36,56 @@ const routes = [
   { path: '/pending',  component: PendingView  },
 
   // ── Customer ───────────────────────────────────────
-  { path: '/customer/dashboard',    component: DashboardView     },
-  { path: '/customer/accounts',     component: AccountDetailView },
-  { path: '/customer/transfer',     component: TransferView      },
-  { path: '/customer/transactions', component: TransactionsView  },
+  { path: '/customer/dashboard',    component: DashboardView,     meta: { requiresAuth: true, role: 'CUSTOMER' } },
+  { path: '/customer/accounts',     component: AccountDetailView, meta: { requiresAuth: true, role: 'CUSTOMER' } },
+  { path: '/customer/transfer',     component: TransferView,      meta: { requiresAuth: true, role: 'CUSTOMER' } },
+  { path: '/customer/transactions', component: TransactionsView,  meta: { requiresAuth: true, role: 'CUSTOMER' } },
 
   // ── ATM ────────────────────────────────────────────
   { path: '/atm/login',    component: AtmLoginView    },
-  { path: '/atm/home',     component: AtmHomeView     },
-  { path: '/atm/withdraw', component: AtmWithdrawView },
-  { path: '/atm/confirm',  component: AtmConfirmView  },
+  { path: '/atm/home',     component: AtmHomeView,     meta: { requiresAuth: true, role: 'ATM' } },
+  { path: '/atm/withdraw', component: AtmWithdrawView, meta: { requiresAuth: true, role: 'ATM' } },
+  { path: '/atm/confirm',  component: AtmConfirmView,  meta: { requiresAuth: true, role: 'ATM' } },
 
   // ── Employee ───────────────────────────────────────
-  { path: '/employee/overview',                 component: OverviewView         },
-  { path: '/employee/customers',                component: CustomersView        },
-  { path: '/employee/customers/:id',            component: CustomerDetailView   },
-  { path: '/employee/approvals',                component: ApprovalsView        },
-  { path: '/employee/approvals/:id',            component: ApproveFormView      },
-  { path: '/employee/transactions',             component: AllTransactionsView  },
-  { path: '/employee/transfer',                 component: EmployeeTransferView },
-  { path: '/employee/limits',                   component: SetLimitsView        },
+  { path: '/employee/overview',      component: OverviewView,         meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/customers',     component: CustomersView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/customers/:id', component: CustomerDetailView,   meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/approvals',     component: ApprovalsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/approvals/:id', component: ApproveFormView,      meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/transactions',  component: AllTransactionsView,  meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/transfer',      component: EmployeeTransferView, meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/limits',        component: SetLimitsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+const ROLE_ROUTES = {
+  CUSTOMER: '/customer/dashboard',
+  EMPLOYEE: '/employee/overview',
+  ATM:      '/atm/home',
+}
+
+router.beforeEach((to) => {
+  const token = localStorage.getItem('auth_token')
+  const user = JSON.parse(localStorage.getItem('auth_user') || 'null')
+  const isLoggedIn = !!token
+  const role = user?.role || null
+
+  if (to.meta.requiresAuth && !isLoggedIn) {
+    return '/login'
+  }
+
+  if (to.meta.role && isLoggedIn && role !== to.meta.role) {
+    return ROLE_ROUTES[role] || '/login'
+  }
+
+  if ((to.path === '/login' || to.path === '/register') && isLoggedIn) {
+    return ROLE_ROUTES[role] || '/customer/dashboard'
+  }
 })
 
 export default router

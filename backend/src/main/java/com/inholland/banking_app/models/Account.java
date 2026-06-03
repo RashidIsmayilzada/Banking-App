@@ -62,4 +62,8 @@ public class Account {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
+    public boolean hasSufficientBalance(BigDecimal amount) {
+        return balance.subtract(amount).compareTo(absoluteTransferLimit) >= 0;
+    }
+
 }
