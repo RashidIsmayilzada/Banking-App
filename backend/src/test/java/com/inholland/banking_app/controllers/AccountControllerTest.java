@@ -2,6 +2,7 @@ package com.inholland.banking_app.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inholland.banking_app.dtos.*;
+import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.security.JwtAuthenticationFilter;
@@ -196,17 +197,18 @@ class AccountControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /accounts/{accountId} - should return 500 when IllegalStateException is thrown (closed account)")
-    void updateAccount_shouldReturn500_whenIllegalStateException() throws Exception {
+    @DisplayName("PATCH /accounts/{accountId} - should return 409 when account is in a conflicting state (closed)")
+    void updateAccount_shouldReturn409_whenAccountStateConflict() throws Exception {
         AccountUpdateRequest request = new AccountUpdateRequest();
         request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
 
         when(accountService.updateAccount(eq(10L), any(AccountUpdateRequest.class)))
-                .thenThrow(new IllegalStateException("Cannot update a closed account"));
+                .thenThrow(new AccountStateException("Cannot update a closed account"));
 
         mockMvc.perform(patch("/accounts/10")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_STATE_CONFLICT"));
     }
 }

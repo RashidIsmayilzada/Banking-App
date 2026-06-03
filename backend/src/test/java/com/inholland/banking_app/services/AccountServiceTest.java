@@ -4,12 +4,14 @@ import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
 import com.inholland.banking_app.dtos.MoneyResponse;
+import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.mappers.AccountMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.Role;
+import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -41,6 +43,7 @@ class AccountServiceTest {
     @Mock private AccountRepository accountRepository;
     @Mock private UserRepository userRepository;
     @Mock private AccountMapper accountMapper;
+    @Mock private AccountPolicy accountPolicy;
 
     @InjectMocks private AccountService accountService;
 
@@ -238,17 +241,19 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("updateAccount() - should throw IllegalStateException when updating a closed account's limits")
-    void updateAccount_shouldThrow_whenUpdatingClosedAccountLimits() {
-        account.setStatus(AccountStatus.CLOSED);
-
+    @DisplayName("updateAccount() - should propagate and not save when the policy rejects the update")
+    void updateAccount_shouldPropagateAndNotSave_whenPolicyRejects() {
         AccountUpdateRequest request = new AccountUpdateRequest();
         request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
 
         when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        doThrow(new AccountStateException("Cannot update a closed account"))
+                .when(accountPolicy).assertCanUpdateLimits(account);
 
         assertThatThrownBy(() -> accountService.updateAccount(10L, request))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(AccountStateException.class)
                 .hasMessageContaining("closed");
+
+        verify(accountRepository, never()).save(any());
     }
 }

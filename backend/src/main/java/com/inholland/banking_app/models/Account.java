@@ -62,18 +62,14 @@ public class Account {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
-    public boolean isOwnedBy(User user) {
-        return this.customer.getId().equals(user.getId());
-    }
-
     public boolean isClosed() {
         return this.status == AccountStatus.CLOSED;
     }
 
-    public void updateLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
-        if (isClosed()) {
-            throw new IllegalStateException("Cannot update a closed account");
-        }
+    /**
+     * Applies the given limits, ignoring any null value. validation:
+     */
+    public void applyLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
         if (absoluteLimit != null) {
             this.absoluteTransferLimit = absoluteLimit;
         }
@@ -82,10 +78,11 @@ public class Account {
         }
     }
 
-    public void close() {
-        if (isClosed()) {
-            throw new IllegalStateException("Account is already closed");
-        }
+    /**
+     * Marks the account as closed. Pure state mutation: the rule that a closed
+     * account cannot be closed again lives in AccountPolicy.
+     */
+    public void markClosed() {
         this.status = AccountStatus.CLOSED;
         this.closedAt = LocalDateTime.now();
     }

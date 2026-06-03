@@ -8,39 +8,23 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/**
+ * The Account entity only holds state and performs raw mutations.
+ * Business rules (when a limit may change, when an account may close,
+ * ownership/access) are covered by {@code AccountPolicyTest}.
+ */
 class AccountTest {
 
     private Account account;
-    private User owner;
 
     @BeforeEach
     void setUp() {
-        owner = new User();
-        owner.setId(1L);
-
         account = new Account();
         account.setId(10L);
-        account.setCustomer(owner);
         account.setStatus(AccountStatus.ACTIVE);
         account.setAbsoluteTransferLimit(new BigDecimal("5000.00"));
         account.setDailyTransferLimit(new BigDecimal("2000.00"));
-    }
-
-    @Test
-    @DisplayName("isOwnedBy() - should return true when user is the owner")
-    void isOwnedBy_shouldReturnTrue_whenUserIsOwner() {
-        assertThat(account.isOwnedBy(owner)).isTrue();
-    }
-
-    @Test
-    @DisplayName("isOwnedBy() - should return false when user is not the owner")
-    void isOwnedBy_shouldReturnFalse_whenUserIsNotOwner() {
-        User other = new User();
-        other.setId(99L);
-
-        assertThat(account.isOwnedBy(other)).isFalse();
     }
 
     @Test
@@ -58,58 +42,38 @@ class AccountTest {
     }
 
     @Test
-    @DisplayName("updateLimits() - should update both limits when both are provided")
-    void updateLimits_shouldUpdateBothLimits_whenBothProvided() {
-        account.updateLimits(new BigDecimal("8000.00"), new BigDecimal("3000.00"));
+    @DisplayName("applyLimits() - should update both limits when both are provided")
+    void applyLimits_shouldUpdateBothLimits_whenBothProvided() {
+        account.applyLimits(new BigDecimal("8000.00"), new BigDecimal("3000.00"));
 
         assertThat(account.getAbsoluteTransferLimit()).isEqualByComparingTo("8000.00");
         assertThat(account.getDailyTransferLimit()).isEqualByComparingTo("3000.00");
     }
 
     @Test
-    @DisplayName("updateLimits() - should update only absolute limit when daily is null")
-    void updateLimits_shouldUpdateOnlyAbsolute_whenDailyIsNull() {
-        account.updateLimits(new BigDecimal("8000.00"), null);
+    @DisplayName("applyLimits() - should update only absolute limit when daily is null")
+    void applyLimits_shouldUpdateOnlyAbsolute_whenDailyIsNull() {
+        account.applyLimits(new BigDecimal("8000.00"), null);
 
         assertThat(account.getAbsoluteTransferLimit()).isEqualByComparingTo("8000.00");
         assertThat(account.getDailyTransferLimit()).isEqualByComparingTo("2000.00");
     }
 
     @Test
-    @DisplayName("updateLimits() - should update only daily limit when absolute is null")
-    void updateLimits_shouldUpdateOnlyDaily_whenAbsoluteIsNull() {
-        account.updateLimits(null, new BigDecimal("3000.00"));
+    @DisplayName("applyLimits() - should update only daily limit when absolute is null")
+    void applyLimits_shouldUpdateOnlyDaily_whenAbsoluteIsNull() {
+        account.applyLimits(null, new BigDecimal("3000.00"));
 
         assertThat(account.getAbsoluteTransferLimit()).isEqualByComparingTo("5000.00");
         assertThat(account.getDailyTransferLimit()).isEqualByComparingTo("3000.00");
     }
 
     @Test
-    @DisplayName("updateLimits() - should throw IllegalStateException when account is closed")
-    void updateLimits_shouldThrow_whenAccountIsClosed() {
-        account.setStatus(AccountStatus.CLOSED);
-
-        assertThatThrownBy(() -> account.updateLimits(new BigDecimal("8000.00"), new BigDecimal("3000.00")))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("closed");
-    }
-
-    @Test
-    @DisplayName("close() - should set status to CLOSED and set closedAt")
-    void close_shouldSetStatusAndClosedAt() {
-        account.close();
+    @DisplayName("markClosed() - should set status to CLOSED and set closedAt")
+    void markClosed_shouldSetStatusAndClosedAt() {
+        account.markClosed();
 
         assertThat(account.getStatus()).isEqualTo(AccountStatus.CLOSED);
         assertThat(account.getClosedAt()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("close() - should throw IllegalStateException when account is already closed")
-    void close_shouldThrow_whenAlreadyClosed() {
-        account.setStatus(AccountStatus.CLOSED);
-
-        assertThatThrownBy(() -> account.close())
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("already closed");
     }
 }

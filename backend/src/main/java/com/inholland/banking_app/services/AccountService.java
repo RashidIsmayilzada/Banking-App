@@ -8,6 +8,7 @@ import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.Role;
+import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -24,6 +25,7 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
     private final AccountMapper accountMapper;
+    private final AccountPolicy accountPolicy;
 
     public AccountListResponse listAccounts(Long userId, String username, Pageable pageable) {
         User currentUser = userRepository.findByUsername(username)
@@ -53,10 +55,15 @@ public class AccountService {
     public AccountResponse updateAccount(Long accountId, AccountUpdateRequest request) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
-        account.updateLimits(request.getAbsoluteTransferLimit(), request.getDailyTransferLimit());
+
+        accountPolicy.assertCanUpdateLimits(account);
+        account.applyLimits(request.getAbsoluteTransferLimit(), request.getDailyTransferLimit());
+
         if (AccountStatus.CLOSED.equals(request.getStatus())) {
-            account.close();
+            accountPolicy.assertCanClose(account);
+            account.markClosed();
         }
+
         accountRepository.save(account);
         return accountMapper.toResponse(account);
     }
