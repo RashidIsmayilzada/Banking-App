@@ -6,6 +6,7 @@ import com.inholland.banking_app.models.DailyTransferUsage;
 import com.inholland.banking_app.models.EmployeeProfile;
 import com.inholland.banking_app.models.Transaction;
 import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.Channel;
 import com.inholland.banking_app.models.enums.CustomerStatus;
@@ -169,7 +170,7 @@ public class DataSeeder implements CommandLineRunner {
         a.setBalance(balance);
         a.setAbsoluteTransferLimit(absLimit);
         a.setDailyTransferLimit(dailyLimit);
-        a.setActive(true);
+        a.setStatus(AccountStatus.ACTIVE);
         a.setCreatedAt(LocalDateTime.now().minusDays(30));
         return accountRepository.save(a);
     }

@@ -19,7 +19,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 @EnableMethodSecurity
 @Configuration
-@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtEntryPoint jwtEntryPoint;

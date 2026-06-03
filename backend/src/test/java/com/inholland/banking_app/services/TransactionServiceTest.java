@@ -10,6 +10,7 @@ import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.DailyTransferUsage;
 import com.inholland.banking_app.models.Transaction;
 import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.models.enums.TransactionType;
@@ -543,7 +544,7 @@ class TransactionServiceTest {
         account.setBalance(balance);
         account.setAbsoluteTransferLimit(absLimit);
         account.setDailyTransferLimit(dailyLimit);
-        account.setActive(active);
+        account.setStatus(active ? AccountStatus.ACTIVE : AccountStatus.CLOSED);
         account.setCreatedAt(LocalDateTime.now());
         return account;
     }
