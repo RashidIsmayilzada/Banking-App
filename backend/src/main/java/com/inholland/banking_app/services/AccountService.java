@@ -5,12 +5,9 @@ import com.inholland.banking_app.dtos.AccountResponse;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
 import com.inholland.banking_app.mappers.AccountMapper;
 import com.inholland.banking_app.models.Account;
-import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
-import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
-import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,26 +22,30 @@ import java.time.LocalDateTime;
 public class AccountService {
 
     private final AccountRepository accountRepository;
-    private final UserRepository userRepository;
     private final AccountMapper accountMapper;
     private final AccountPolicy accountPolicy;
 
-    public AccountListResponse listAccounts(Long userId, String username, Pageable pageable) {
-        User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-        Page<Account> accounts;
+    /**
+     * Lists accounts, optionally narrowed to a single customer. The caller
+     * decides the scope; this method applies no role-based rules.
+     */
+    public AccountListResponse listAccounts(Long customerId, Pageable pageable) {
+        Page<Account> accounts = (customerId != null)
+                ? accountRepository.findByCustomerId(customerId, pageable)
+                : accountRepository.findAll(pageable);
 
-        if (currentUser.getRole() == Role.CUSTOMER) {
-            accounts = accountRepository.findByCustomerId(currentUser.getId(), pageable);
-        } else {
-            accounts = (userId != null)
-                    ? accountRepository.findByCustomerId(userId, pageable)
-                    : accountRepository.findAll(pageable);
-        }
+        return toListResponse(accounts);
+    }
 
-        Page<AccountResponse> responses = accounts.map(accountMapper::toResponse);
+    /**
+     * Lists the accounts owned by the given username.
+     */
+    public AccountListResponse listAccountsOwnedBy(String username, Pageable pageable) {
+        return toListResponse(accountRepository.findByCustomerUsername(username, pageable));
+    }
 
-        return AccountListResponse.of(responses);
+    private AccountListResponse toListResponse(Page<Account> accounts) {
+        return AccountListResponse.of(accounts.map(accountMapper::toResponse));
     }
 
     public AccountResponse getAccount(String iban) {

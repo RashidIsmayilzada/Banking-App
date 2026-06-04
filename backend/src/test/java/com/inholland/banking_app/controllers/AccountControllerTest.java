@@ -23,6 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -76,8 +77,10 @@ class AccountControllerTest {
         Page<AccountResponse> page = new PageImpl<>(accounts, PageRequest.of(0, 10), 1);
         listResponse = AccountListResponse.of(page);
 
-        customerAuth = new UsernamePasswordAuthenticationToken("customer", null, Collections.emptyList());
-        employeeAuth = new UsernamePasswordAuthenticationToken("employee", null, Collections.emptyList());
+        customerAuth = new UsernamePasswordAuthenticationToken(
+                "customer", null, List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
+        employeeAuth = new UsernamePasswordAuthenticationToken(
+                "employee", null, List.of(new SimpleGrantedAuthority("ROLE_EMPLOYEE")));
     }
 
     // --- GET /accounts ---
@@ -85,7 +88,7 @@ class AccountControllerTest {
     @Test
     @DisplayName("GET /accounts - should return 200 with account list")
     void listAccounts_shouldReturn200_withAccountList() throws Exception {
-        when(accountService.listAccounts(isNull(), anyString(), any())).thenReturn(listResponse);
+        when(accountService.listAccountsOwnedBy(anyString(), any())).thenReturn(listResponse);
 
         mockMvc.perform(get("/accounts").principal(customerAuth))
                 .andExpect(status().isOk())
@@ -98,7 +101,7 @@ class AccountControllerTest {
     @Test
     @DisplayName("GET /accounts?userId=1 - should return 200 with filtered accounts")
     void listAccounts_shouldReturn200_withUserIdFilter() throws Exception {
-        when(accountService.listAccounts(eq(1L), anyString(), any())).thenReturn(listResponse);
+        when(accountService.listAccounts(eq(1L), any())).thenReturn(listResponse);
 
         mockMvc.perform(get("/accounts").param("userId", "1").principal(employeeAuth))
                 .andExpect(status().isOk())
@@ -111,7 +114,7 @@ class AccountControllerTest {
         Page<AccountResponse> emptyPage = new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 10), 0);
         AccountListResponse emptyResponse = AccountListResponse.of(emptyPage);
 
-        when(accountService.listAccounts(isNull(), anyString(), any())).thenReturn(emptyResponse);
+        when(accountService.listAccountsOwnedBy(anyString(), any())).thenReturn(emptyResponse);
 
         mockMvc.perform(get("/accounts").principal(customerAuth))
                 .andExpect(status().isOk())

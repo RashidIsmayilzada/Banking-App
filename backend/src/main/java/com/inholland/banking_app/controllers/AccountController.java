@@ -32,7 +32,20 @@ public class AccountController {
             @RequestParam(required = false) Long userId,
             Pageable pageable,
             Authentication authentication) {
-        return ResponseEntity.ok(accountService.listAccounts(userId, authentication.getName(), pageable));
+        // Scope is decided here, not in the service: employees may list any
+        // (or all) accounts; customers only ever see their own.
+        AccountListResponse body = isEmployee(authentication)
+                ? accountService.listAccounts(userId, pageable)
+                : accountService.listAccountsOwnedBy(authentication.getName(), pageable);
+        return ResponseEntity.ok(body);
+    }
+
+    // TEMP: role is detected from the authorities here as a stand-in until the
+    // auth module exposes a custom principal (UserPrincipal.isEmployee()).
+    // Once that lands, replace this helper with @AuthenticationPrincipal.
+    private boolean isEmployee(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_EMPLOYEE"));
     }
 
     @GetMapping("/{iban}")

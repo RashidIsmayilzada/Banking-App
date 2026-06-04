@@ -10,10 +10,8 @@ import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
-import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
-import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,14 +39,12 @@ import static org.mockito.Mockito.*;
 class AccountServiceTest {
 
     @Mock private AccountRepository accountRepository;
-    @Mock private UserRepository userRepository;
     @Mock private AccountMapper accountMapper;
     @Mock private AccountPolicy accountPolicy;
 
     @InjectMocks private AccountService accountService;
 
     private User customer;
-    private User employee;
     private Account account;
     private AccountResponse accountResponse;
     private Pageable pageable;
@@ -58,12 +54,6 @@ class AccountServiceTest {
         customer = new User();
         customer.setId(1L);
         customer.setUsername("customer");
-        customer.setRole(Role.CUSTOMER);
-
-        employee = new User();
-        employee.setId(2L);
-        employee.setUsername("employee");
-        employee.setRole(Role.EMPLOYEE);
 
         account = new Account();
         account.setCustomer(customer);
@@ -93,31 +83,14 @@ class AccountServiceTest {
     // --- listAccounts ---
 
     @Test
-    @DisplayName("listAccounts() - should return only own accounts when user is CUSTOMER")
-    void listAccounts_shouldReturnOwnAccounts_whenUserIsCustomer() {
+    @DisplayName("listAccounts() - should return all accounts when customerId is null")
+    void listAccounts_shouldReturnAllAccounts_whenCustomerIdIsNull() {
         Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
-        when(accountRepository.findByCustomerId(1L, pageable)).thenReturn(page);
-        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
-
-        AccountListResponse result = accountService.listAccounts(null, "customer", pageable);
-
-        assertThat(result.getAccounts()).hasSize(1);
-        verify(accountRepository).findByCustomerId(1L, pageable);
-        verify(accountRepository, never()).findAll(any(Pageable.class));
-    }
-
-    @Test
-    @DisplayName("listAccounts() - should return all accounts when user is EMPLOYEE and no userId filter")
-    void listAccounts_shouldReturnAllAccounts_whenEmployeeNoFilter() {
-        Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
-
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
         when(accountRepository.findAll(pageable)).thenReturn(page);
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
-        AccountListResponse result = accountService.listAccounts(null, "employee", pageable);
+        AccountListResponse result = accountService.listAccounts(null, pageable);
 
         assertThat(result.getAccounts()).hasSize(1);
         verify(accountRepository).findAll(pageable);
@@ -125,45 +98,35 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("listAccounts() - should filter by userId when user is EMPLOYEE and userId is provided")
-    void listAccounts_shouldFilterByUserId_whenEmployeeWithFilter() {
+    @DisplayName("listAccounts() - should filter by customerId when provided")
+    void listAccounts_shouldFilterByCustomerId_whenProvided() {
         Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
 
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
         when(accountRepository.findByCustomerId(1L, pageable)).thenReturn(page);
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
-        AccountListResponse result = accountService.listAccounts(1L, "employee", pageable);
+        AccountListResponse result = accountService.listAccounts(1L, pageable);
 
         assertThat(result.getAccounts()).hasSize(1);
         verify(accountRepository).findByCustomerId(1L, pageable);
-    }
-
-    @Test
-    @DisplayName("listAccounts() - should ignore userId param and use own id when user is CUSTOMER")
-    void listAccounts_shouldIgnoreUserId_whenUserIsCustomer() {
-        Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
-
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
-        when(accountRepository.findByCustomerId(1L, pageable)).thenReturn(page);
-        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
-
-        AccountListResponse result = accountService.listAccounts(99L, "customer", pageable);
-
-        assertThat(result.getAccounts()).hasSize(1);
-        verify(accountRepository).findByCustomerId(1L, pageable);
-        verify(accountRepository, never()).findByCustomerId(eq(99L), any());
         verify(accountRepository, never()).findAll(any(Pageable.class));
     }
 
-    @Test
-    @DisplayName("listAccounts() - should throw EntityNotFoundException when user not found")
-    void listAccounts_shouldThrow_whenUserNotFound() {
-        when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
+    // --- listAccountsOwnedBy ---
 
-        assertThatThrownBy(() -> accountService.listAccounts(null, "unknown", pageable))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("User not found");
+    @Test
+    @DisplayName("listAccountsOwnedBy() - should return the accounts owned by the given username")
+    void listAccountsOwnedBy_shouldReturnAccountsForUsername() {
+        Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
+
+        when(accountRepository.findByCustomerUsername("customer", pageable)).thenReturn(page);
+        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
+
+        AccountListResponse result = accountService.listAccountsOwnedBy("customer", pageable);
+
+        assertThat(result.getAccounts()).hasSize(1);
+        verify(accountRepository).findByCustomerUsername("customer", pageable);
+        verify(accountRepository, never()).findAll(any(Pageable.class));
     }
 
     // --- getAccount ---
