@@ -8,7 +8,6 @@ import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public final class UserFactory {
 
@@ -53,7 +52,7 @@ public final class UserFactory {
         profile.setUser(user);
         profile.setFirstName(request.getFirstName());
         profile.setLastName(request.getLastName());
-        profile.setEmployeeNumber("EMP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
+        profile.setEmployeeNumber("EMP-" + user.getId());
         profile.setEnabled(true);
         profile.setCreatedAt(LocalDateTime.now());
         return profile;

@@ -8,20 +8,13 @@ import org.springframework.stereotype.Component;
 public class AccountMapper {
 
     public AccountResponse toAccountResponse(Account account) {
-
         if (account == null) {
             return null;
         }
 
         AccountResponse response = new AccountResponse();
         response.setId(account.getId());
-
-        var customer = account.getCustomer();
-        if (customer != null) {
-            response.setCustomerId(customer.getId());
-        } else {
-            response.setCustomerId(null);
-        }
+        response.setCustomerId(account.getCustomer() == null ? null : account.getCustomer().getId());
         response.setIban(account.getIban());
         response.setAccountType(account.getAccountType());
         response.setBalance(account.getBalance());
@@ -29,10 +22,7 @@ public class AccountMapper {
         response.setDailyTransferLimit(account.getDailyTransferLimit());
         response.setActive(account.isActive());
         response.setCreatedAt(account.getCreatedAt());
-
-        if (account.getClosedAt() != null) {
-            response.setClosedAt(account.getClosedAt());
-        }
+        response.setClosedAt(account.getClosedAt());
         return response;
     }
 }

@@ -15,6 +15,7 @@ public class CustomerResponse {
     private String email;
     private String username;
     private String phoneNumber;
+    private String bsn;
     private CustomerStatus status;
     private LocalDateTime registeredAt;
 }
