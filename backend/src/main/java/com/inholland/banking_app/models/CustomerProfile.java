@@ -26,7 +26,6 @@ import java.time.LocalDateTime;
 public class CustomerProfile {
 
     @Id
-    @Column(name = "user_id")
     private Long userId;
 
     @MapsId
@@ -43,7 +42,7 @@ public class CustomerProfile {
     @Column(nullable = false, unique = true, length = 9)
     private String bsn;
 
-    @Column(name = "phone_number", nullable = false, length = 20)
+    @Column(name = "phone_number", nullable = false, length = 20, unique = true)
     private String phoneNumber;
 
     @Enumerated(EnumType.STRING)
@@ -52,4 +51,8 @@ public class CustomerProfile {
 
     @Column(name = "registered_at", nullable = false)
     private LocalDateTime registeredAt;
+
+    public boolean isLoginBlocked() {
+        return status == CustomerStatus.REJECTED || status == CustomerStatus.CLOSED;
+    }
 }

@@ -83,11 +83,22 @@
           <div>This transfer will use <strong>{{ form.amount || '€0' }}</strong> of your daily <strong>€2 500,00</strong> limit.</div>
         </div>
 
+        <div v-if="ownError" class="banner banner--danger" style="margin-top:12px">
+          <AppIcon name="alert" :size="16" class="banner__icon" />
+          <div>{{ ownError }}</div>
+        </div>
+        <div v-if="ownSuccess" class="banner banner--success" style="margin-top:12px">
+          <AppIcon name="check" :size="16" class="banner__icon" />
+          <div>Transfer submitted successfully.</div>
+        </div>
+
         <div class="row" style="margin-top:24px">
           <button class="btn btn--ghost" @click="$router.back()">Cancel</button>
           <span class="spacer" />
-          <!-- TODO: POST /api/transfers with form data -->
-          <button class="btn btn--primary btn--lg">Review &amp; confirm <AppIcon name="arrowRight" :size="16" /></button>
+          <button class="btn btn--primary btn--lg" :disabled="ownLoading" @click="submitOwnTransfer">
+            <span v-if="ownLoading">Submitting…</span>
+            <template v-else>Review &amp; confirm <AppIcon name="arrowRight" :size="16" /></template>
+          </button>
         </div>
       </div>
 
@@ -124,8 +135,22 @@
                 <AppIcon name="alert" :size="16" class="banner__icon" />
                 <div>Exceeds absolute limit by <strong>€40,00</strong>. Reduce amount.</div>
               </div>
-              <!-- TODO: POST /api/transfers with lookup data -->
-              <button class="btn btn--primary btn--block" :disabled="limitExceeded">Send transfer</button>
+              <div v-if="ibanError" class="banner banner--danger">
+                <AppIcon name="alert" :size="16" class="banner__icon" />
+                <div>{{ ibanError }}</div>
+              </div>
+              <div v-if="ibanSuccess" class="banner banner--success">
+                <AppIcon name="check" :size="16" class="banner__icon" />
+                <div>Transfer sent successfully.</div>
+              </div>
+              <button
+                class="btn btn--primary btn--block"
+                :disabled="limitExceeded || ibanLoading"
+                @click="sendIbanTransfer"
+              >
+                <span v-if="ibanLoading">Sending…</span>
+                <span v-else>Send transfer</span>
+              </button>
             </template>
           </div>
         </div>
@@ -160,23 +185,96 @@ import CustomerShell from '@/components/layout/CustomerShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import AppAvatar from '@/components/shared/AppAvatar.vue'
+import { createTransaction } from '@/services/transaction'
 
 const tabs = ['Between my accounts', 'To another customer', 'External (SEPA)']
 const activeTab = ref('Between my accounts')
 
-const form = ref({ amount: '€ 300,00', description: '' })
+const form = ref({ amount: '', description: '' })
 const amountPresets = ['€50', '€100', '€250', '€500', '€1 000']
+
+// These will be populated once a GET /accounts endpoint is available
+const fromAccountId = ref(null)
+const toAccountId = ref(null)
+
+const ownLoading = ref(false)
+const ownError = ref(null)
+const ownSuccess = ref(false)
+
+async function submitOwnTransfer() {
+  ownError.value = null
+  ownSuccess.value = false
+
+  const amount = parseFloat(String(form.value.amount).replace(/[^0-9.]/g, ''))
+  if (!amount || amount <= 0) { ownError.value = 'Enter a valid amount.'; return }
+  if (!form.value.description.trim()) { ownError.value = 'Description is required.'; return }
+  if (!fromAccountId.value || !toAccountId.value) {
+    ownError.value = 'Account selection is not yet available — accounts API pending.'
+    return
+  }
+
+  ownLoading.value = true
+  try {
+    await createTransaction({
+      type: 'TRANSFER',
+      fromAccountId: fromAccountId.value,
+      toAccountId: toAccountId.value,
+      amount,
+      description: form.value.description,
+    })
+    ownSuccess.value = true
+    form.value = { amount: '', description: '' }
+  } catch (err) {
+    ownError.value = err.message
+  } finally {
+    ownLoading.value = false
+  }
+}
 
 const lookup = ref({ firstName: '', lastName: '', amount: '' })
 const lookupResult = ref(null)
 const limitExceeded = ref(false)
 
-// TODO: GET /api/customers/search?firstName=…&lastName=…
+const ibanLoading = ref(false)
+const ibanError = ref(null)
+const ibanSuccess = ref(false)
+
+// Customer search has no backend endpoint yet — result is still hardcoded
 function searchCustomer() {
-  lookupResult.value = { name: 'Maarten Janssen', iban: 'NL11 INHO 0034 9921 07' }
+  lookupResult.value = { name: 'Maarten Janssen', iban: 'NL11INHO0034992107' }
 }
 
-// TODO: Fetch recent recipients from GET /api/transfers/recipients
+async function sendIbanTransfer() {
+  ibanError.value = null
+  ibanSuccess.value = false
+
+  const amount = parseFloat(String(lookup.value.amount).replace(/[^0-9.]/g, ''))
+  if (!amount || amount <= 0) { ibanError.value = 'Enter a valid amount.'; return }
+  if (!lookupResult.value?.iban) { ibanError.value = 'No recipient selected.'; return }
+  if (!fromAccountId.value) {
+    ibanError.value = 'Account selection is not yet available — accounts API pending.'
+    return
+  }
+
+  ibanLoading.value = true
+  try {
+    await createTransaction({
+      type: 'TRANSFER',
+      fromAccountId: fromAccountId.value,
+      toIban: lookupResult.value.iban,
+      amount,
+      description: `Transfer to ${lookupResult.value.name}`,
+    })
+    ibanSuccess.value = true
+    lookup.value = { firstName: '', lastName: '', amount: '' }
+    lookupResult.value = null
+  } catch (err) {
+    ibanError.value = err.message
+  } finally {
+    ibanLoading.value = false
+  }
+}
+
 const recentRecipients = [
   { name: 'Maarten Janssen', iban: 'NL11 INHO …07' },
   { name: 'Sara El-Amin',    iban: 'NL55 INHO …14' },

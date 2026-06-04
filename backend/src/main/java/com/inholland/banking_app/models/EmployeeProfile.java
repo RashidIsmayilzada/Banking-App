@@ -23,7 +23,6 @@ import java.time.LocalDateTime;
 public class EmployeeProfile {
 
     @Id
-    @Column(name = "user_id")
     private Long userId;
 
     @MapsId
