@@ -45,15 +45,15 @@ public class AccountService {
         return AccountListResponse.of(responses);
     }
 
-    public AccountResponse getAccount(Long accountId) {
-        Account account = accountRepository.findById(accountId)
+    public AccountResponse getAccount(String iban) {
+        Account account = accountRepository.findById(iban)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
         return accountMapper.toResponse(account);
     }
 
     @Transactional
-    public AccountResponse updateAccount(Long accountId, AccountUpdateRequest request) {
-        Account account = accountRepository.findById(accountId)
+    public AccountResponse updateAccount(String iban, AccountUpdateRequest request) {
+        Account account = accountRepository.findById(iban)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
 
         accountPolicy.assertCanUpdateLimits(account);

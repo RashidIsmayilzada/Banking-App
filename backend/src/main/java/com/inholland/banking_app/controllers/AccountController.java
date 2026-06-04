@@ -35,17 +35,17 @@ public class AccountController {
         return ResponseEntity.ok(accountService.listAccounts(userId, authentication.getName(), pageable));
     }
 
-    @GetMapping("/{accountId}")
+    @GetMapping("/{iban}")
     @PostAuthorize("hasRole('EMPLOYEE') or returnObject.body.ownerUsername == authentication.name")
-    public ResponseEntity<AccountResponse> getAccount(@PathVariable Long accountId) {
-        return ResponseEntity.ok(accountService.getAccount(accountId));
+    public ResponseEntity<AccountResponse> getAccount(@PathVariable String iban) {
+        return ResponseEntity.ok(accountService.getAccount(iban));
     }
 
-    @PatchMapping("/{accountId}")
+    @PatchMapping("/{iban}")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<AccountResponse> updateAccount(
-            @PathVariable Long accountId,
+            @PathVariable String iban,
             @Valid @RequestBody AccountUpdateRequest request) {
-        return ResponseEntity.ok(accountService.updateAccount(accountId, request));
+        return ResponseEntity.ok(accountService.updateAccount(iban, request));
     }
 }

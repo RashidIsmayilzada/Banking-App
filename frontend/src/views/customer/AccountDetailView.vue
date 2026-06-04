@@ -104,7 +104,7 @@ function formatDate(iso) {
 
 onMounted(async () => {
   try {
-    account.value = await getAccount(route.params.accountId)
+    account.value = await getAccount(route.params.iban)
   } catch (e) {
     error.value = e.message
   } finally {

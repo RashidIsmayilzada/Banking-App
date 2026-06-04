@@ -21,7 +21,7 @@ class AccountTest {
     @BeforeEach
     void setUp() {
         account = new Account();
-        account.setId(10L);
+        account.setIban("NL91ABNA0417164300");
         account.setStatus(AccountStatus.ACTIVE);
         account.setAbsoluteTransferLimit(new BigDecimal("5000.00"));
         account.setDailyTransferLimit(new BigDecimal("2000.00"));

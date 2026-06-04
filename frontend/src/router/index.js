@@ -37,7 +37,7 @@ const routes = [
 
   // ── Customer ───────────────────────────────────────
   { path: '/customer/dashboard',    component: DashboardView     },
-  { path: '/customer/accounts/:accountId', component: AccountDetailView, props: true },
+  { path: '/customer/accounts/:iban', component: AccountDetailView, props: true },
   { path: '/customer/transfer',     component: TransferView      },
   { path: '/customer/transactions', component: TransactionsView  },
 

@@ -6,8 +6,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -29,15 +27,12 @@ import java.time.LocalDateTime;
 public class Account {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 34)
+    private String iban;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "customer_user_id", nullable = false)
     private User customer;
-
-    @Column(nullable = false, unique = true, length = 34)
-    private String iban;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "account_type", nullable = false, length = 20)
@@ -62,12 +57,21 @@ public class Account {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
+    public boolean hasSufficientBalance(BigDecimal amount) {
+        return balance.subtract(amount).compareTo(absoluteTransferLimit) >= 0;
+    }
+
     public boolean isClosed() {
         return this.status == AccountStatus.CLOSED;
     }
 
+    public boolean isActive() {
+        return this.status == AccountStatus.ACTIVE;
+    }
+
     /**
-     * Applies the given limits, ignoring any null value. validation:
+     * Applies the given limits, ignoring any null value. Pure state mutation:
+     * the rules about when this is allowed live in AccountPolicy.
      */
     public void applyLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
         if (absoluteLimit != null) {
@@ -86,4 +90,5 @@ public class Account {
         this.status = AccountStatus.CLOSED;
         this.closedAt = LocalDateTime.now();
     }
+
 }

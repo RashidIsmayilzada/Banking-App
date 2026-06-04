@@ -66,7 +66,6 @@ class AccountServiceTest {
         employee.setRole(Role.EMPLOYEE);
 
         account = new Account();
-        account.setId(10L);
         account.setCustomer(customer);
         account.setIban("NL91ABNA0417164300");
         account.setAccountType(AccountType.CHECKING);
@@ -77,7 +76,6 @@ class AccountServiceTest {
         account.setCreatedAt(LocalDateTime.now());
 
         accountResponse = AccountResponse.builder()
-                .accountId(10L)
                 .ownerId(1L)
                 .ownerUsername("customer")
                 .iban("NL91ABNA0417164300")
@@ -173,21 +171,20 @@ class AccountServiceTest {
     @Test
     @DisplayName("getAccount() - should return account response when account exists")
     void getAccount_shouldReturnResponse_whenAccountExists() {
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL91ABNA0417164300")).thenReturn(Optional.of(account));
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
-        AccountResponse result = accountService.getAccount(10L);
+        AccountResponse result = accountService.getAccount("NL91ABNA0417164300");
 
-        assertThat(result.getAccountId()).isEqualTo(10L);
         assertThat(result.getIban()).isEqualTo("NL91ABNA0417164300");
     }
 
     @Test
     @DisplayName("getAccount() - should throw EntityNotFoundException when account not found")
     void getAccount_shouldThrow_whenAccountNotFound() {
-        when(accountRepository.findById(99L)).thenReturn(Optional.empty());
+        when(accountRepository.findById("NL00BANK0000000000")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> accountService.getAccount(99L))
+        assertThatThrownBy(() -> accountService.getAccount("NL00BANK0000000000"))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Account not found");
     }
@@ -201,11 +198,11 @@ class AccountServiceTest {
         request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
         request.setDailyTransferLimit(new BigDecimal("3000.00"));
 
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL91ABNA0417164300")).thenReturn(Optional.of(account));
         when(accountRepository.save(account)).thenReturn(account);
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
-        AccountResponse result = accountService.updateAccount(10L, request);
+        AccountResponse result = accountService.updateAccount("NL91ABNA0417164300", request);
 
         assertThat(result).isNotNull();
         verify(accountRepository).save(account);
@@ -217,11 +214,11 @@ class AccountServiceTest {
         AccountUpdateRequest request = new AccountUpdateRequest();
         request.setStatus(AccountStatus.CLOSED);
 
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL91ABNA0417164300")).thenReturn(Optional.of(account));
         when(accountRepository.save(account)).thenReturn(account);
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
-        accountService.updateAccount(10L, request);
+        accountService.updateAccount("NL91ABNA0417164300", request);
 
         assertThat(account.getStatus()).isEqualTo(AccountStatus.CLOSED);
         assertThat(account.getClosedAt()).isNotNull();
@@ -233,9 +230,9 @@ class AccountServiceTest {
     void updateAccount_shouldThrow_whenAccountNotFound() {
         AccountUpdateRequest request = new AccountUpdateRequest();
 
-        when(accountRepository.findById(99L)).thenReturn(Optional.empty());
+        when(accountRepository.findById("NL00BANK0000000000")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> accountService.updateAccount(99L, request))
+        assertThatThrownBy(() -> accountService.updateAccount("NL00BANK0000000000", request))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Account not found");
     }
@@ -246,11 +243,11 @@ class AccountServiceTest {
         AccountUpdateRequest request = new AccountUpdateRequest();
         request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
 
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL91ABNA0417164300")).thenReturn(Optional.of(account));
         doThrow(new AccountStateException("Cannot update a closed account"))
                 .when(accountPolicy).assertCanUpdateLimits(account);
 
-        assertThatThrownBy(() -> accountService.updateAccount(10L, request))
+        assertThatThrownBy(() -> accountService.updateAccount("NL91ABNA0417164300", request))
                 .isInstanceOf(AccountStateException.class)
                 .hasMessageContaining("closed");
 

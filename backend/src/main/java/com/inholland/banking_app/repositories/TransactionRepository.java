@@ -9,7 +9,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     List<Transaction> findByInitiatedById(Long userId);
 
-    List<Transaction> findByFromAccountId(Long accountId);
+    List<Transaction> findByFromAccountIban(String iban);
 
-    List<Transaction> findByToAccountId(Long accountId);
+    List<Transaction> findByToAccountIban(String iban);
 }

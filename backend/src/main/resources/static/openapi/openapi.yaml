@@ -11,7 +11,7 @@ info:
     - One registration endpoint (POST /users, role in body)
     - One transaction endpoint for reads and one for writes
     - ATM sessions handled via POST /auth/login with channel=ATM
-    - Account limits and closure via a single PATCH /accounts/{accountId}
+    - Account limits and closure via a single PATCH /accounts/{iban}
 servers:
   - url: http://localhost:8080/api
     description: Local Docker or local backend runtime
@@ -31,7 +31,7 @@ paths:
     $ref: ./paths/users.yaml#/userById
   /accounts:
     $ref: ./paths/accounts.yaml#/accounts
-  /accounts/{accountId}:
+  /accounts/{iban}:
     $ref: ./paths/accounts.yaml#/accountById
   /transactions:
     $ref: ./paths/transactions.yaml#/transactions
@@ -40,8 +40,8 @@ components:
     bearerAuth:
       $ref: ./components/schemas/common.yaml#/bearerAuth
   parameters:
-    AccountId:
-      $ref: ./components/schemas/common.yaml#/AccountId
+    AccountIban:
+      $ref: ./components/schemas/common.yaml#/AccountIban
     UserId:
       $ref: ./components/schemas/common.yaml#/UserId
     Page:

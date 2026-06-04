@@ -38,7 +38,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px">
         <div
           v-for="acct in accounts"
-          :key="acct.accountId"
+          :key="acct.iban"
           :class="['acct-card', acct.accountType === 'SAVINGS' ? 'acct-card--teal' : '']"
         >
           <div class="row">
@@ -55,7 +55,7 @@
           <div class="acct-card__iban">{{ acct.iban }}</div>
           <div class="row" style="margin-top:16px;gap:8px">
             <RouterLink
-              :to="`/customer/accounts/${acct.accountId}`"
+              :to="`/customer/accounts/${acct.iban}`"
               class="btn btn--xs"
               :style="acct.accountType === 'SAVINGS' ? 'background:rgba(255,255,255,0.15);color:#fff' : 'background:var(--surface-soft)'"
             >

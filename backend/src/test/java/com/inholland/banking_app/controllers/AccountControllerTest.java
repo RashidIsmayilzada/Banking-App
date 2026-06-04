@@ -61,7 +61,6 @@ class AccountControllerTest {
     @BeforeEach
     void setUp() {
         accountResponse = AccountResponse.builder()
-                .accountId(10L)
                 .ownerId(1L)
                 .ownerUsername("customer")
                 .iban("NL91ABNA0417164300")
@@ -91,7 +90,6 @@ class AccountControllerTest {
         mockMvc.perform(get("/accounts").principal(customerAuth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accounts").isArray())
-                .andExpect(jsonPath("$.accounts[0].accountId").value(10))
                 .andExpect(jsonPath("$.accounts[0].iban").value("NL91ABNA0417164300"))
                 .andExpect(jsonPath("$.totals.combinedBalance.amount").value(1000.00))
                 .andExpect(jsonPath("$.totals.combinedBalance.currency").value("EUR"));
@@ -121,16 +119,15 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.totals.combinedBalance.amount").value(0));
     }
 
-    // --- GET /accounts/{accountId} ---
+    // --- GET /accounts/{iban} ---
 
     @Test
-    @DisplayName("GET /accounts/{accountId} - should return 200 with account details")
+    @DisplayName("GET /accounts/{iban} - should return 200 with account details")
     void getAccount_shouldReturn200_whenAccountExists() throws Exception {
-        when(accountService.getAccount(10L)).thenReturn(accountResponse);
+        when(accountService.getAccount("NL91ABNA0417164300")).thenReturn(accountResponse);
 
-        mockMvc.perform(get("/accounts/10"))
+        mockMvc.perform(get("/accounts/NL91ABNA0417164300"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountId").value(10))
                 .andExpect(jsonPath("$.ownerId").value(1))
                 .andExpect(jsonPath("$.ownerUsername").value("customer"))
                 .andExpect(jsonPath("$.iban").value("NL91ABNA0417164300"))
@@ -139,44 +136,44 @@ class AccountControllerTest {
     }
 
     @Test
-    @DisplayName("GET /accounts/{accountId} - should return 404 when account not found")
+    @DisplayName("GET /accounts/{iban} - should return 404 when account not found")
     void getAccount_shouldReturn404_whenAccountNotFound() throws Exception {
-        when(accountService.getAccount(99L)).thenThrow(new EntityNotFoundException("Account not found"));
+        when(accountService.getAccount("NL00BANK0000000000")).thenThrow(new EntityNotFoundException("Account not found"));
 
-        mockMvc.perform(get("/accounts/99"))
+        mockMvc.perform(get("/accounts/NL00BANK0000000000"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"))
                 .andExpect(jsonPath("$.message").value("Account not found"));
     }
 
-    // --- PATCH /accounts/{accountId} ---
+    // --- PATCH /accounts/{iban} ---
 
     @Test
-    @DisplayName("PATCH /accounts/{accountId} - should return 200 when update is valid")
+    @DisplayName("PATCH /accounts/{iban} - should return 200 when update is valid")
     void updateAccount_shouldReturn200_whenRequestIsValid() throws Exception {
         AccountUpdateRequest request = new AccountUpdateRequest();
         request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
         request.setDailyTransferLimit(new BigDecimal("3000.00"));
 
-        when(accountService.updateAccount(eq(10L), any(AccountUpdateRequest.class))).thenReturn(accountResponse);
+        when(accountService.updateAccount(eq("NL91ABNA0417164300"), any(AccountUpdateRequest.class))).thenReturn(accountResponse);
 
-        mockMvc.perform(patch("/accounts/10")
+        mockMvc.perform(patch("/accounts/NL91ABNA0417164300")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountId").value(10));
+                .andExpect(jsonPath("$.iban").value("NL91ABNA0417164300"));
     }
 
     @Test
-    @DisplayName("PATCH /accounts/{accountId} - should return 404 when account not found")
+    @DisplayName("PATCH /accounts/{iban} - should return 404 when account not found")
     void updateAccount_shouldReturn404_whenAccountNotFound() throws Exception {
         AccountUpdateRequest request = new AccountUpdateRequest();
         request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
 
-        when(accountService.updateAccount(eq(99L), any(AccountUpdateRequest.class)))
+        when(accountService.updateAccount(eq("NL00BANK0000000000"), any(AccountUpdateRequest.class)))
                 .thenThrow(new EntityNotFoundException("Account not found"));
 
-        mockMvc.perform(patch("/accounts/99")
+        mockMvc.perform(patch("/accounts/NL00BANK0000000000")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isNotFound())
@@ -184,12 +181,12 @@ class AccountControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /accounts/{accountId} - should return 422 when limit is negative")
+    @DisplayName("PATCH /accounts/{iban} - should return 422 when limit is negative")
     void updateAccount_shouldReturn422_whenLimitIsNegative() throws Exception {
         AccountUpdateRequest request = new AccountUpdateRequest();
         request.setAbsoluteTransferLimit(new BigDecimal("-1.00"));
 
-        mockMvc.perform(patch("/accounts/10")
+        mockMvc.perform(patch("/accounts/NL91ABNA0417164300")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().is(422))
@@ -197,15 +194,15 @@ class AccountControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /accounts/{accountId} - should return 409 when account is in a conflicting state (closed)")
+    @DisplayName("PATCH /accounts/{iban} - should return 409 when account is in a conflicting state (closed)")
     void updateAccount_shouldReturn409_whenAccountStateConflict() throws Exception {
         AccountUpdateRequest request = new AccountUpdateRequest();
         request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
 
-        when(accountService.updateAccount(eq(10L), any(AccountUpdateRequest.class)))
+        when(accountService.updateAccount(eq("NL91ABNA0417164300"), any(AccountUpdateRequest.class)))
                 .thenThrow(new AccountStateException("Cannot update a closed account"));
 
-        mockMvc.perform(patch("/accounts/10")
+        mockMvc.perform(patch("/accounts/NL91ABNA0417164300")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())

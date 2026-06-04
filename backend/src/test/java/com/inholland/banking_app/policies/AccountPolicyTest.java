@@ -28,7 +28,7 @@ class AccountPolicyTest {
         owner.setRole(Role.CUSTOMER);
 
         account = new Account();
-        account.setId(10L);
+        account.setIban("NL91ABNA0417164300");
         account.setCustomer(owner);
         account.setStatus(AccountStatus.ACTIVE);
     }
