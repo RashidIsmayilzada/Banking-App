@@ -1,14 +1,11 @@
 package com.inholland.banking_app.services;
 
 import com.inholland.banking_app.dtos.ApproveCustomerRequest;
+import com.inholland.banking_app.dtos.UserFilterRequest;
 import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.mappers.UserResponseMapper;
-import com.inholland.banking_app.models.Account;
-import com.inholland.banking_app.models.CustomerProfile;
-import com.inholland.banking_app.models.DailyTransferUsage;
-import com.inholland.banking_app.models.EmployeeProfile;
-import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.models.*;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.AccountType;
@@ -50,48 +47,18 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
 
-    @Transactional
-    public UserResponse register(UserRequest request) {
-        authService.validateRegistrationRequest(request);
-
-        String passwordHash = passwordEncoder.encode(request.getPassword());
-        Role role = request.getRole() == null ? Role.CUSTOMER : request.getRole();
-
-        User user;
-        if (role == Role.EMPLOYEE) {
-            user = UserFactory.createEmployee(request, passwordHash);
-            EmployeeProfile employeeProfile = user.getEmployeeProfile();
-            if (employeeProfile != null) {
-                employeeProfile.setUser(user);
-            }
-        } else {
-            user = UserFactory.createPendingCustomer(request, passwordHash);
-            CustomerProfile customerProfile = user.getCustomerProfile();
-            if (customerProfile != null) {
-                customerProfile.setUser(user);
-            }
-        }
-
-        User savedUser = userRepository.save(user);
-        log.info("Registered new user: {} with role: {}", savedUser.getUsername(), savedUser.getRole());
-
-        return userResponseMapper.toUserResponse(savedUser);
-    }
-
-
-    public Page<UserResponse> getAllUsers(Pageable pageable, String role, Boolean active, Boolean hasAccount,
-            String status, String search) {
-        return userRepository.findAll(buildUserFilter(role, active, hasAccount, status, search), pageable)
+    public Page<UserResponse> getAllUsers(Pageable pageable, UserFilterRequest userFilterRequest) {
+        return userRepository.findAll(buildUserFilter(userFilterRequest), pageable)
                 .map(userResponseMapper::toUserResponse);
     }
 
-    private Specification<User> buildUserFilter(String role, Boolean active, Boolean hasAccount, String status, String search) {
+    private Specification<User> buildUserFilter(UserFilterRequest userFilterRequest) {
         return Specification.allOf(
-                hasRole(role),
-                hasActive(active),
-                hasAccount(hasAccount),
-                hasCustomerStatus(status),
-                containsSearch(search));
+                hasRole(userFilterRequest.getRole()),
+                hasActive(userFilterRequest.getActive()),
+                hasAccount(userFilterRequest.getHasAccount()),
+                hasCustomerStatus(userFilterRequest.getStatus()),
+                containsSearch(userFilterRequest.getSearch()));
     }
 
     private Specification<User> hasRole(String role) {
@@ -163,12 +130,6 @@ public class UserService {
 
     @Transactional
     public void approveCustomer(ApproveCustomerRequest approveCustomerRequest, Long userId) {
-        User employee = currentUser();
-
-        if (employee.getRole() != Role.EMPLOYEE) {
-            throw new AccessDeniedException("Only employees can approve customers.");
-        }
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("user with id: " + userId + " not found"));
 
@@ -180,8 +141,13 @@ public class UserService {
 
         if (customerProfile.getStatus() == APPROVED) {
             createDefaultAccounts(user);
-            initializeDailyTransferUsage(user);
+//            initializeDailyTransferUsage(user); query transaction table
         }
+    }
+
+    private BigDecimal getDailyTransferLimit(User user) {
+
+        Transaction transaction = transactionRepository.ge
     }
 
     private void createDefaultAccounts(User user) {
@@ -189,22 +155,22 @@ public class UserService {
         createAccountIfMissing(user, AccountType.SAVINGS);
     }
 
-    private void createAccountIfMissing(User user, AccountType accountType) {
-        boolean accountExists = user.getAccounts().stream()
-                .anyMatch(account -> account.getAccountType() == accountType);
-
-        if (accountExists) {
-            return;
-        }
-
-        String iban = generateIban(user.getId(), accountType);
-        Account account = accountType == AccountType.CHECKING
-                ? AccountFactory.createCheckingAccount(user, iban)
-                : AccountFactory.createSavingsAccount(user, iban);
-
-        accountRepository.save(account);
-        user.getAccounts().add(account);
-    }
+//    private void createAccountIfMissing(User user, AccountType accountType) {
+//        boolean accountExists = user.getAccounts().stream()
+//                .anyMatch(account -> account.getAccountType() == accountType);
+//
+//        if (accountExists) {
+//            return;
+//        }
+//
+//        String iban = generateIban(user.getId(), accountType);
+//        Account account = accountType == AccountType.CHECKING
+//                ? AccountFactory.createCheckingAccount(user, iban)
+//                : AccountFactory.createSavingsAccount(user, iban);
+//
+//        accountRepository.save(account);
+//        user.getAccounts().add(account);
+//    }
 
     private String generateIban(Long userId, AccountType accountType) {
         long accountNumber = userId * 10 + (accountType == AccountType.CHECKING ? 1 : 2);
@@ -218,36 +184,22 @@ public class UserService {
         return iban;
     }
 
-    private void initializeDailyTransferUsage(User user) {
-        LocalDate today = LocalDate.now();
-        LocalDateTime now = LocalDateTime.now();
 
-        for (Account account : user.getAccounts()) {
-            dailyTransferUsageRepository.findByAccountIdAndUsageDate(account.getId(), today)
-                    .orElseGet(() -> {
-                        DailyTransferUsage usage = new DailyTransferUsage();
-                        usage.setAccount(account);
-                        usage.setUsageDate(today);
-                        usage.setTotalOutgoingAmount(BigDecimal.ZERO);
-                        usage.setUpdatedAt(now);
-                        return dailyTransferUsageRepository.save(usage);
-                    });
-        }
-    }
+//    private User currentUser() {
+//        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+//
+//        if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() instanceof String) {
+//            throw new AccessDeniedException("You must be logged in to perform this action.");
+//        }
+//
+//        // Get username from Spring Security's UserDetails
+//        org.springframework.security.core.userdetails.UserDetails userDetails = (org.springframework.security.core.userdetails.UserDetails) auth
+//                .getPrincipal();
+//        String username = userDetails.getUsername();
+//
+//        return userRepository.findByUsername(username)
+//                .orElseThrow(() -> new AccessDeniedException("Authenticated user not found in database"));
+//    }
 
-    private User currentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() instanceof String) {
-            throw new AccessDeniedException("You must be logged in to perform this action.");
-        }
-
-        // Get username from Spring Security's UserDetails
-        org.springframework.security.core.userdetails.UserDetails userDetails = (org.springframework.security.core.userdetails.UserDetails) auth
-                .getPrincipal();
-        String username = userDetails.getUsername();
-
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new AccessDeniedException("Authenticated user not found in database"));
-    }
+    //should be in base
 }

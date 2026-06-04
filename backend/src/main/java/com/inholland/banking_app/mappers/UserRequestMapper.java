@@ -38,7 +38,7 @@ public class UserRequestMapper {
         return customerProfile;
     }
 
-        private EmployeeProfile toEmployeeProfile(UserRequest request){
+    private EmployeeProfile toEmployeeProfile(UserRequest request){
 
         EmployeeProfile employeeProfile = new EmployeeProfile();
         employeeProfile.setFirstName(request.getFirstName());

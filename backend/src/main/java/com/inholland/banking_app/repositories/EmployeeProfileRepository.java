@@ -11,8 +11,6 @@ public interface EmployeeProfileRepository extends JpaRepository<EmployeeProfile
 
     boolean existsByEmployeeNumber(String employeeNumber);
 
-    Optional<EmployeeProfile> findByUserId(Long userId);
-    boolean existsByUserId(Long userId);
 
 
 }

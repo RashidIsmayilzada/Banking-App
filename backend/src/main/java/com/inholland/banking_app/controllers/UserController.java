@@ -1,6 +1,7 @@
 package com.inholland.banking_app.controllers;
 
 import com.inholland.banking_app.dtos.ApproveCustomerRequest;
+import com.inholland.banking_app.dtos.UserFilterRequest;
 import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.services.UserService;
@@ -35,18 +36,15 @@ public class UserController {
         @PreAuthorize("hasRole('EMPLOYEE')")
         public ResponseEntity<@NonNull Page<@NonNull UserResponse>> getAllUsers(
                         @ParameterObject @PageableDefault(size = 10, page = 0) Pageable pageable,
-                        @RequestParam(required = false) String role,
-                        @RequestParam(required = false) Boolean active,
-                        @RequestParam(required = false) Boolean hasAccount,
-                        @RequestParam(required = false) String status,
-                        @RequestParam(required = false) String search) {
+                        @ModelAttribute UserFilterRequest userFilterRequest){
                 return ResponseEntity
-                                .ok(userService.getAllUsers(pageable, role, active, hasAccount, status, search));
+                                .ok(userService.getAllUsers(pageable, userFilterRequest));
         }
 
         @Operation(summary = "Get user by ID")
         @ApiResponse(responseCode = "404", description = "User not found")
         @GetMapping("/{id}")
+        @PreAuthorize("hasRole('EMPLOYEE')")
         public ResponseEntity<UserResponse> getUser(
                         @Parameter(description = "ID of the user to retrieve", example = "1") @PathVariable Long id) {
 

@@ -3,8 +3,11 @@ package com.inholland.banking_app.services;
 import com.inholland.banking_app.dtos.AuthContextResponse;
 import com.inholland.banking_app.dtos.LoginResponse;
 import com.inholland.banking_app.dtos.UserRequest;
+import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.exceptions.ForbiddenException;
 import com.inholland.banking_app.mappers.AuthMapper;
+import com.inholland.banking_app.mappers.UserRequestMapper;
+import com.inholland.banking_app.mappers.UserResponseMapper;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.CustomerStatus;
@@ -15,6 +18,7 @@ import com.inholland.banking_app.repositories.UserRepository;
 import com.inholland.banking_app.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,6 +38,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthMapper authMapper;
+    private final UserRequestMapper userRequestMapper;
+    private final UserResponseMapper userResponseMapper;
 
     @Value("${jwt.expiration-ms}")
     private long jwtExpirationMs;
@@ -53,6 +59,17 @@ public class AuthService {
         AuthContextResponse authContext = authMapper.toAuthContextResponse(user);
 
         return new LoginResponse(token, "Bearer", (int) (jwtExpirationMs / 1000), authContext);
+    }
+    
+    public ResponseEntity<UserResponse> register (UserRequest request) {
+        validateRegistrationRequest(request);
+
+        User newUser = userRequestMapper.toUserRequest(request);
+        newUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        newUser.setActive(true);
+        newUser = userRepository.save(newUser);
+
+        return ResponseEntity.ok(userResponseMapper.toUserResponse(newUser));
     }
 
     public AuthContextResponse getCurrentUser(String username) {

@@ -9,7 +9,5 @@ import lombok.Setter;
 @Setter
 public class ApproveCustomerRequest {
 
-    private Long customerId;
-
     private CustomerStatus status;
 }

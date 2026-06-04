@@ -59,27 +59,6 @@ public class UserResponseMapper {
                 .build();
     }
 
-    public CustomerResponse toCustomerResponse(CustomerProfile profile) {
-        if (profile == null) {
-            return null;
-        }
-
-        User user = profile.getUser();
-        CustomerResponse response = new CustomerResponse();
-        response.setUserId(profile.getUserId());
-        response.setFirstName(profile.getFirstName());
-        response.setLastName(profile.getLastName());
-        response.setPhoneNumber(profile.getPhoneNumber());
-        response.setBsn(profile.getBsn());
-        response.setStatus(profile.getStatus());
-        response.setRegisteredAt(profile.getRegisteredAt());
-        if (user != null) {
-            response.setEmail(user.getEmail());
-            response.setUsername(user.getUsername());
-        }
-        return response;
-    }
-
     public UserResponse toEmployeeResponse(User user, EmployeeProfile profile) {
         return UserResponse.builder()
                 .id(user.getId())
