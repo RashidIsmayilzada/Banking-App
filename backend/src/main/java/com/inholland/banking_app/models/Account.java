@@ -61,14 +61,6 @@ public class Account {
         return balance.subtract(amount).compareTo(absoluteTransferLimit) >= 0;
     }
 
-    public boolean isClosed() {
-        return this.status == AccountStatus.CLOSED;
-    }
-
-    public boolean isActive() {
-        return this.status == AccountStatus.ACTIVE;
-    }
-
     /**
      * Applies the given limits, ignoring any null value. Pure state mutation:
      * the rules about when this is allowed live in AccountPolicy.

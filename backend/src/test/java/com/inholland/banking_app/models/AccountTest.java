@@ -28,20 +28,6 @@ class AccountTest {
     }
 
     @Test
-    @DisplayName("isClosed() - should return false when account is active")
-    void isClosed_shouldReturnFalse_whenAccountIsActive() {
-        assertThat(account.isClosed()).isFalse();
-    }
-
-    @Test
-    @DisplayName("isClosed() - should return true when account is closed")
-    void isClosed_shouldReturnTrue_whenAccountIsClosed() {
-        account.setStatus(AccountStatus.CLOSED);
-
-        assertThat(account.isClosed()).isTrue();
-    }
-
-    @Test
     @DisplayName("applyLimits() - should update both limits when both are provided")
     void applyLimits_shouldUpdateBothLimits_whenBothProvided() {
         account.applyLimits(new BigDecimal("8000.00"), new BigDecimal("3000.00"));
