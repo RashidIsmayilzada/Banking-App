@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AccountResponse {
+
     private Long id;
     private Long customerId;
     private String iban;
@@ -24,4 +25,5 @@ public class AccountResponse {
     private boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime closedAt;
+
 }
