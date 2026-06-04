@@ -205,6 +205,25 @@ class AccountServiceTest {
         AccountResponse result = accountService.updateAccount("NL91ABNA0417164300", request);
 
         assertThat(result).isNotNull();
+        assertThat(account.getAbsoluteTransferLimit()).isEqualByComparingTo("8000.00");
+        assertThat(account.getDailyTransferLimit()).isEqualByComparingTo("3000.00");
+        verify(accountRepository).save(account);
+    }
+
+    @Test
+    @DisplayName("updateAccount() - should update only the provided limit and leave the other unchanged")
+    void updateAccount_shouldUpdateOnlyProvidedLimit_whenOtherIsNull() {
+        AccountUpdateRequest request = new AccountUpdateRequest();
+        request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
+
+        when(accountRepository.findById("NL91ABNA0417164300")).thenReturn(Optional.of(account));
+        when(accountRepository.save(account)).thenReturn(account);
+        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
+
+        accountService.updateAccount("NL91ABNA0417164300", request);
+
+        assertThat(account.getAbsoluteTransferLimit()).isEqualByComparingTo("8000.00");
+        assertThat(account.getDailyTransferLimit()).isEqualByComparingTo("2000.00");
         verify(accountRepository).save(account);
     }
 

@@ -57,30 +57,4 @@ public class Account {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
-    public boolean hasSufficientBalance(BigDecimal amount) {
-        return balance.subtract(amount).compareTo(absoluteTransferLimit) >= 0;
-    }
-
-    /**
-     * Applies the given limits, ignoring any null value. Pure state mutation:
-     * the rules about when this is allowed live in AccountPolicy.
-     */
-    public void applyLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
-        if (absoluteLimit != null) {
-            this.absoluteTransferLimit = absoluteLimit;
-        }
-        if (dailyLimit != null) {
-            this.dailyTransferLimit = dailyLimit;
-        }
-    }
-
-    /**
-     * Marks the account as closed. Pure state mutation: the rule that a closed
-     * account cannot be closed again lives in AccountPolicy.
-     */
-    public void markClosed() {
-        this.status = AccountStatus.CLOSED;
-        this.closedAt = LocalDateTime.now();
-    }
-
 }

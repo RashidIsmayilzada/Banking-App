@@ -18,6 +18,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @RequiredArgsConstructor
 @Service
 public class AccountService {
@@ -57,11 +59,17 @@ public class AccountService {
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
 
         accountPolicy.assertCanUpdateLimits(account);
-        account.applyLimits(request.getAbsoluteTransferLimit(), request.getDailyTransferLimit());
+        if (request.getAbsoluteTransferLimit() != null) {
+            account.setAbsoluteTransferLimit(request.getAbsoluteTransferLimit());
+        }
+        if (request.getDailyTransferLimit() != null) {
+            account.setDailyTransferLimit(request.getDailyTransferLimit());
+        }
 
         if (AccountStatus.CLOSED.equals(request.getStatus())) {
             accountPolicy.assertCanClose(account);
-            account.markClosed();
+            account.setStatus(AccountStatus.CLOSED);
+            account.setClosedAt(LocalDateTime.now());
         }
 
         accountRepository.save(account);
