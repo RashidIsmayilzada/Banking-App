@@ -1,5 +1,6 @@
 package com.inholland.banking_app.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.inholland.banking_app.models.enums.Role;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -65,6 +66,7 @@ public class User {
     private EmployeeProfile employeeProfile;
 
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<Account> accounts = new ArrayList<>();
 
 }

@@ -1,8 +1,6 @@
 package com.inholland.banking_app.controllers;
 
-import com.inholland.banking_app.dtos.LoginRequest;
-import com.inholland.banking_app.dtos.LoginResponse;
-import com.inholland.banking_app.dtos.LogoutResponse;
+import com.inholland.banking_app.dtos.*;
 import com.inholland.banking_app.services.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,5 +35,11 @@ public class AuthController {
     public ResponseEntity<LogoutResponse> logout() {
         log.info("User logged out");
         return ResponseEntity.ok(new LogoutResponse("Logged out successfully."));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<UserResponse> register (@Valid @RequestBody UserRequest request) {
+        return ResponseEntity.ok(authService.register(request));
+
     }
 }

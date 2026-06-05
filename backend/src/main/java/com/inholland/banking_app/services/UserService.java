@@ -2,33 +2,29 @@ package com.inholland.banking_app.services;
 
 import com.inholland.banking_app.dtos.ApproveCustomerRequest;
 import com.inholland.banking_app.dtos.UserFilterRequest;
-import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.mappers.UserResponseMapper;
 import com.inholland.banking_app.models.*;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.AccountType;
-import com.inholland.banking_app.models.factory.UserFactory;
 import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
+import com.inholland.banking_app.repositories.TransactionRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
-import org.springframework.security.core.context.SecurityContextHolder;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,8 +37,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
-    private final DailyTransferUsageRepository dailyTransferUsageRepository;
     private final UserResponseMapper userResponseMapper;
+    private final TransactionRepository transactionRepository;
     private final AuthService authService;
     private final PasswordEncoder passwordEncoder;
 
@@ -141,36 +137,33 @@ public class UserService {
 
         if (customerProfile.getStatus() == APPROVED) {
             createDefaultAccounts(user);
-//            initializeDailyTransferUsage(user); query transaction table
+
         }
     }
 
-    private BigDecimal getDailyTransferLimit(User user) {
+    public BigDecimal getDailyOutgoingAmount(Long accountId) {
+        LocalDate startOfDay = LocalDate.now();
+        LocalDate endOfDay = LocalDate.now();
 
-        Transaction transaction = transactionRepository.ge
+        return transactionRepository
+                .sumOutgoingAmountByAccountIdAndDate(accountId, startOfDay, endOfDay);
     }
 
     private void createDefaultAccounts(User user) {
-        createAccountIfMissing(user, AccountType.CHECKING);
-        createAccountIfMissing(user, AccountType.SAVINGS);
+        createAccount(user, AccountType.CHECKING);
+        createAccount(user, AccountType.SAVINGS);
     }
 
-//    private void createAccountIfMissing(User user, AccountType accountType) {
-//        boolean accountExists = user.getAccounts().stream()
-//                .anyMatch(account -> account.getAccountType() == accountType);
-//
-//        if (accountExists) {
-//            return;
-//        }
-//
-//        String iban = generateIban(user.getId(), accountType);
-//        Account account = accountType == AccountType.CHECKING
-//                ? AccountFactory.createCheckingAccount(user, iban)
-//                : AccountFactory.createSavingsAccount(user, iban);
-//
-//        accountRepository.save(account);
-//        user.getAccounts().add(account);
-//    }
+    private void createAccount(User user, AccountType accountType) {
+
+        String iban = generateIban(user.getId(), accountType);
+        Account account = accountType == AccountType.CHECKING
+                ? AccountFactory.createCheckingAccount(user, iban)
+                : AccountFactory.createSavingsAccount(user, iban);
+
+        accountRepository.save(account);
+        user.getAccounts().add(account);
+    }
 
     private String generateIban(Long userId, AccountType accountType) {
         long accountNumber = userId * 10 + (accountType == AccountType.CHECKING ? 1 : 2);
@@ -183,23 +176,4 @@ public class UserService {
 
         return iban;
     }
-
-
-//    private User currentUser() {
-//        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//
-//        if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() instanceof String) {
-//            throw new AccessDeniedException("You must be logged in to perform this action.");
-//        }
-//
-//        // Get username from Spring Security's UserDetails
-//        org.springframework.security.core.userdetails.UserDetails userDetails = (org.springframework.security.core.userdetails.UserDetails) auth
-//                .getPrincipal();
-//        String username = userDetails.getUsername();
-//
-//        return userRepository.findByUsername(username)
-//                .orElseThrow(() -> new AccessDeniedException("Authenticated user not found in database"));
-//    }
-
-    //should be in base
 }

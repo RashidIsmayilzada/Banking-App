@@ -34,7 +34,7 @@ export function logout() {
 }
 
 export function register(data) {
-  return request('/users', {
+  return request('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
   })

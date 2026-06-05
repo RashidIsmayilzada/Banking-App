@@ -1,5 +1,6 @@
 package com.inholland.banking_app.mappers;
 
+import com.inholland.banking_app.models.enums.Role;
 import org.springframework.stereotype.Component;
 
 import com.inholland.banking_app.dtos.UserRequest;
@@ -20,10 +21,13 @@ public class UserRequestMapper {
         user.setPasswordHash(request.getPassword());
         user.setEmail(request.getEmail());
         if(request.getRole() == null && request.getEmployeeNumber() == null){
+            user.setRole(Role.CUSTOMER);
             user.setCustomerProfile(toCustomerProfile(request));
         }
-        user.setEmployeeProfile(toEmployeeProfile(request));
-
+        else {
+            user.setRole(request.getRole());
+            user.setEmployeeProfile(toEmployeeProfile(request));
+        }
         return user;
     }
 

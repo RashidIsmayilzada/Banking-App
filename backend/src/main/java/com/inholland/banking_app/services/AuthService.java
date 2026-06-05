@@ -12,6 +12,7 @@ import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
+import com.inholland.banking_app.models.factory.UserFactory;
 import com.inholland.banking_app.repositories.CustomerProfileRepository;
 import com.inholland.banking_app.repositories.EmployeeProfileRepository;
 import com.inholland.banking_app.repositories.UserRepository;
@@ -61,15 +62,14 @@ public class AuthService {
         return new LoginResponse(token, "Bearer", (int) (jwtExpirationMs / 1000), authContext);
     }
     
-    public ResponseEntity<UserResponse> register (UserRequest request) {
+    public UserResponse register (UserRequest request) {
         validateRegistrationRequest(request);
+        request.setPassword(passwordEncoder.encode(request.getPassword()));
+        request.setEmail(normalizeEmail(request.getEmail()));
+        request.setUsername(request.getUsername().toLowerCase());
 
-        User newUser = userRequestMapper.toUserRequest(request);
-        newUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        newUser.setActive(true);
-        newUser = userRepository.save(newUser);
-
-        return ResponseEntity.ok(userResponseMapper.toUserResponse(newUser));
+        User newUser = UserFactory.createUser(request);
+        return userResponseMapper.toUserResponse(userRepository.save(newUser));
     }
 
     public AuthContextResponse getCurrentUser(String username) {

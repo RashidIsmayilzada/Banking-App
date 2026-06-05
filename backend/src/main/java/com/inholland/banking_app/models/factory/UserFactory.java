@@ -11,11 +11,18 @@ import java.time.LocalDateTime;
 
 public final class UserFactory {
 
-    public static User createPendingCustomer(UserRequest request, String passwordHash) {
-        return createPendingCustomer(request, passwordHash, LocalDateTime.now());
+    public static User createUser(UserRequest request){
+        if(request.getRole() == Role.CUSTOMER){
+            return createPendingCustomer(request);
+        }
+        return createEmployee(request);
     }
 
-    private static CustomerProfile createCustomer(UserRequest request, String passwordHash, LocalDateTime now) {
+    public static User createPendingCustomer(UserRequest request) {
+        return createPendingCustomer(request, LocalDateTime.now());
+    }
+
+    private static CustomerProfile createCustomer(UserRequest request, LocalDateTime now) {
         CustomerProfile profile = new CustomerProfile();
         profile.setFirstName(request.getFirstName());
         profile.setLastName(request.getLastName());
@@ -26,25 +33,25 @@ public final class UserFactory {
         return profile;
     }
 
-    public static User createPendingCustomer(UserRequest request, String passwordHash, LocalDateTime now) {
+    private static User createPendingCustomer(UserRequest request, LocalDateTime now) {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setUsername(request.getUsername());
-        user.setPasswordHash(passwordHash);
+        user.setPasswordHash(request.getPassword());
         user.setRole(Role.CUSTOMER);
         user.setActive(true);
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
 
-        CustomerProfile profile = createCustomer(request, passwordHash, now);
+        CustomerProfile profile = createCustomer(request, now);
         user.setCustomerProfile(profile);
         return user;
     }
 
     // Employee factory
 
-    public static User createEmployee(UserRequest request, String passwordHash) {
-        return createEmployee(request, passwordHash, LocalDateTime.now());
+    public static User createEmployee(UserRequest request) {
+        return createEmployee(request, LocalDateTime.now());
     }
 
     private static EmployeeProfile createEmployeeProfile(User user, UserRequest request) {
@@ -58,11 +65,11 @@ public final class UserFactory {
         return profile;
     }
 
-    private static User createEmployee(UserRequest request, String passwordHash, LocalDateTime now) {
+    private static User createEmployee(UserRequest request, LocalDateTime now) {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setUsername(request.getUsername());
-        user.setPasswordHash(passwordHash);
+        user.setPasswordHash(request.getPassword());
         user.setRole(Role.EMPLOYEE);
         user.setActive(true);
         user.setCreatedAt(now);
