@@ -1,11 +1,9 @@
 package com.inholland.banking_app.services;
 
-import com.inholland.banking_app.dtos.MoneyDto;
 import com.inholland.banking_app.dtos.TransactionFilterParams;
 import com.inholland.banking_app.dtos.TransactionPageDto;
 import com.inholland.banking_app.dtos.TransactionRequest;
 import com.inholland.banking_app.dtos.TransactionResultDto;
-import com.inholland.banking_app.exceptions.ForbiddenException;
 import com.inholland.banking_app.mappers.TransactionMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.DailyTransferUsage;
@@ -13,7 +11,8 @@ import com.inholland.banking_app.models.Transaction;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.Channel;
 import com.inholland.banking_app.models.enums.Role;
-import com.inholland.banking_app.models.enums.TransactionType;
+import com.inholland.banking_app.models.factory.TransactionFactory;
+import com.inholland.banking_app.policies.TransactionPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
 import com.inholland.banking_app.repositories.TransactionRepository;
@@ -42,6 +41,7 @@ public class TransactionService {
     private final DailyTransferUsageRepository dailyTransferUsageRepository;
     private final UserRepository userRepository;
     private final TransactionMapper transactionMapper;
+    private final TransactionPolicy transactionPolicy;
 
     public TransactionPageDto listTransactions(TransactionFilterParams params, String username) {
         // Restricts results to the caller's own transactions if they are a customer, then returns a filtered page
@@ -68,7 +68,7 @@ public class TransactionService {
 
     private TransactionResultDto executeTransfer(TransactionRequest request, User currentUser) {
         // Validates transfer fields, resolves both accounts, moves funds, and persists the transaction
-        validateTransferFields(request);
+        transactionPolicy.validateTransferFields(request);
 
         Account from = resolveSourceAccount(request.getFromAccountId(), currentUser);
         Account to = resolveDestinationAccount(request, currentUser);
@@ -77,41 +77,41 @@ public class TransactionService {
         applyDebit(from, amount);
         credit(to, amount);
 
-        Transaction tx = buildTransferTransaction(from, to, amount, currentUser, request.getDescription());
+        Transaction tx = TransactionFactory.createTransfer(from, to, amount, currentUser, determineChannel(currentUser), request.getDescription());
         transactionRepository.save(tx);
 
-        return buildTransferResult(tx, from, to);
+        return transactionMapper.toTransferResult(tx, from, to);
     }
 
     private TransactionResultDto executeDeposit(TransactionRequest request, User currentUser) {
         // Validates the account, credits the balance, and persists the deposit transaction
-        requireAccountId(request, "DEPOSIT");
+        transactionPolicy.requireAccountId(request, "DEPOSIT");
 
         Account account = resolveActiveAccount(request.getAccountId());
         BigDecimal amount = BigDecimal.valueOf(request.getAmount());
 
         applyCredit(account, amount);
 
-        Transaction tx = buildDepositTransaction(account, amount, currentUser, request.getDescription());
+        Transaction tx = TransactionFactory.createDeposit(account, amount, currentUser, request.getDescription());
         transactionRepository.save(tx);
 
-        return buildSingleAccountResult(tx, account);
+        return transactionMapper.toSingleAccountResult(tx, account);
     }
 
     private TransactionResultDto executeWithdrawal(TransactionRequest request, User currentUser) {
         // Validates the account and ownership, debits the balance, and persists the withdrawal transaction
-        requireAccountId(request, "WITHDRAWAL");
+        transactionPolicy.requireAccountId(request, "WITHDRAWAL");
 
         Account account = resolveActiveAccount(request.getAccountId());
-        validateAccountOwnership(account, currentUser, "You can only withdraw from your own accounts");
+        transactionPolicy.validateAccountOwnership(account, currentUser, "You can only withdraw from your own accounts");
         BigDecimal amount = BigDecimal.valueOf(request.getAmount());
 
         applyDebit(account, amount);
 
-        Transaction tx = buildWithdrawalTransaction(account, amount, currentUser, request.getDescription());
+        Transaction tx = TransactionFactory.createWithdrawal(account, amount, currentUser, request.getDescription());
         transactionRepository.save(tx);
 
-        return buildSingleAccountResult(tx, account);
+        return transactionMapper.toSingleAccountResult(tx, account);
     }
 
     // account resolution methods throw EntityNotFoundException if the specified account doesn't exist,
@@ -120,9 +120,9 @@ public class TransactionService {
         // Finds the source account, verifying ownership and that it is an active checking account
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Source account not found"));
-        validateAccountOwnership(account, currentUser, "You can only transfer from your own accounts");
-        validateActiveAccount(account, "Source account is not active");
-        validateCheckingAccount(account);
+        transactionPolicy.validateAccountOwnership(account, currentUser, "You can only transfer from your own accounts");
+        transactionPolicy.validateActiveAccount(account, "Source account is not active");
+        transactionPolicy.validateCheckingAccount(account);
         return account;
     }
 
@@ -131,7 +131,7 @@ public class TransactionService {
         Account account = request.getToAccountId() != null
                 ? resolveDestinationById(request.getToAccountId(), currentUser)
                 : resolveDestinationByIban(request.getToIban());
-        validateActiveAccount(account, "Destination account is not active");
+        transactionPolicy.validateActiveAccount(account, "Destination account is not active");
         return account;
     }
 
@@ -139,10 +139,7 @@ public class TransactionService {
         // Finds the destination account by ID; customers may only use this for their own accounts
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Destination account not found"));
-        if (currentUser.getRole() == Role.CUSTOMER
-                && !account.getCustomer().getId().equals(currentUser.getId())) {
-            throw new ForbiddenException("Use toIban to transfer to another customer's account");
-        }
+        transactionPolicy.validateAccountOwnership(account, currentUser, "Use toIban to transfer to another customer's account");
         return account;
     }
 
@@ -157,84 +154,24 @@ public class TransactionService {
         // Finds an account by ID and verifies it is active
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
-        validateActiveAccount(account, "Account is not active");
+        transactionPolicy.validateActiveAccount(account, "Account is not active");
         return account;
-    }
-
-    // validation methods throw IllegalArgumentException for invalid input and ForbiddenException for access violations
-
-    private void validateTransferFields(TransactionRequest request) {
-        // Ensures fromAccountId and at least one destination field are present for TRANSFER
-        if (request.getFromAccountId() == null) {
-            throw new IllegalArgumentException("fromAccountId is required for TRANSFER");
-        }
-        if (request.getToAccountId() == null && request.getToIban() == null) {
-            throw new IllegalArgumentException("toAccountId or toIban is required for TRANSFER");
-        }
-    }
-
-    private void requireAccountId(TransactionRequest request, String type) {
-        // Throws IllegalArgumentException if accountId is missing for DEPOSIT or WITHDRAWAL
-        if (request.getAccountId() == null) {
-            throw new IllegalArgumentException("accountId is required for " + type);
-        }
-    }
-
-    private void validateActiveAccount(Account account, String message) {
-        // Throws IllegalArgumentException if the account is not active
-        if (!account.isActive()) {
-            throw new IllegalArgumentException(message);
-        }
-    }
-
-    private void validateCheckingAccount(Account account) {
-        // Throws IllegalArgumentException if the account type cannot initiate transfers
-        if (!account.getAccountType().canInitiateTransfer()) {
-            throw new IllegalArgumentException("Transfers can only be made from a checking account");
-        }
-    }
-
-    private void validateAccountOwnership(Account account, User currentUser, String message) {
-        // Throws ForbiddenException if a customer attempts to act on another customer's account
-        if (currentUser.getRole() == Role.CUSTOMER
-                && !account.getCustomer().getId().equals(currentUser.getId())) {
-            throw new ForbiddenException(message);
-        }
-    }
-
-    private void checkBalance(Account account, BigDecimal amount) {
-        // Throws IllegalArgumentException if the account lacks sufficient balance for the transaction
-        if (!account.hasSufficientBalance(amount)) {
-            throw new IllegalArgumentException("Insufficient funds");
-        }
-    }
-
-    private void checkDailyLimit(Account account, BigDecimal amount) {
-        // Throws IllegalArgumentException if the transaction would exceed the account's daily transfer limit
-        LocalDate today = LocalDate.now();
-        BigDecimal usedToday = dailyTransferUsageRepository
-                .findByAccountAndUsageDate(account, today)
-                .map(DailyTransferUsage::getTotalOutgoingAmount)
-                .orElse(BigDecimal.ZERO);
-        if (usedToday.add(amount).compareTo(account.getDailyTransferLimit()) > 0) {
-            throw new IllegalArgumentException("Daily transfer limit exceeded");
-        }
     }
 
     // debit and credit methods modify the account balance and save it, but do not perform any checks themselves.
 
     private void applyDebit(Account account, BigDecimal amount) {
         // Runs all pre-debit checks then debits the account balance and records daily usage
-        checkBalance(account, amount);
-        checkDailyLimit(account, amount);
+        transactionPolicy.checkBalance(account, amount);
+        transactionPolicy.checkDailyLimit(account, amount);
         debit(account, amount);
         updateDailyUsage(account, amount);
     }
 
     private void applyCredit(Account account, BigDecimal amount) {
         // Runs all pre-credit checks then credits the account balance and records daily usage
-        checkBalance(account, amount);
-        checkDailyLimit(account, amount);
+        transactionPolicy.checkBalance(account, amount);
+        transactionPolicy.checkDailyLimit(account, amount);
         credit(account, amount);
         updateDailyUsage(account, amount);
     }
@@ -271,66 +208,7 @@ public class TransactionService {
         return usage;
     }
 
-    // --- Transaction builders ---
-
-    private Transaction.TransactionBuilder baseTransaction(TransactionType type, BigDecimal amount,
-                                                            Channel channel, User currentUser, String description) {
-        // Builds the shared portion of a transaction with type, amount, currency, channel, initiator, and description
-        return Transaction.builder()
-                .transactionType(type)
-                .amount(amount)
-                .currency("EUR")
-                .channel(channel)
-                .initiatedBy(currentUser)
-                .createdAt(LocalDateTime.now())
-                .description(description);
-    }
-
-    private Transaction buildTransferTransaction(Account from, Account to, BigDecimal amount,
-                                                  User currentUser, String description) {
-        // Builds a TRANSFER transaction linked to both the source and destination accounts
-        return baseTransaction(TransactionType.TRANSFER, amount, determineChannel(currentUser), currentUser, description)
-                .fromAccount(from)
-                .toAccount(to)
-                .build();
-    }
-
-    private Transaction buildDepositTransaction(Account account, BigDecimal amount,
-                                                 User currentUser, String description) {
-        // Builds a DEPOSIT transaction linked to the target account as the destination
-        return baseTransaction(TransactionType.DEPOSIT, amount, Channel.ATM, currentUser, description)
-                .toAccount(account)
-                .build();
-    }
-
-    private Transaction buildWithdrawalTransaction(Account account, BigDecimal amount,
-                                                    User currentUser, String description) {
-        // Builds a WITHDRAWAL transaction linked to the target account as the source
-        return baseTransaction(TransactionType.WITHDRAWAL, amount, Channel.ATM, currentUser, description)
-                .fromAccount(account)
-                .build();
-    }
-
-    // --- Result builders ---
-
-    private TransactionResultDto buildTransferResult(Transaction tx, Account from, Account to) {
-        // Assembles the result DTO with the transaction and updated balances for both accounts
-        return TransactionResultDto.builder()
-                .transaction(transactionMapper.toDto(tx))
-                .sourceBalance(toMoneyDto(from.getBalance()))
-                .destinationBalance(toMoneyDto(to.getBalance()))
-                .build();
-    }
-
-    private TransactionResultDto buildSingleAccountResult(Transaction tx, Account account) {
-        // Assembles the result DTO with the transaction and the updated balance for one account
-        return TransactionResultDto.builder()
-                .transaction(transactionMapper.toDto(tx))
-                .sourceBalance(toMoneyDto(account.getBalance()))
-                .build();
-    }
-
-    // --- Utilities ---
+    // Utility Methods
 
     private void restrictToOwnerIfCustomer(TransactionFilterParams params, User user) {
         // Forces the filter's userId to the caller's own ID when the caller is a customer
@@ -348,14 +226,6 @@ public class TransactionService {
     private Channel determineChannel(User currentUser) {
         // Returns EMPLOYEE channel for staff, WEB channel for customers
         return currentUser.getRole() == Role.EMPLOYEE ? Channel.EMPLOYEE : Channel.WEB;
-    }
-
-    private MoneyDto toMoneyDto(BigDecimal amount) {
-        // Wraps a BigDecimal balance into a MoneyDto with EUR currency
-        return MoneyDto.builder()
-                .amount(amount.doubleValue())
-                .currency("EUR")
-                .build();
     }
 
     private Sort parseSort(String sortParam) {
