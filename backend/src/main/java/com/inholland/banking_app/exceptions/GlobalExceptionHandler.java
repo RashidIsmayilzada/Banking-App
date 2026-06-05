@@ -1,8 +1,5 @@
-package com.inholland.banking_app.controllers;
+package com.inholland.banking_app.exceptions;
 
-import com.inholland.banking_app.exceptions.ApprovalFailedException;
-import com.inholland.banking_app.exceptions.DuplicateResourceException;
-import com.inholland.banking_app.exceptions.ForbiddenException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.core.PropertyReferenceException;
