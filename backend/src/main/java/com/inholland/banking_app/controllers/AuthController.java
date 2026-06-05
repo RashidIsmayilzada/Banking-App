@@ -3,7 +3,10 @@ package com.inholland.banking_app.controllers;
 import com.inholland.banking_app.dtos.LoginRequest;
 import com.inholland.banking_app.dtos.LoginResponse;
 import com.inholland.banking_app.dtos.LogoutResponse;
+import com.inholland.banking_app.security.JwtUtil;
+import com.inholland.banking_app.security.TokenBlacklistService;
 import com.inholland.banking_app.services.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtUtil jwtUtil;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -30,9 +35,18 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<LogoutResponse> logout() {
-        // Logs out the current user and returns a confirmation message
+    public ResponseEntity<LogoutResponse> logout(HttpServletRequest request) {
+        // Blacklists the current token so it cannot be reused after logout
+        String token = parseToken(request);
+        if (token != null && jwtUtil.validateJwtToken(token)) {
+            tokenBlacklistService.blacklist(token, jwtUtil.getExpirationFromToken(token));
+        }
         log.info("User logged out");
         return ResponseEntity.ok(new LogoutResponse("Logged out successfully."));
+    }
+
+    private String parseToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        return (header != null && header.startsWith("Bearer ")) ? header.substring(7) : null;
     }
 }

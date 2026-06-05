@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.time.Instant;
 import java.util.Date;
 
 @Slf4j
@@ -29,6 +30,9 @@ public class JwtUtil {
 
     @PostConstruct
     public void init() {
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET environment variable is not set");
+        }
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
     }
 
@@ -61,6 +65,10 @@ public class JwtUtil {
             log.warn("JWT claims string is empty: {}", e.getMessage());
         }
         return false;
+    }
+
+    public Instant getExpirationFromToken(String token) {
+        return extractAllClaims(token).getExpiration().toInstant();
     }
 
     private Claims extractAllClaims(String token) {
