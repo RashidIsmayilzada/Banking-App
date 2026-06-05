@@ -128,7 +128,7 @@ class TransactionEndToEndTest {
                         .header("Authorization", "Bearer " + customerAToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.transaction.transactionType").value("DEPOSIT"))
                 .andExpect(jsonPath("$.transaction.amount.amount").value(200.0));
 
@@ -155,7 +155,7 @@ class TransactionEndToEndTest {
                         .header("Authorization", "Bearer " + customerAToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.transaction.transactionType").value("WITHDRAWAL"))
                 .andExpect(jsonPath("$.transaction.amount.amount").value(300.0));
 
@@ -221,7 +221,7 @@ class TransactionEndToEndTest {
                         .header("Authorization", "Bearer " + customerAToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.transaction.transactionType").value("TRANSFER"))
                 .andExpect(jsonPath("$.transaction.amount.amount").value(500.0))
                 .andExpect(jsonPath("$.sourceBalance.amount").value(4500.0))
