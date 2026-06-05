@@ -5,8 +5,11 @@ import com.inholland.banking_app.dtos.PageMetadataDto;
 import com.inholland.banking_app.dtos.TransactionDto;
 import com.inholland.banking_app.dtos.TransactionPageDto;
 import com.inholland.banking_app.dtos.TransactionPartyDto;
+import com.inholland.banking_app.dtos.TransactionResultDto;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.Transaction;
+
+import java.math.BigDecimal;
 import com.inholland.banking_app.repositories.CustomerProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -44,6 +47,28 @@ public class TransactionMapper {
                         .totalElements(page.getTotalElements())
                         .totalPages(page.getTotalPages())
                         .build())
+                .build();
+    }
+
+    public TransactionResultDto toTransferResult(Transaction tx, Account from, Account to) {
+        return TransactionResultDto.builder()
+                .transaction(toDto(tx))
+                .sourceBalance(toMoneyDto(from.getBalance()))
+                .destinationBalance(toMoneyDto(to.getBalance()))
+                .build();
+    }
+
+    public TransactionResultDto toSingleAccountResult(Transaction tx, Account account) {
+        return TransactionResultDto.builder()
+                .transaction(toDto(tx))
+                .sourceBalance(toMoneyDto(account.getBalance()))
+                .build();
+    }
+
+    private MoneyDto toMoneyDto(BigDecimal amount) {
+        return MoneyDto.builder()
+                .amount(amount.doubleValue())
+                .currency("EUR")
                 .build();
     }
 

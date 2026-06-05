@@ -1,6 +1,5 @@
 package com.inholland.banking_app.controllers;
 
-import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.exceptions.ApprovalFailedException;
 import com.inholland.banking_app.exceptions.DuplicateResourceException;
 import com.inholland.banking_app.exceptions.ForbiddenException;

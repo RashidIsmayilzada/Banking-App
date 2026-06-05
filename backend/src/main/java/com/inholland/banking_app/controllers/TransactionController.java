@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -26,12 +27,14 @@ public class TransactionController {
 
     private final TransactionService transactionService;
 
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CUSTOMER')")
     @GetMapping
     public ResponseEntity<TransactionPageDto> listTransactions(@ModelAttribute TransactionFilterParams params) {
         // Returns a paginated and filtered list of transactions for the current user
         return ResponseEntity.ok(transactionService.listTransactions(params, currentUsername()));
     }
 
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CUSTOMER')")
     @PostMapping
     public ResponseEntity<TransactionResultDto> createTransaction(@Valid @RequestBody TransactionRequest request) {
         // Creates a new transaction and returns the result with updated account balances
