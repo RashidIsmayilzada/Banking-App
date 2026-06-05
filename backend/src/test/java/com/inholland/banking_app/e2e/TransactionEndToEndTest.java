@@ -284,7 +284,7 @@ class TransactionEndToEndTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"DEPOSIT\",\"accountId\":%d,\"amount\":100.0,\"description\":\"A deposit\"}"
                                 .formatted(customerAAccountId)))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
 
         // Customer B makes a deposit
         mockMvc.perform(post("/transactions")
@@ -292,7 +292,7 @@ class TransactionEndToEndTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"DEPOSIT\",\"accountId\":%d,\"amount\":50.0,\"description\":\"B deposit\"}"
                                 .formatted(customerBAccountId)))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
 
         // Customer A should only see their own transaction
         String response = mockMvc.perform(get("/transactions?page=0&size=10")
