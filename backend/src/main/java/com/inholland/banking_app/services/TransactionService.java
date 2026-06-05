@@ -1,6 +1,5 @@
 package com.inholland.banking_app.services;
 
-import com.inholland.banking_app.dtos.MoneyDto;
 import com.inholland.banking_app.dtos.TransactionFilterParams;
 import com.inholland.banking_app.dtos.TransactionPageDto;
 import com.inholland.banking_app.dtos.TransactionRequest;
@@ -12,7 +11,7 @@ import com.inholland.banking_app.models.Transaction;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.Channel;
 import com.inholland.banking_app.models.enums.Role;
-import com.inholland.banking_app.models.enums.TransactionType;
+import com.inholland.banking_app.models.factory.TransactionFactory;
 import com.inholland.banking_app.policies.TransactionPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
@@ -78,10 +77,10 @@ public class TransactionService {
         applyDebit(from, amount);
         credit(to, amount);
 
-        Transaction tx = buildTransferTransaction(from, to, amount, currentUser, request.getDescription());
+        Transaction tx = TransactionFactory.createTransfer(from, to, amount, currentUser, determineChannel(currentUser), request.getDescription());
         transactionRepository.save(tx);
 
-        return buildTransferResult(tx, from, to);
+        return transactionMapper.toTransferResult(tx, from, to);
     }
 
     private TransactionResultDto executeDeposit(TransactionRequest request, User currentUser) {
@@ -93,10 +92,10 @@ public class TransactionService {
 
         applyCredit(account, amount);
 
-        Transaction tx = buildDepositTransaction(account, amount, currentUser, request.getDescription());
+        Transaction tx = TransactionFactory.createDeposit(account, amount, currentUser, request.getDescription());
         transactionRepository.save(tx);
 
-        return buildSingleAccountResult(tx, account);
+        return transactionMapper.toSingleAccountResult(tx, account);
     }
 
     private TransactionResultDto executeWithdrawal(TransactionRequest request, User currentUser) {
@@ -109,10 +108,10 @@ public class TransactionService {
 
         applyDebit(account, amount);
 
-        Transaction tx = buildWithdrawalTransaction(account, amount, currentUser, request.getDescription());
+        Transaction tx = TransactionFactory.createWithdrawal(account, amount, currentUser, request.getDescription());
         transactionRepository.save(tx);
 
-        return buildSingleAccountResult(tx, account);
+        return transactionMapper.toSingleAccountResult(tx, account);
     }
 
     // account resolution methods throw EntityNotFoundException if the specified account doesn't exist,
@@ -209,65 +208,6 @@ public class TransactionService {
         return usage;
     }
 
-    // --- Transaction builders ---
-
-    private Transaction.TransactionBuilder baseTransaction(TransactionType type, BigDecimal amount,
-                                                            Channel channel, User currentUser, String description) {
-        // Builds the shared portion of a transaction with type, amount, currency, channel, initiator, and description
-        return Transaction.builder()
-                .transactionType(type)
-                .amount(amount)
-                .currency("EUR")
-                .channel(channel)
-                .initiatedBy(currentUser)
-                .createdAt(LocalDateTime.now())
-                .description(description);
-    }
-
-    private Transaction buildTransferTransaction(Account from, Account to, BigDecimal amount,
-                                                  User currentUser, String description) {
-        // Builds a TRANSFER transaction linked to both the source and destination accounts
-        return baseTransaction(TransactionType.TRANSFER, amount, determineChannel(currentUser), currentUser, description)
-                .fromAccount(from)
-                .toAccount(to)
-                .build();
-    }
-
-    private Transaction buildDepositTransaction(Account account, BigDecimal amount,
-                                                 User currentUser, String description) {
-        // Builds a DEPOSIT transaction linked to the target account as the destination
-        return baseTransaction(TransactionType.DEPOSIT, amount, Channel.ATM, currentUser, description)
-                .toAccount(account)
-                .build();
-    }
-
-    private Transaction buildWithdrawalTransaction(Account account, BigDecimal amount,
-                                                    User currentUser, String description) {
-        // Builds a WITHDRAWAL transaction linked to the target account as the source
-        return baseTransaction(TransactionType.WITHDRAWAL, amount, Channel.ATM, currentUser, description)
-                .fromAccount(account)
-                .build();
-    }
-
-    // Result Builders
-
-    private TransactionResultDto buildTransferResult(Transaction tx, Account from, Account to) {
-        // Assembles the result DTO with the transaction and updated balances for both accounts
-        return TransactionResultDto.builder()
-                .transaction(transactionMapper.toDto(tx))
-                .sourceBalance(toMoneyDto(from.getBalance()))
-                .destinationBalance(toMoneyDto(to.getBalance()))
-                .build();
-    }
-
-    private TransactionResultDto buildSingleAccountResult(Transaction tx, Account account) {
-        // Assembles the result DTO with the transaction and the updated balance for one account
-        return TransactionResultDto.builder()
-                .transaction(transactionMapper.toDto(tx))
-                .sourceBalance(toMoneyDto(account.getBalance()))
-                .build();
-    }
-
     // Utility Methods
 
     private void restrictToOwnerIfCustomer(TransactionFilterParams params, User user) {
@@ -286,14 +226,6 @@ public class TransactionService {
     private Channel determineChannel(User currentUser) {
         // Returns EMPLOYEE channel for staff, WEB channel for customers
         return currentUser.getRole() == Role.EMPLOYEE ? Channel.EMPLOYEE : Channel.WEB;
-    }
-
-    private MoneyDto toMoneyDto(BigDecimal amount) {
-        // Wraps a BigDecimal balance into a MoneyDto with EUR currency
-        return MoneyDto.builder()
-                .amount(amount.doubleValue())
-                .currency("EUR")
-                .build();
     }
 
     private Sort parseSort(String sortParam) {

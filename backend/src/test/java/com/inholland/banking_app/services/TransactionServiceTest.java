@@ -1,5 +1,6 @@
 package com.inholland.banking_app.services;
 
+import com.inholland.banking_app.dtos.MoneyDto;
 import com.inholland.banking_app.dtos.TransactionFilterParams;
 import com.inholland.banking_app.dtos.TransactionPageDto;
 import com.inholland.banking_app.dtos.TransactionRequest;
@@ -133,7 +134,8 @@ class TransactionServiceTest {
         when(dailyTransferUsageRepository.findByAccountAndUsageDate(eq(from), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(transactionMapper.toDto(any(Transaction.class))).thenReturn(null);
+        when(transactionMapper.toTransferResult(any(Transaction.class), eq(from), eq(to)))
+                .thenReturn(dummyTransferResult());
 
         TransactionResultDto result = transactionService.createTransaction(request, "customer");
 
@@ -292,7 +294,6 @@ class TransactionServiceTest {
         when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findById(20L)).thenReturn(Optional.of(foreignDestination));
-        // first call is source-account ownership check (passes), second is destination (throws)
         doNothing()
                 .doThrow(new ForbiddenException("Use toIban to transfer to another customer's account"))
                 .when(transactionPolicy).validateAccountOwnership(any(Account.class), any(User.class), anyString());
@@ -346,7 +347,6 @@ class TransactionServiceTest {
         when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(inactiveTo));
-        // first call is source-account active check (passes), second is destination (throws)
         doNothing()
                 .doThrow(new IllegalArgumentException("Destination account is not active"))
                 .when(transactionPolicy).validateActiveAccount(any(Account.class), anyString());
@@ -372,13 +372,13 @@ class TransactionServiceTest {
         when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
         when(dailyTransferUsageRepository.findByAccountAndUsageDate(any(), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(transactionMapper.toDto(any())).thenReturn(null);
-
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
             Transaction saved = inv.getArgument(0);
             assertThat(saved.getChannel().name()).isEqualTo("EMPLOYEE");
             return saved;
         });
+        when(transactionMapper.toTransferResult(any(Transaction.class), eq(from), eq(to)))
+                .thenReturn(dummyTransferResult());
 
         transactionService.createTransaction(request, "employee");
 
@@ -399,7 +399,8 @@ class TransactionServiceTest {
         when(dailyTransferUsageRepository.findByAccountAndUsageDate(eq(account), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(transactionMapper.toDto(any(Transaction.class))).thenReturn(null);
+        when(transactionMapper.toSingleAccountResult(any(Transaction.class), eq(account)))
+                .thenReturn(dummySingleResult());
 
         TransactionResultDto result = transactionService.createTransaction(request, "employee");
 
@@ -483,7 +484,8 @@ class TransactionServiceTest {
         when(dailyTransferUsageRepository.findByAccountAndUsageDate(eq(account), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(transactionMapper.toDto(any(Transaction.class))).thenReturn(null);
+        when(transactionMapper.toSingleAccountResult(any(Transaction.class), eq(account)))
+                .thenReturn(dummySingleResult());
 
         TransactionResultDto result = transactionService.createTransaction(request, "customer");
 
@@ -574,7 +576,7 @@ class TransactionServiceTest {
     }
 
     private Account makeAccount(Long id, User owner, AccountType type, BigDecimal balance,
-                                 BigDecimal absLimit, BigDecimal dailyLimit, boolean active) {
+                                BigDecimal absLimit, BigDecimal dailyLimit, boolean active) {
         Account account = new Account();
         account.setId(id);
         account.setCustomer(owner);
@@ -615,5 +617,16 @@ class TransactionServiceTest {
         r.setAmount(amount);
         r.setDescription("Test withdrawal");
         return r;
+    }
+
+    private TransactionResultDto dummyTransferResult() {
+        MoneyDto eur = MoneyDto.builder().amount(0.0).currency("EUR").build();
+        return TransactionResultDto.builder().sourceBalance(eur).destinationBalance(eur).build();
+    }
+
+    private TransactionResultDto dummySingleResult() {
+        return TransactionResultDto.builder()
+                .sourceBalance(MoneyDto.builder().amount(0.0).currency("EUR").build())
+                .build();
     }
 }
