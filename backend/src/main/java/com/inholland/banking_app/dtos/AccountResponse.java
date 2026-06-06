@@ -1,29 +1,27 @@
 package com.inholland.banking_app.dtos;
 
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Data
+@Getter
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
 public class AccountResponse {
 
-    private Long id;
-    private Long customerId;
+    private Long accountId;
+    private Long ownerId;
+    private String ownerUsername;
     private String iban;
     private AccountType accountType;
-    private BigDecimal balance;
-    private BigDecimal absoluteTransferLimit;
-    private BigDecimal dailyTransferLimit;
-    private boolean active;
+    private MoneyResponse balance;
+    private MoneyResponse absoluteTransferLimit;
+    private MoneyResponse dailyTransferLimit;
+    private AccountStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime closedAt;
-
 }

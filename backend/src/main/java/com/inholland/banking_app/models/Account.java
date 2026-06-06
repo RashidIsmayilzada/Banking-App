@@ -1,6 +1,7 @@
 package com.inholland.banking_app.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -53,8 +54,9 @@ public class Account {
     @Column(name = "daily_transfer_limit", nullable = false, precision = 15, scale = 2)
     private BigDecimal dailyTransferLimit;
 
-    @Column(nullable = false)
-    private boolean active;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private AccountStatus status;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -62,4 +64,29 @@ public class Account {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
+    public boolean hasSufficientBalance(BigDecimal amount) {
+        return balance.subtract(amount).compareTo(absoluteTransferLimit) >= 0;
+    }
+
+    public boolean isClosed() {
+        return this.status == AccountStatus.CLOSED;
+    }
+
+    public boolean isActive() {
+        return this.status == AccountStatus.ACTIVE;
+    }
+
+    public void applyLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
+        if (absoluteLimit != null) {
+            this.absoluteTransferLimit = absoluteLimit;
+        }
+        if (dailyLimit != null) {
+            this.dailyTransferLimit = dailyLimit;
+        }
+    }
+
+    public void markClosed() {
+        this.status = AccountStatus.CLOSED;
+        this.closedAt = LocalDateTime.now();
+    }
 }

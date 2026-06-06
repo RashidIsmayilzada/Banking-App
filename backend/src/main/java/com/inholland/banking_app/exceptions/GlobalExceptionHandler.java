@@ -1,8 +1,5 @@
-package com.inholland.banking_app.controllers;
+package com.inholland.banking_app.exceptions;
 
-import com.inholland.banking_app.exceptions.ApprovalFailedException;
-import com.inholland.banking_app.exceptions.DuplicateResourceException;
-import com.inholland.banking_app.exceptions.ForbiddenException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.core.PropertyReferenceException;
@@ -45,6 +42,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleConflict(DuplicateResourceException exception) {
         log.warn("Conflict: {}", exception.getMessage());
         return buildResponse(HttpStatus.CONFLICT, "CONFLICT", exception.getMessage());
+    }
+
+    @ExceptionHandler(AccountStateException.class)
+    public ResponseEntity<Map<String, Object>> handleAccountState(AccountStateException exception) {
+        log.warn("Invalid account state: {}", exception.getMessage());
+        return buildResponse(HttpStatus.CONFLICT, "ACCOUNT_STATE_CONFLICT", exception.getMessage());
     }
 
     @ExceptionHandler(ForbiddenException.class)
