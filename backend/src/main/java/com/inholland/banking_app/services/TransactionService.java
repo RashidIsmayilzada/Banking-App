@@ -192,7 +192,7 @@ public class TransactionService {
         // Creates or updates today's daily transfer usage record for the account
         LocalDate today = LocalDate.now();
         DailyTransferUsage usage = dailyTransferUsageRepository
-                .findByAccountAndUsageDate(account, today)
+                .findByAccountIdAndUsageDate(account.getId(), today)
                 .orElseGet(() -> createDailyUsage(account, today));
         usage.setTotalOutgoingAmount(usage.getTotalOutgoingAmount().add(amount));
         usage.setUpdatedAt(LocalDateTime.now());

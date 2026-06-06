@@ -2,6 +2,7 @@ package com.inholland.banking_app.models.factory;
 
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 
 import java.math.BigDecimal;
@@ -38,7 +39,7 @@ public final class AccountFactory {
         account.setBalance(OPENING_BALANCE);
         account.setAbsoluteTransferLimit(NO_OVERDRAFT_LIMIT);
         account.setDailyTransferLimit(dailyTransferLimit);
-        account.setActive(true);
+        account.setStatus(AccountStatus.ACTIVE);
         account.setCreatedAt(now);
         return account;
     }

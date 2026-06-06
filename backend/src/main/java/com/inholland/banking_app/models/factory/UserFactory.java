@@ -44,6 +44,7 @@ public final class UserFactory {
         user.setUpdatedAt(now);
 
         CustomerProfile profile = createCustomer(request, now);
+        profile.setUser(user);
         user.setCustomerProfile(profile);
         return user;
     }

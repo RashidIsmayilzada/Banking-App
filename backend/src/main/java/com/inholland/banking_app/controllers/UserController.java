@@ -4,6 +4,7 @@ import com.inholland.banking_app.dtos.ApproveCustomerRequest;
 import com.inholland.banking_app.dtos.UserFilterRequest;
 import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
+import com.inholland.banking_app.services.AuthService;
 import com.inholland.banking_app.services.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,6 +31,15 @@ import org.springdoc.core.annotations.ParameterObject;
 public class UserController {
 
         private final UserService userService;
+        private final AuthService authService;
+
+        @Operation(summary = "Register a new customer")
+        @PostMapping
+        public ResponseEntity<UserResponse> register(@RequestBody UserRequest request) {
+                UserResponse response = authService.register(request);
+                log.info("User registered: {} (role={})", response.getEmail(), response.getRole());
+                return ResponseEntity.status(201).body(response);
+        }
 
         @Operation(summary = "Get all users")
         @GetMapping

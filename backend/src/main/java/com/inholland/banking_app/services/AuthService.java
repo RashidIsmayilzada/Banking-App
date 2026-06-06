@@ -4,6 +4,7 @@ import com.inholland.banking_app.dtos.AuthContextResponse;
 import com.inholland.banking_app.dtos.LoginResponse;
 import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
+import com.inholland.banking_app.exceptions.DuplicateResourceException;
 import com.inholland.banking_app.exceptions.ForbiddenException;
 import com.inholland.banking_app.mappers.AuthMapper;
 import com.inholland.banking_app.mappers.UserRequestMapper;
@@ -62,7 +63,10 @@ public class AuthService {
         return new LoginResponse(token, "Bearer", (int) (jwtExpirationMs / 1000), authContext);
     }
     
-    public UserResponse register (UserRequest request) {
+    public UserResponse register(UserRequest request) {
+        if (request.getRole() == null) {
+            request.setRole(Role.CUSTOMER);
+        }
         validateRegistrationRequest(request);
         request.setPassword(passwordEncoder.encode(request.getPassword()));
         request.setEmail(normalizeEmail(request.getEmail()));
@@ -94,25 +98,25 @@ public class AuthService {
 
     private void validateUniqueEmail(String email) {
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already exists");
+            throw new DuplicateResourceException("Email already exists");
         }
     }
 
     private void validateUniqueUsername(String username) {
         if (userRepository.existsByUsername(username)) {
-            throw new IllegalArgumentException("Username already exists");
+            throw new DuplicateResourceException("Username already exists");
         }
     }
 
     private void validateUniqueBsn(String bsn) {
         if (customerProfileRepository.existsByBsn(bsn)) {
-            throw new IllegalArgumentException("BSN already exists");
+            throw new DuplicateResourceException("BSN already exists");
         }
     }
 
     private void validateUniqueEmployeeNumber(String employeeNumber) {
         if (employeeProfileRepository.existsByEmployeeNumber(employeeNumber)) {
-            throw new IllegalArgumentException("Employee number already exists");
+            throw new DuplicateResourceException("Employee number already exists");
         }
     }
 

@@ -54,7 +54,7 @@ public class UserResponseMapper {
                 .accountCount(accountCount)
                 .accounts(user.getAccounts() == null
                     ? java.util.List.of()
-                    : user.getAccounts().stream().map(accountMapper::toAccountResponse).toList())
+                    : user.getAccounts().stream().map(accountMapper::toResponse).toList())
                 .registeredAt(profile.getRegisteredAt())
                 .build();
     }
