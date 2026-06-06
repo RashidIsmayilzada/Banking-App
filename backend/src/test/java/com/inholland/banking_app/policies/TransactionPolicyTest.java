@@ -5,6 +5,7 @@ import com.inholland.banking_app.exceptions.ForbiddenException;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.DailyTransferUsage;
 import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.models.enums.TransactionType;
@@ -244,7 +245,7 @@ class TransactionPolicyTest {
 
         DailyTransferUsage existing = new DailyTransferUsage();
         existing.setTotalOutgoingAmount(new BigDecimal("200.00"));
-        when(dailyTransferUsageRepository.findByAccountAndUsageDate(eq(account), any(LocalDate.class)))
+        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any(LocalDate.class)))
                 .thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> transactionPolicy.checkDailyLimit(account, new BigDecimal("200.00")))
@@ -260,7 +261,7 @@ class TransactionPolicyTest {
 
         DailyTransferUsage existing = new DailyTransferUsage();
         existing.setTotalOutgoingAmount(new BigDecimal("100.00"));
-        when(dailyTransferUsageRepository.findByAccountAndUsageDate(eq(account), any(LocalDate.class)))
+        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any(LocalDate.class)))
                 .thenReturn(Optional.of(existing));
 
         assertThatCode(() -> transactionPolicy.checkDailyLimit(account, new BigDecimal("200.00")))
@@ -273,7 +274,7 @@ class TransactionPolicyTest {
         Account account = makeAccount(1L, customer, AccountType.CHECKING,
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("300.00"), true);
 
-        when(dailyTransferUsageRepository.findByAccountAndUsageDate(eq(account), any(LocalDate.class)))
+        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any(LocalDate.class)))
                 .thenReturn(Optional.empty());
 
         assertThatCode(() -> transactionPolicy.checkDailyLimit(account, new BigDecimal("200.00")))
@@ -305,7 +306,7 @@ class TransactionPolicyTest {
         account.setBalance(balance);
         account.setAbsoluteTransferLimit(absLimit);
         account.setDailyTransferLimit(dailyLimit);
-        account.setActive(active);
+        account.setStatus(active ? AccountStatus.ACTIVE : AccountStatus.CLOSED);
         account.setCreatedAt(LocalDateTime.now());
         return account;
     }

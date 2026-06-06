@@ -76,6 +76,18 @@ UserUpdateRequest:
       format: double
       minimum: 0
 
+UserApprovalRequest:
+  type: object
+  required:
+    - status
+  properties:
+    customerId:
+      type: integer
+      format: int64
+      description: Optional customer id included by some clients; the path id is authoritative.
+    status:
+      $ref: ./common.yaml#/UserStatus
+
 UserResponse:
   type: object
   required:

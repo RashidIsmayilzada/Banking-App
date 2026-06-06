@@ -132,7 +132,7 @@ class TransactionServiceTest {
         when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
-        when(dailyTransferUsageRepository.findByAccountAndUsageDate(eq(from), any())).thenReturn(Optional.empty());
+        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(from.getId()), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionMapper.toTransferResult(any(Transaction.class), eq(from), eq(to)))
@@ -371,7 +371,7 @@ class TransactionServiceTest {
         when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
-        when(dailyTransferUsageRepository.findByAccountAndUsageDate(any(), any())).thenReturn(Optional.empty());
+        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(any(), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
             Transaction saved = inv.getArgument(0);
@@ -397,7 +397,7 @@ class TransactionServiceTest {
 
         when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
         when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
-        when(dailyTransferUsageRepository.findByAccountAndUsageDate(eq(account), any())).thenReturn(Optional.empty());
+        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionMapper.toSingleAccountResult(any(Transaction.class), eq(account)))
@@ -482,7 +482,7 @@ class TransactionServiceTest {
 
         when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
         when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
-        when(dailyTransferUsageRepository.findByAccountAndUsageDate(eq(account), any())).thenReturn(Optional.empty());
+        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionMapper.toSingleAccountResult(any(Transaction.class), eq(account)))

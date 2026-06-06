@@ -62,7 +62,7 @@ public class TransactionPolicy {
     public void checkDailyLimit(Account account, BigDecimal amount) {
         LocalDate today = LocalDate.now();
         BigDecimal usedToday = dailyTransferUsageRepository
-                .findByAccountAndUsageDate(account, today)
+                .findByAccountIdAndUsageDate(account.getId(), today)
                 .map(DailyTransferUsage::getTotalOutgoingAmount)
                 .orElse(BigDecimal.ZERO);
         if (usedToday.add(amount).compareTo(account.getDailyTransferLimit()) > 0) {

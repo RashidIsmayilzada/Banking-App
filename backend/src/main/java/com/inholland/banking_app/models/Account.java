@@ -1,5 +1,6 @@
 package com.inholland.banking_app.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import jakarta.persistence.Column;
@@ -41,6 +42,7 @@ public class Account {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "account_type", nullable = false, length = 20)
+    @JsonIgnore
     private AccountType accountType;
 
     @Column(nullable = false, precision = 15, scale = 2)
@@ -74,10 +76,6 @@ public class Account {
         return this.status == AccountStatus.ACTIVE;
     }
 
-    /**
-     * Applies the given limits, ignoring any null value. Pure state mutation:
-     * the rules about when this is allowed live in AccountPolicy.
-     */
     public void applyLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
         if (absoluteLimit != null) {
             this.absoluteTransferLimit = absoluteLimit;
@@ -87,13 +85,8 @@ public class Account {
         }
     }
 
-    /**
-     * Marks the account as closed. Pure state mutation: the rule that a closed
-     * account cannot be closed again lives in AccountPolicy.
-     */
     public void markClosed() {
         this.status = AccountStatus.CLOSED;
         this.closedAt = LocalDateTime.now();
     }
-
 }

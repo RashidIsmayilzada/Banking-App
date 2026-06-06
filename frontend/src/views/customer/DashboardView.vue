@@ -100,6 +100,12 @@
     <div class="card" style="padding:0">
       <table class="table">
         <tbody>
+          <tr v-if="transactionsLoading">
+            <td colspan="4" class="muted" style="padding:24px;text-align:center">Loading activity...</td>
+          </tr>
+          <tr v-else-if="recentTransactions.length === 0">
+            <td colspan="4" class="muted" style="padding:24px;text-align:center">No recent activity.</td>
+          </tr>
           <tr v-for="tx in recentTransactions" :key="tx.id">
             <td style="width:56px">
               <div :class="['icon-box', `icon-box--${tx.iconTone}`]" style="width:36px;height:36px">
@@ -135,6 +141,8 @@ const accounts = ref([])
 const combinedBalance = ref(0)
 const loading = ref(true)
 const error = ref(null)
+const recentTransactions = ref([])
+const transactionsLoading = ref(false)
 
 function formatEur(amount) {
   return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -157,14 +165,5 @@ const quickActions = [
   ['arrowSwap',    'Move',      'teal'],
   ['receipt',      'Pay bill',  'pink'],
   ['copy',         'Copy IBAN', 'brown'],
-]
-
-// TODO: Replace with real transactions from GET /api/transactions
-const recentTransactions = [
-  { id: 1, icon: 'cash',       iconTone: 'warn',  title: 'Albert Heijn',        sub: 'NL91 ABNA …42', when: '28 Apr · 14:22', amount: '−€42,18',     positive: false },
-  { id: 2, icon: 'building',   iconTone: 'teal',  title: 'Salary · ACME BV',    sub: 'NL91 RABO …01', when: '27 Apr · 18:30', amount: '+€2 400,00',   positive: true  },
-  { id: 3, icon: 'arrowSwap',  iconTone: 'ink',   title: 'Transfer to savings',  sub: 'NL42 INHO …21', when: '26 Apr · 12:10', amount: '−€300,00',    positive: false },
-  { id: 4, icon: 'withdraw',   iconTone: 'brown', title: 'ATM withdrawal',       sub: 'ATM #14 · Centrum', when: '25 Apr · 20:45', amount: '−€100,00', positive: false },
-  { id: 5, icon: 'creditCard', iconTone: 'pink',  title: 'Spotify subscription', sub: 'NL11 INGB …55', when: '24 Apr · 11:02', amount: '−€9,99',     positive: false },
 ]
 </script>

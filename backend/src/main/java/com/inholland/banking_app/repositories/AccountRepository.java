@@ -12,4 +12,6 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     Page<Account> findByCustomerId(Long customerId, Pageable pageable);
 
     Optional<Account> findByIban(String iban);
+
+    boolean existsByIban(String iban);
 }

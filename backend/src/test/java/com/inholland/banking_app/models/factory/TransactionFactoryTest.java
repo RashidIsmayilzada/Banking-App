@@ -3,6 +3,7 @@ package com.inholland.banking_app.models.factory;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.Transaction;
 import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.Channel;
 import com.inholland.banking_app.models.enums.Role;
@@ -157,7 +158,7 @@ class TransactionFactoryTest {
         account.setBalance(new BigDecimal("500.00"));
         account.setAbsoluteTransferLimit(BigDecimal.ZERO);
         account.setDailyTransferLimit(new BigDecimal("1000.00"));
-        account.setActive(true);
+        account.setStatus(AccountStatus.ACTIVE);
         account.setCreatedAt(LocalDateTime.now());
         return account;
     }

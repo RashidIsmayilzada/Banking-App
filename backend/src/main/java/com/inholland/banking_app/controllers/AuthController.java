@@ -1,11 +1,11 @@
 package com.inholland.banking_app.controllers;
 
-import com.inholland.banking_app.dtos.LoginRequest;
-import com.inholland.banking_app.dtos.LoginResponse;
-import com.inholland.banking_app.dtos.LogoutResponse;
+import com.inholland.banking_app.dtos.*;
 import com.inholland.banking_app.security.JwtUtil;
 import com.inholland.banking_app.security.TokenBlacklistService;
 import com.inholland.banking_app.services.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Authentication", description = "Login and logout endpoints")
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/auth")
@@ -26,23 +27,28 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
 
+    @Operation(summary = "Login to the application", description = "Returns an access token to be used in the Authorization header")
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        // Authenticates the user and returns a JWT token
         LoginResponse response = authService.login(request.getEmail(), request.getPassword());
         log.info("User logged in: {}", request.getEmail());
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Logout from the application")
     @PostMapping("/logout")
     public ResponseEntity<LogoutResponse> logout(HttpServletRequest request) {
-        // Blacklists the current token so it cannot be reused after logout
         String token = parseToken(request);
         if (token != null && jwtUtil.validateJwtToken(token)) {
             tokenBlacklistService.blacklist(token, jwtUtil.getExpirationFromToken(token));
         }
         log.info("User logged out");
         return ResponseEntity.ok(new LogoutResponse("Logged out successfully."));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<UserResponse> register(@Valid @RequestBody UserRequest request) {
+        return ResponseEntity.ok(authService.register(request));
     }
 
     private String parseToken(HttpServletRequest request) {
