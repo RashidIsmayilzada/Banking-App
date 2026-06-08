@@ -49,15 +49,13 @@ public class AccountService {
     }
 
     public AccountResponse getAccount(String iban) {
-        Account account = accountRepository.findById(iban)
-                .orElseThrow(() -> new EntityNotFoundException("Account not found"));
+        Account account = findAccountOrThrow(iban);
         return accountMapper.toResponse(account);
     }
 
     @Transactional
     public AccountResponse updateAccount(String iban, AccountUpdateRequest request) {
-        Account account = accountRepository.findById(iban)
-                .orElseThrow(() -> new EntityNotFoundException("Account not found"));
+        Account account = findAccountOrThrow(iban);
 
         accountPolicy.assertCanUpdateLimits(account);
         if (request.getAbsoluteTransferLimit() != null) {
@@ -75,5 +73,10 @@ public class AccountService {
 
         accountRepository.save(account);
         return accountMapper.toResponse(account);
+    }
+
+    private Account findAccountOrThrow(String iban) {
+        return accountRepository.findById(iban)
+                .orElseThrow(() -> new EntityNotFoundException("Account not found"));
     }
 }

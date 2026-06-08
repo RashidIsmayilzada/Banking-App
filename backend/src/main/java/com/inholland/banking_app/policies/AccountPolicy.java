@@ -2,7 +2,6 @@ package com.inholland.banking_app.policies;
 
 import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.models.Account;
-import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.Role;
 import org.springframework.security.core.Authentication;
@@ -34,15 +33,5 @@ public class AccountPolicy {
         if (account.getStatus() == AccountStatus.CLOSED) {
             throw new AccountStateException("Account is already closed");
         }
-    }
-
-    //Ownership rule: the account belongs to the given user.
-    public boolean isOwnedBy(Account account, User user) {
-        return account.getCustomer().getId().equals(user.getId());
-    }
-
-    // Access rule: employees may access any account, customers only their own.
-    public boolean canAccess(Account account, User user) {
-        return user.getRole() == Role.EMPLOYEE || isOwnedBy(account, user);
     }
 }
