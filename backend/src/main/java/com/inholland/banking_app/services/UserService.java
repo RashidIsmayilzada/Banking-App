@@ -10,7 +10,6 @@ import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.repositories.AccountRepository;
-import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
 import com.inholland.banking_app.repositories.TransactionRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
