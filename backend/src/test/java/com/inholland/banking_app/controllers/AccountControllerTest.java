@@ -5,6 +5,7 @@ import com.inholland.banking_app.dtos.*;
 import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
+import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.security.JwtAuthenticationFilter;
 import com.inholland.banking_app.services.AccountService;
 import jakarta.persistence.EntityNotFoundException;
@@ -51,6 +52,9 @@ class AccountControllerTest {
 
     @MockitoBean
     private AccountService accountService;
+
+    @MockitoBean
+    private AccountPolicy accountPolicy;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -101,6 +105,7 @@ class AccountControllerTest {
     @Test
     @DisplayName("GET /accounts?userId=1 - should return 200 with filtered accounts")
     void listAccounts_shouldReturn200_withUserIdFilter() throws Exception {
+        when(accountPolicy.isEmployee(employeeAuth)).thenReturn(true);
         when(accountService.listAccounts(eq(1L), any())).thenReturn(listResponse);
 
         mockMvc.perform(get("/accounts").param("userId", "1").principal(employeeAuth))

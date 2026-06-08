@@ -3,6 +3,7 @@ package com.inholland.banking_app.controllers;
 import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
+import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.services.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,26 +27,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountController {
 
     private final AccountService accountService;
+    private final AccountPolicy accountPolicy;
 
     @GetMapping
     public ResponseEntity<AccountListResponse> listAccounts(
             @RequestParam(required = false) Long userId,
             Pageable pageable,
             Authentication authentication) {
-        // Scope is decided here, not in the service: employees may list any
-        // (or all) accounts; customers only ever see their own.
-        AccountListResponse body = isEmployee(authentication)
+        AccountListResponse body = accountPolicy.isEmployee(authentication)
                 ? accountService.listAccounts(userId, pageable)
                 : accountService.listAccountsOwnedBy(authentication.getName(), pageable);
         return ResponseEntity.ok(body);
-    }
-
-    // TEMP: role is detected from the authorities here as a stand-in until the
-    // auth module exposes a custom principal (UserPrincipal.isEmployee()).
-    // Once that lands, replace this helper with @AuthenticationPrincipal.
-    private boolean isEmployee(Authentication authentication) {
-        return authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_EMPLOYEE"));
     }
 
     @GetMapping("/{iban}")
