@@ -18,7 +18,6 @@ import com.inholland.banking_app.policies.TransactionPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
 import com.inholland.banking_app.repositories.TransactionRepository;
-import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -54,7 +53,7 @@ class TransactionServiceTest {
     @Mock private TransactionRepository transactionRepository;
     @Mock private AccountRepository accountRepository;
     @Mock private DailyTransferUsageRepository dailyTransferUsageRepository;
-    @Mock private UserRepository userRepository;
+    @Mock private UserService userService;
     @Mock private TransactionMapper transactionMapper;
     @Mock private TransactionPolicy transactionPolicy;
 
@@ -81,7 +80,7 @@ class TransactionServiceTest {
         params.setUserId(99L);
 
         Page<Transaction> emptyPage = new PageImpl<>(List.of());
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
+        when(userService.getByUsername("employee")).thenReturn(employee);
         when(transactionRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage);
         when(transactionMapper.toPageDto(emptyPage)).thenReturn(TransactionPageDto.builder().build());
 
@@ -98,7 +97,7 @@ class TransactionServiceTest {
         params.setUserId(99L);
 
         Page<Transaction> emptyPage = new PageImpl<>(List.of());
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(transactionRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage);
         when(transactionMapper.toPageDto(emptyPage)).thenReturn(TransactionPageDto.builder().build());
 
@@ -110,7 +109,7 @@ class TransactionServiceTest {
     @Test
     @DisplayName("listTransactions() - should throw EntityNotFoundException when user is not found")
     void listTransactions_shouldThrowEntityNotFoundException_whenUserNotFound() {
-        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+        when(userService.getByUsername("ghost")).thenThrow(new EntityNotFoundException("User not found: ghost"));
 
         assertThatThrownBy(() -> transactionService.listTransactions(new TransactionFilterParams(), "ghost"))
                 .isInstanceOf(EntityNotFoundException.class)
@@ -129,7 +128,7 @@ class TransactionServiceTest {
 
         TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 200.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
         when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(from.getId()), any())).thenReturn(Optional.empty());
@@ -152,7 +151,7 @@ class TransactionServiceTest {
     @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when fromAccountId is null")
     void createTransaction_transfer_shouldPropagateException_whenFromAccountIdIsNull() {
         TransactionRequest request = transferRequest(null, 2L, null, 100.0);
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         doThrow(new IllegalArgumentException("fromAccountId is required for TRANSFER"))
                 .when(transactionPolicy).validateTransferFields(request);
 
@@ -167,7 +166,7 @@ class TransactionServiceTest {
     @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when both destination fields are null")
     void createTransaction_transfer_shouldPropagateException_whenBothDestinationFieldsAreNull() {
         TransactionRequest request = transferRequest(1L, null, null, 100.0);
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         doThrow(new IllegalArgumentException("toAccountId or toIban is required for TRANSFER"))
                 .when(transactionPolicy).validateTransferFields(request);
 
@@ -180,7 +179,7 @@ class TransactionServiceTest {
     @DisplayName("createTransaction() TRANSFER - should throw EntityNotFoundException when source account does not exist")
     void createTransaction_transfer_shouldThrowEntityNotFoundException_whenSourceAccountNotFound() {
         TransactionRequest request = transferRequest(99L, null, "NL91INHO0417164300", 100.0);
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> transactionService.createTransaction(request, "customer"))
@@ -195,7 +194,7 @@ class TransactionServiceTest {
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(foreignAccount));
         doThrow(new ForbiddenException("You can only transfer from your own accounts"))
                 .when(transactionPolicy).validateAccountOwnership(eq(foreignAccount), eq(customer), anyString());
@@ -212,7 +211,7 @@ class TransactionServiceTest {
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), false);
         TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(inactiveAccount));
         doThrow(new IllegalArgumentException("Source account is not active"))
                 .when(transactionPolicy).validateActiveAccount(eq(inactiveAccount), anyString());
@@ -229,7 +228,7 @@ class TransactionServiceTest {
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(savingsAccount));
         doThrow(new IllegalArgumentException("Transfers can only be made from a checking account"))
                 .when(transactionPolicy).validateCheckingAccount(savingsAccount);
@@ -248,7 +247,7 @@ class TransactionServiceTest {
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 150.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
         doThrow(new IllegalArgumentException("Insufficient funds"))
@@ -270,7 +269,7 @@ class TransactionServiceTest {
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 200.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
         doThrow(new IllegalArgumentException("Daily transfer limit exceeded"))
@@ -292,7 +291,7 @@ class TransactionServiceTest {
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = transferRequest(10L, 20L, null, 100.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findById(20L)).thenReturn(Optional.of(foreignDestination));
         doNothing()
@@ -311,7 +310,7 @@ class TransactionServiceTest {
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = transferRequest(10L, 99L, null, 100.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findById(99L)).thenReturn(Optional.empty());
 
@@ -327,7 +326,7 @@ class TransactionServiceTest {
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.empty());
 
@@ -345,7 +344,7 @@ class TransactionServiceTest {
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), false);
         TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(inactiveTo));
         doNothing()
@@ -368,7 +367,7 @@ class TransactionServiceTest {
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
 
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
+        when(userService.getByUsername("employee")).thenReturn(employee);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
         when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
         when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(any(), any())).thenReturn(Optional.empty());
@@ -395,7 +394,7 @@ class TransactionServiceTest {
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = depositRequest(10L, 200.0);
 
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
+        when(userService.getByUsername("employee")).thenReturn(employee);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
         when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -416,7 +415,7 @@ class TransactionServiceTest {
     @DisplayName("createTransaction() DEPOSIT - should propagate IllegalArgumentException from policy when accountId is null")
     void createTransaction_deposit_shouldPropagateException_whenAccountIdIsNull() {
         TransactionRequest request = depositRequest(null, 100.0);
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
+        when(userService.getByUsername("employee")).thenReturn(employee);
         doThrow(new IllegalArgumentException("accountId is required for DEPOSIT"))
                 .when(transactionPolicy).requireAccountId(eq(request), eq("DEPOSIT"));
 
@@ -429,7 +428,7 @@ class TransactionServiceTest {
     @DisplayName("createTransaction() DEPOSIT - should throw EntityNotFoundException when account does not exist")
     void createTransaction_deposit_shouldThrowEntityNotFoundException_whenAccountNotFound() {
         TransactionRequest request = depositRequest(99L, 100.0);
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
+        when(userService.getByUsername("employee")).thenReturn(employee);
         when(accountRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> transactionService.createTransaction(request, "employee"))
@@ -444,7 +443,7 @@ class TransactionServiceTest {
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), false);
         TransactionRequest request = depositRequest(10L, 100.0);
 
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
+        when(userService.getByUsername("employee")).thenReturn(employee);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(inactiveAccount));
         doThrow(new IllegalArgumentException("Account is not active"))
                 .when(transactionPolicy).validateActiveAccount(eq(inactiveAccount), anyString());
@@ -461,7 +460,7 @@ class TransactionServiceTest {
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("300.00"), true);
         TransactionRequest request = depositRequest(10L, 200.0);
 
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
+        when(userService.getByUsername("employee")).thenReturn(employee);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
         doThrow(new IllegalArgumentException("Daily transfer limit exceeded"))
                 .when(transactionPolicy).checkDailyLimit(eq(account), any(BigDecimal.class));
@@ -480,7 +479,7 @@ class TransactionServiceTest {
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = withdrawalRequest(10L, 100.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
         when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -501,7 +500,7 @@ class TransactionServiceTest {
     @DisplayName("createTransaction() WITHDRAWAL - should propagate IllegalArgumentException from policy when accountId is null")
     void createTransaction_withdrawal_shouldPropagateException_whenAccountIdIsNull() {
         TransactionRequest request = withdrawalRequest(null, 100.0);
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         doThrow(new IllegalArgumentException("accountId is required for WITHDRAWAL"))
                 .when(transactionPolicy).requireAccountId(eq(request), eq("WITHDRAWAL"));
 
@@ -517,7 +516,7 @@ class TransactionServiceTest {
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = withdrawalRequest(10L, 100.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(foreignAccount));
         doThrow(new ForbiddenException("You can only withdraw from your own accounts"))
                 .when(transactionPolicy).validateAccountOwnership(eq(foreignAccount), eq(customer), anyString());
@@ -534,7 +533,7 @@ class TransactionServiceTest {
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
         TransactionRequest request = withdrawalRequest(10L, 150.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
         doThrow(new IllegalArgumentException("Insufficient funds"))
                 .when(transactionPolicy).checkBalance(eq(account), any(BigDecimal.class));
@@ -551,7 +550,7 @@ class TransactionServiceTest {
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("300.00"), true);
         TransactionRequest request = withdrawalRequest(10L, 200.0);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
+        when(userService.getByUsername("customer")).thenReturn(customer);
         when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
         doThrow(new IllegalArgumentException("Daily transfer limit exceeded"))
                 .when(transactionPolicy).checkDailyLimit(eq(account), any(BigDecimal.class));
