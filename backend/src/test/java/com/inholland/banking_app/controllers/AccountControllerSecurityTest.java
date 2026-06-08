@@ -141,4 +141,32 @@ class AccountControllerSecurityTest {
         mockMvc.perform(get("/accounts/" + IBAN))
                 .andExpect(status().isOk());
     }
+
+    // --- Anonymous (no token) : rejected by the filter chain before reaching the controller ---
+
+    @Test
+    @DisplayName("GET /accounts - anonymous request is unauthorized (401)")
+    void listAccounts_asAnonymous_isUnauthorized() throws Exception {
+        mockMvc.perform(get("/accounts"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    @DisplayName("GET /accounts/{iban} - anonymous request is unauthorized (401)")
+    void getAccount_asAnonymous_isUnauthorized() throws Exception {
+        mockMvc.perform(get("/accounts/" + IBAN))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    @DisplayName("PATCH /accounts/{iban} - anonymous request is unauthorized (401)")
+    void updateAccount_asAnonymous_isUnauthorized() throws Exception {
+        mockMvc.perform(patch("/accounts/" + IBAN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
 }
