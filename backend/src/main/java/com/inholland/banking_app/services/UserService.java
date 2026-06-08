@@ -176,4 +176,9 @@ public class UserService {
 
         return iban;
     }
+
+    public User getByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
+    }
 }

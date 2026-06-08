@@ -11,12 +11,12 @@ import com.inholland.banking_app.models.Transaction;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.Channel;
 import com.inholland.banking_app.models.enums.Role;
+import com.inholland.banking_app.models.factory.DailyTransferUsageFactory;
 import com.inholland.banking_app.models.factory.TransactionFactory;
 import com.inholland.banking_app.policies.TransactionPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
 import com.inholland.banking_app.repositories.TransactionRepository;
-import com.inholland.banking_app.repositories.UserRepository;
 import com.inholland.banking_app.specifications.TransactionSpecification;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final DailyTransferUsageRepository dailyTransferUsageRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final TransactionMapper transactionMapper;
     private final TransactionPolicy transactionPolicy;
 
@@ -193,19 +193,10 @@ public class TransactionService {
         LocalDate today = LocalDate.now();
         DailyTransferUsage usage = dailyTransferUsageRepository
                 .findByAccountIdAndUsageDate(account.getId(), today)
-                .orElseGet(() -> createDailyUsage(account, today));
+                .orElseGet(() -> DailyTransferUsageFactory.create(account, today));
         usage.setTotalOutgoingAmount(usage.getTotalOutgoingAmount().add(amount));
         usage.setUpdatedAt(LocalDateTime.now());
         dailyTransferUsageRepository.save(usage);
-    }
-
-    private DailyTransferUsage createDailyUsage(Account account, LocalDate date) {
-        // Initialises a new daily usage record for the given account and date
-        DailyTransferUsage usage = new DailyTransferUsage();
-        usage.setAccount(account);
-        usage.setUsageDate(date);
-        usage.setTotalOutgoingAmount(BigDecimal.ZERO);
-        return usage;
     }
 
     // Utility Methods
@@ -242,8 +233,6 @@ public class TransactionService {
     }
 
     private User resolveUser(String username) {
-        // Looks up the user by username and throws EntityNotFoundException if not found
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
+        return userService.getByUsername(username);
     }
 }
