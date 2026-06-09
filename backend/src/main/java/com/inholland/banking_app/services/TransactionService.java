@@ -63,6 +63,7 @@ public class TransactionService {
             case TRANSFER -> executeTransfer(request, currentUser);
             case DEPOSIT -> executeDeposit(request, currentUser);
             case WITHDRAWAL -> executeWithdrawal(request, currentUser);
+            case REVERSAL -> throw new IllegalArgumentException("cannot use this endpoint for reversals");
         };
     }
 

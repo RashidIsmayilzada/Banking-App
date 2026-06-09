@@ -23,9 +23,10 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 @RequiredArgsConstructor
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtEntryPoint jwtEntryPoint;
@@ -84,6 +85,7 @@ public class SecurityConfig {
                                 "/h2-console/**")
                         .permitAll()
                             .requestMatchers(HttpMethod.PATCH, "/users/*/approval").hasRole("EMPLOYEE")
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -76,6 +76,19 @@ public class Account {
         return this.status == AccountStatus.ACTIVE;
     }
 
+    public boolean isFrozen() {
+        return this.status == AccountStatus.FROZEN;
+    }
+
+    public void markFrozen() {
+        this.status = AccountStatus.FROZEN;
+    }
+
+    public void unfreeze() {
+        this.status = AccountStatus.ACTIVE;
+    }
+
+
     public void applyLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
         if (absoluteLimit != null) {
             this.absoluteTransferLimit = absoluteLimit;

@@ -28,4 +28,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
             @Param("endOfDay") LocalDate endOfDay
 
     );
+
+    boolean existsByReversesTransactionId(Long id);
+
 }

@@ -28,7 +28,26 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         seedEmployee("employee01@bank.com", "employee01", "EMP001", "Admin", "User");
         seedEmployee("employee02@bank.com", "employee02", "EMP002", "Jane", "Doe");
+        seedAdmin("admin@bank.com", "admin");
     }
+
+    private void seedAdmin(String email, String username) {
+        if (userRepository.findByEmail(email).isEmpty()) {
+            log.info("[DEBUG_LOG] Seeding admin user: {}", email);
+            User user = new User();
+            user.setEmail(email);
+            user.setUsername(username);
+            user.setPasswordHash(passwordEncoder.encode("Admin@123"));
+            user.setRole(Role.ADMIN);
+            user.setActive(true);
+            user.setCreatedAt(LocalDateTime.now());
+            user.setUpdatedAt(LocalDateTime.now());
+
+            userRepository.save(user);
+            log.info("[DEBUG_LOG] Successfully seeded admin: {}", email);
+        }
+    }
+
 
     private void seedEmployee(String email, String username, String empNumber, String firstName, String lastName) {
         if (userRepository.findByEmail(email).isEmpty()) {
@@ -41,7 +60,7 @@ public class DataSeeder implements CommandLineRunner {
             user.setActive(true);
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
-            
+
             user = userRepository.save(user);
 
             EmployeeProfile profile = new EmployeeProfile();
