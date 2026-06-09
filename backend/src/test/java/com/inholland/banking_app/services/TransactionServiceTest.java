@@ -50,6 +50,10 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class TransactionServiceTest {
 
+    private static final String FROM_IBAN = "NL91INHO0417164010";
+    private static final String TO_IBAN = "NL91INHO0417164300";
+    private static final String MISSING_IBAN = "NL91INHO0417164099";
+
     @Mock private TransactionRepository transactionRepository;
     @Mock private AccountRepository accountRepository;
     @Mock private DailyTransferUsageRepository dailyTransferUsageRepository;
@@ -121,17 +125,17 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() TRANSFER - should debit source, credit destination, and save transaction")
     void createTransaction_transfer_shouldUpdateBalancesAndSaveTransaction() {
-        Account from = makeAccount(10L, customer, AccountType.CHECKING,
+        Account from = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        Account to = makeAccount(20L, otherCustomer, AccountType.CHECKING,
+        Account to = makeAccount(TO_IBAN, otherCustomer, AccountType.CHECKING,
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
 
-        TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 200.0);
+        TransactionRequest request = transferRequest(FROM_IBAN, TO_IBAN, 200.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
-        when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
-        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(from.getId()), any())).thenReturn(Optional.empty());
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(from));
+        when(accountRepository.findByIban(TO_IBAN)).thenReturn(Optional.of(to));
+        when(dailyTransferUsageRepository.findByAccountIbanAndUsageDate(eq(from.getIban()), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionMapper.toTransferResult(any(Transaction.class), eq(from), eq(to)))
@@ -148,39 +152,39 @@ class TransactionServiceTest {
     // --- TRANSFER validation failures ---
 
     @Test
-    @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when fromAccountId is null")
-    void createTransaction_transfer_shouldPropagateException_whenFromAccountIdIsNull() {
-        TransactionRequest request = transferRequest(null, 2L, null, 100.0);
+    @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when fromIban is null")
+    void createTransaction_transfer_shouldPropagateException_whenFromIbanIsNull() {
+        TransactionRequest request = transferRequest(null, TO_IBAN, 100.0);
         when(userService.getByUsername("customer")).thenReturn(customer);
-        doThrow(new IllegalArgumentException("fromAccountId is required for TRANSFER"))
+        doThrow(new IllegalArgumentException("fromIban is required for TRANSFER"))
                 .when(transactionPolicy).validateTransferFields(request);
 
         assertThatThrownBy(() -> transactionService.createTransaction(request, "customer"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("fromAccountId");
+                .hasMessageContaining("fromIban");
 
-        verify(accountRepository, never()).findById(any());
+        verify(accountRepository, never()).findById(anyString());
     }
 
     @Test
-    @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when both destination fields are null")
-    void createTransaction_transfer_shouldPropagateException_whenBothDestinationFieldsAreNull() {
-        TransactionRequest request = transferRequest(1L, null, null, 100.0);
+    @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when destination iban is null")
+    void createTransaction_transfer_shouldPropagateException_whenToIbanIsNull() {
+        TransactionRequest request = transferRequest(FROM_IBAN, null, 100.0);
         when(userService.getByUsername("customer")).thenReturn(customer);
-        doThrow(new IllegalArgumentException("toAccountId or toIban is required for TRANSFER"))
+        doThrow(new IllegalArgumentException("toIban is required for TRANSFER"))
                 .when(transactionPolicy).validateTransferFields(request);
 
         assertThatThrownBy(() -> transactionService.createTransaction(request, "customer"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("toAccountId or toIban");
+                .hasMessageContaining("toIban");
     }
 
     @Test
     @DisplayName("createTransaction() TRANSFER - should throw EntityNotFoundException when source account does not exist")
     void createTransaction_transfer_shouldThrowEntityNotFoundException_whenSourceAccountNotFound() {
-        TransactionRequest request = transferRequest(99L, null, "NL91INHO0417164300", 100.0);
+        TransactionRequest request = transferRequest(MISSING_IBAN, TO_IBAN, 100.0);
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(99L)).thenReturn(Optional.empty());
+        when(accountRepository.findById(MISSING_IBAN)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> transactionService.createTransaction(request, "customer"))
                 .isInstanceOf(EntityNotFoundException.class)
@@ -190,12 +194,12 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() TRANSFER - should propagate ForbiddenException from policy when customer transfers from another customer's account")
     void createTransaction_transfer_shouldPropagateForbiddenException_whenCustomerTransfersFromForeignAccount() {
-        Account foreignAccount = makeAccount(10L, otherCustomer, AccountType.CHECKING,
+        Account foreignAccount = makeAccount(FROM_IBAN, otherCustomer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
+        TransactionRequest request = transferRequest(FROM_IBAN, TO_IBAN, 100.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(foreignAccount));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(foreignAccount));
         doThrow(new ForbiddenException("You can only transfer from your own accounts"))
                 .when(transactionPolicy).validateAccountOwnership(eq(foreignAccount), eq(customer), anyString());
 
@@ -207,12 +211,12 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when source account is inactive")
     void createTransaction_transfer_shouldPropagateException_whenSourceAccountIsInactive() {
-        Account inactiveAccount = makeAccount(10L, customer, AccountType.CHECKING,
+        Account inactiveAccount = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), false);
-        TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
+        TransactionRequest request = transferRequest(FROM_IBAN, TO_IBAN, 100.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(inactiveAccount));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(inactiveAccount));
         doThrow(new IllegalArgumentException("Source account is not active"))
                 .when(transactionPolicy).validateActiveAccount(eq(inactiveAccount), anyString());
 
@@ -224,12 +228,12 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when source account is SAVINGS")
     void createTransaction_transfer_shouldPropagateException_whenSourceAccountIsSavings() {
-        Account savingsAccount = makeAccount(10L, customer, AccountType.SAVINGS,
+        Account savingsAccount = makeAccount(FROM_IBAN, customer, AccountType.SAVINGS,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
+        TransactionRequest request = transferRequest(FROM_IBAN, TO_IBAN, 100.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(savingsAccount));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(savingsAccount));
         doThrow(new IllegalArgumentException("Transfers can only be made from a checking account"))
                 .when(transactionPolicy).validateCheckingAccount(savingsAccount);
 
@@ -241,15 +245,15 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when balance is insufficient")
     void createTransaction_transfer_shouldPropagateException_whenBalanceIsInsufficient() {
-        Account from = makeAccount(10L, customer, AccountType.CHECKING,
+        Account from = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        Account to = makeAccount(20L, otherCustomer, AccountType.CHECKING,
+        Account to = makeAccount(TO_IBAN, otherCustomer, AccountType.CHECKING,
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 150.0);
+        TransactionRequest request = transferRequest(FROM_IBAN, TO_IBAN, 150.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
-        when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(from));
+        when(accountRepository.findByIban(TO_IBAN)).thenReturn(Optional.of(to));
         doThrow(new IllegalArgumentException("Insufficient funds"))
                 .when(transactionPolicy).checkBalance(eq(from), any(BigDecimal.class));
 
@@ -263,15 +267,15 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when daily transfer limit is exceeded")
     void createTransaction_transfer_shouldPropagateException_whenDailyLimitIsExceeded() {
-        Account from = makeAccount(10L, customer, AccountType.CHECKING,
+        Account from = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("300.00"), true);
-        Account to = makeAccount(20L, otherCustomer, AccountType.CHECKING,
+        Account to = makeAccount(TO_IBAN, otherCustomer, AccountType.CHECKING,
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 200.0);
+        TransactionRequest request = transferRequest(FROM_IBAN, TO_IBAN, 200.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
-        when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(from));
+        when(accountRepository.findByIban(TO_IBAN)).thenReturn(Optional.of(to));
         doThrow(new IllegalArgumentException("Daily transfer limit exceeded"))
                 .when(transactionPolicy).checkDailyLimit(eq(from), any(BigDecimal.class));
 
@@ -283,70 +287,34 @@ class TransactionServiceTest {
     }
 
     @Test
-    @DisplayName("createTransaction() TRANSFER - should propagate ForbiddenException from policy when customer uses toAccountId for another customer's account")
-    void createTransaction_transfer_shouldPropagateForbiddenException_whenCustomerUsesToAccountIdForForeignAccount() {
-        Account from = makeAccount(10L, customer, AccountType.CHECKING,
-                new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        Account foreignDestination = makeAccount(20L, otherCustomer, AccountType.CHECKING,
-                new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = transferRequest(10L, 20L, null, 100.0);
-
-        when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
-        when(accountRepository.findById(20L)).thenReturn(Optional.of(foreignDestination));
-        doNothing()
-                .doThrow(new ForbiddenException("Use toIban to transfer to another customer's account"))
-                .when(transactionPolicy).validateAccountOwnership(any(Account.class), any(User.class), anyString());
-
-        assertThatThrownBy(() -> transactionService.createTransaction(request, "customer"))
-                .isInstanceOf(ForbiddenException.class)
-                .hasMessageContaining("toIban");
-    }
-
-    @Test
-    @DisplayName("createTransaction() TRANSFER - should throw EntityNotFoundException when destination account id does not exist")
-    void createTransaction_transfer_shouldThrowEntityNotFoundException_whenDestinationAccountIdNotFound() {
-        Account from = makeAccount(10L, customer, AccountType.CHECKING,
-                new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = transferRequest(10L, 99L, null, 100.0);
-
-        when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
-        when(accountRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> transactionService.createTransaction(request, "customer"))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Destination account");
-    }
-
-    @Test
     @DisplayName("createTransaction() TRANSFER - should throw EntityNotFoundException when destination IBAN does not exist")
     void createTransaction_transfer_shouldThrowEntityNotFoundException_whenDestinationIbanNotFound() {
-        Account from = makeAccount(10L, customer, AccountType.CHECKING,
+        Account from = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
+        TransactionRequest request = transferRequest(FROM_IBAN, TO_IBAN, 100.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
-        when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.empty());
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(from));
+        when(accountRepository.findByIban(TO_IBAN)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> transactionService.createTransaction(request, "customer"))
                 .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("NL91INHO0417164300");
+                .hasMessageContaining(TO_IBAN);
     }
 
     @Test
     @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when destination account is inactive")
     void createTransaction_transfer_shouldPropagateException_whenDestinationAccountIsInactive() {
-        Account from = makeAccount(10L, customer, AccountType.CHECKING,
+        Account from = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        Account inactiveTo = makeAccount(20L, otherCustomer, AccountType.CHECKING,
+        Account inactiveTo = makeAccount(TO_IBAN, otherCustomer, AccountType.CHECKING,
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), false);
-        TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
+        TransactionRequest request = transferRequest(FROM_IBAN, TO_IBAN, 100.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
-        when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(inactiveTo));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(from));
+        when(accountRepository.findByIban(TO_IBAN)).thenReturn(Optional.of(inactiveTo));
+        // Source account is validated first (passes), destination second (throws)
         doNothing()
                 .doThrow(new IllegalArgumentException("Destination account is not active"))
                 .when(transactionPolicy).validateActiveAccount(any(Account.class), anyString());
@@ -361,16 +329,16 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() TRANSFER - employee channel is EMPLOYEE, customer channel is WEB")
     void createTransaction_transfer_shouldUseCorrectChannel_basedOnCallerRole() {
-        Account from = makeAccount(10L, employee, AccountType.CHECKING,
+        Account from = makeAccount(FROM_IBAN, employee, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        Account to = makeAccount(20L, customer, AccountType.CHECKING,
+        Account to = makeAccount(TO_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = transferRequest(10L, null, "NL91INHO0417164300", 100.0);
+        TransactionRequest request = transferRequest(FROM_IBAN, TO_IBAN, 100.0);
 
         when(userService.getByUsername("employee")).thenReturn(employee);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(from));
-        when(accountRepository.findByIban("NL91INHO0417164300")).thenReturn(Optional.of(to));
-        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(any(), any())).thenReturn(Optional.empty());
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(from));
+        when(accountRepository.findByIban(TO_IBAN)).thenReturn(Optional.of(to));
+        when(dailyTransferUsageRepository.findByAccountIbanAndUsageDate(any(), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
             Transaction saved = inv.getArgument(0);
@@ -390,13 +358,13 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() DEPOSIT - should credit account and save transaction")
     void createTransaction_deposit_shouldCreditAccountAndSaveTransaction() {
-        Account account = makeAccount(10L, customer, AccountType.CHECKING,
+        Account account = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = depositRequest(10L, 200.0);
+        TransactionRequest request = depositRequest(FROM_IBAN, 200.0);
 
         when(userService.getByUsername("employee")).thenReturn(employee);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
-        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any())).thenReturn(Optional.empty());
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(account));
+        when(dailyTransferUsageRepository.findByAccountIbanAndUsageDate(eq(account.getIban()), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionMapper.toSingleAccountResult(any(Transaction.class), eq(account)))
@@ -412,24 +380,24 @@ class TransactionServiceTest {
     // --- DEPOSIT validation failures ---
 
     @Test
-    @DisplayName("createTransaction() DEPOSIT - should propagate IllegalArgumentException from policy when accountId is null")
-    void createTransaction_deposit_shouldPropagateException_whenAccountIdIsNull() {
+    @DisplayName("createTransaction() DEPOSIT - should propagate IllegalArgumentException from policy when iban is null")
+    void createTransaction_deposit_shouldPropagateException_whenIbanIsNull() {
         TransactionRequest request = depositRequest(null, 100.0);
         when(userService.getByUsername("employee")).thenReturn(employee);
-        doThrow(new IllegalArgumentException("accountId is required for DEPOSIT"))
-                .when(transactionPolicy).requireAccountId(eq(request), eq("DEPOSIT"));
+        doThrow(new IllegalArgumentException("iban is required for DEPOSIT"))
+                .when(transactionPolicy).requireIban(eq(request), eq("DEPOSIT"));
 
         assertThatThrownBy(() -> transactionService.createTransaction(request, "employee"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("accountId");
+                .hasMessageContaining("iban");
     }
 
     @Test
     @DisplayName("createTransaction() DEPOSIT - should throw EntityNotFoundException when account does not exist")
     void createTransaction_deposit_shouldThrowEntityNotFoundException_whenAccountNotFound() {
-        TransactionRequest request = depositRequest(99L, 100.0);
+        TransactionRequest request = depositRequest(MISSING_IBAN, 100.0);
         when(userService.getByUsername("employee")).thenReturn(employee);
-        when(accountRepository.findById(99L)).thenReturn(Optional.empty());
+        when(accountRepository.findById(MISSING_IBAN)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> transactionService.createTransaction(request, "employee"))
                 .isInstanceOf(EntityNotFoundException.class)
@@ -439,12 +407,12 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() DEPOSIT - should propagate IllegalArgumentException from policy when account is inactive")
     void createTransaction_deposit_shouldPropagateException_whenAccountIsInactive() {
-        Account inactiveAccount = makeAccount(10L, customer, AccountType.CHECKING,
+        Account inactiveAccount = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), false);
-        TransactionRequest request = depositRequest(10L, 100.0);
+        TransactionRequest request = depositRequest(FROM_IBAN, 100.0);
 
         when(userService.getByUsername("employee")).thenReturn(employee);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(inactiveAccount));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(inactiveAccount));
         doThrow(new IllegalArgumentException("Account is not active"))
                 .when(transactionPolicy).validateActiveAccount(eq(inactiveAccount), anyString());
 
@@ -456,12 +424,12 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() DEPOSIT - should propagate IllegalArgumentException from policy when daily limit is exceeded")
     void createTransaction_deposit_shouldPropagateException_whenDailyLimitIsExceeded() {
-        Account account = makeAccount(10L, customer, AccountType.CHECKING,
+        Account account = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("300.00"), true);
-        TransactionRequest request = depositRequest(10L, 200.0);
+        TransactionRequest request = depositRequest(FROM_IBAN, 200.0);
 
         when(userService.getByUsername("employee")).thenReturn(employee);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(account));
         doThrow(new IllegalArgumentException("Daily transfer limit exceeded"))
                 .when(transactionPolicy).checkDailyLimit(eq(account), any(BigDecimal.class));
 
@@ -475,13 +443,13 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() WITHDRAWAL - should debit account and save transaction")
     void createTransaction_withdrawal_shouldDebitAccountAndSaveTransaction() {
-        Account account = makeAccount(10L, customer, AccountType.CHECKING,
+        Account account = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = withdrawalRequest(10L, 100.0);
+        TransactionRequest request = withdrawalRequest(FROM_IBAN, 100.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
-        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any())).thenReturn(Optional.empty());
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(account));
+        when(dailyTransferUsageRepository.findByAccountIbanAndUsageDate(eq(account.getIban()), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionMapper.toSingleAccountResult(any(Transaction.class), eq(account)))
@@ -497,27 +465,27 @@ class TransactionServiceTest {
     // --- WITHDRAWAL validation failures ---
 
     @Test
-    @DisplayName("createTransaction() WITHDRAWAL - should propagate IllegalArgumentException from policy when accountId is null")
-    void createTransaction_withdrawal_shouldPropagateException_whenAccountIdIsNull() {
+    @DisplayName("createTransaction() WITHDRAWAL - should propagate IllegalArgumentException from policy when iban is null")
+    void createTransaction_withdrawal_shouldPropagateException_whenIbanIsNull() {
         TransactionRequest request = withdrawalRequest(null, 100.0);
         when(userService.getByUsername("customer")).thenReturn(customer);
-        doThrow(new IllegalArgumentException("accountId is required for WITHDRAWAL"))
-                .when(transactionPolicy).requireAccountId(eq(request), eq("WITHDRAWAL"));
+        doThrow(new IllegalArgumentException("iban is required for WITHDRAWAL"))
+                .when(transactionPolicy).requireIban(eq(request), eq("WITHDRAWAL"));
 
         assertThatThrownBy(() -> transactionService.createTransaction(request, "customer"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("accountId");
+                .hasMessageContaining("iban");
     }
 
     @Test
     @DisplayName("createTransaction() WITHDRAWAL - should propagate ForbiddenException from policy when customer withdraws from another customer's account")
     void createTransaction_withdrawal_shouldPropagateForbiddenException_whenCustomerWithdrawsFromForeignAccount() {
-        Account foreignAccount = makeAccount(10L, otherCustomer, AccountType.CHECKING,
+        Account foreignAccount = makeAccount(FROM_IBAN, otherCustomer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = withdrawalRequest(10L, 100.0);
+        TransactionRequest request = withdrawalRequest(FROM_IBAN, 100.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(foreignAccount));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(foreignAccount));
         doThrow(new ForbiddenException("You can only withdraw from your own accounts"))
                 .when(transactionPolicy).validateAccountOwnership(eq(foreignAccount), eq(customer), anyString());
 
@@ -529,12 +497,12 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() WITHDRAWAL - should propagate IllegalArgumentException from policy when balance is insufficient")
     void createTransaction_withdrawal_shouldPropagateException_whenBalanceIsInsufficient() {
-        Account account = makeAccount(10L, customer, AccountType.CHECKING,
+        Account account = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
-        TransactionRequest request = withdrawalRequest(10L, 150.0);
+        TransactionRequest request = withdrawalRequest(FROM_IBAN, 150.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(account));
         doThrow(new IllegalArgumentException("Insufficient funds"))
                 .when(transactionPolicy).checkBalance(eq(account), any(BigDecimal.class));
 
@@ -546,12 +514,12 @@ class TransactionServiceTest {
     @Test
     @DisplayName("createTransaction() WITHDRAWAL - should propagate IllegalArgumentException from policy when daily limit is exceeded")
     void createTransaction_withdrawal_shouldPropagateException_whenDailyLimitIsExceeded() {
-        Account account = makeAccount(10L, customer, AccountType.CHECKING,
+        Account account = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("300.00"), true);
-        TransactionRequest request = withdrawalRequest(10L, 200.0);
+        TransactionRequest request = withdrawalRequest(FROM_IBAN, 200.0);
 
         when(userService.getByUsername("customer")).thenReturn(customer);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(account));
         doThrow(new IllegalArgumentException("Daily transfer limit exceeded"))
                 .when(transactionPolicy).checkDailyLimit(eq(account), any(BigDecimal.class));
 
@@ -575,12 +543,11 @@ class TransactionServiceTest {
         return user;
     }
 
-    private Account makeAccount(Long id, User owner, AccountType type, BigDecimal balance,
+    private Account makeAccount(String iban, User owner, AccountType type, BigDecimal balance,
                                 BigDecimal absLimit, BigDecimal dailyLimit, boolean active) {
         Account account = new Account();
-        account.setId(id);
+        account.setIban(iban);
         account.setCustomer(owner);
-        account.setIban("NL91INHO0417164" + String.format("%03d", id));
         account.setAccountType(type);
         account.setBalance(balance);
         account.setAbsoluteTransferLimit(absLimit);
@@ -590,30 +557,29 @@ class TransactionServiceTest {
         return account;
     }
 
-    private TransactionRequest transferRequest(Long fromId, Long toId, String toIban, double amount) {
+    private TransactionRequest transferRequest(String fromIban, String toIban, double amount) {
         TransactionRequest r = new TransactionRequest();
         r.setType(TransactionType.TRANSFER);
-        r.setFromAccountId(fromId);
-        r.setToAccountId(toId);
+        r.setFromIban(fromIban);
         r.setToIban(toIban);
         r.setAmount(amount);
         r.setDescription("Test transfer");
         return r;
     }
 
-    private TransactionRequest depositRequest(Long accountId, double amount) {
+    private TransactionRequest depositRequest(String iban, double amount) {
         TransactionRequest r = new TransactionRequest();
         r.setType(TransactionType.DEPOSIT);
-        r.setAccountId(accountId);
+        r.setIban(iban);
         r.setAmount(amount);
         r.setDescription("Test deposit");
         return r;
     }
 
-    private TransactionRequest withdrawalRequest(Long accountId, double amount) {
+    private TransactionRequest withdrawalRequest(String iban, double amount) {
         TransactionRequest r = new TransactionRequest();
         r.setType(TransactionType.WITHDRAWAL);
-        r.setAccountId(accountId);
+        r.setIban(iban);
         r.setAmount(amount);
         r.setDescription("Test withdrawal");
         return r;

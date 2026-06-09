@@ -45,7 +45,6 @@ public class TransactionSpecification {
     private static void addPartyPredicates(List<Predicate> predicates, Root<Transaction> root,
                                            TransactionFilterParams params, CriteriaBuilder cb) {
         boolean needsJoins = params.getUserId() != null
-                || params.getAccountId() != null
                 || params.getIban() != null;
 
         if (!needsJoins) return;
@@ -59,12 +58,6 @@ public class TransactionSpecification {
             predicates.add(cb.or(
                     cb.equal(from.get("customer").get("id"), params.getUserId()),
                     cb.equal(to.get("customer").get("id"), params.getUserId())
-            ));
-        }
-        if (params.getAccountId() != null) {
-            predicates.add(cb.or(
-                    cb.equal(from.get("id"), params.getAccountId()),
-                    cb.equal(to.get("id"), params.getAccountId())
             ));
         }
         if (params.getIban() != null) {

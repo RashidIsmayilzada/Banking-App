@@ -10,10 +10,8 @@ import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
-import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
-import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,14 +39,12 @@ import static org.mockito.Mockito.*;
 class AccountServiceTest {
 
     @Mock private AccountRepository accountRepository;
-    @Mock private UserRepository userRepository;
     @Mock private AccountMapper accountMapper;
     @Mock private AccountPolicy accountPolicy;
 
     @InjectMocks private AccountService accountService;
 
     private User customer;
-    private User employee;
     private Account account;
     private AccountResponse accountResponse;
     private Pageable pageable;
@@ -58,15 +54,8 @@ class AccountServiceTest {
         customer = new User();
         customer.setId(1L);
         customer.setUsername("customer");
-        customer.setRole(Role.CUSTOMER);
-
-        employee = new User();
-        employee.setId(2L);
-        employee.setUsername("employee");
-        employee.setRole(Role.EMPLOYEE);
 
         account = new Account();
-        account.setId(10L);
         account.setCustomer(customer);
         account.setIban("NL91ABNA0417164300");
         account.setAccountType(AccountType.CHECKING);
@@ -77,7 +66,6 @@ class AccountServiceTest {
         account.setCreatedAt(LocalDateTime.now());
 
         accountResponse = AccountResponse.builder()
-                .accountId(10L)
                 .ownerId(1L)
                 .ownerUsername("customer")
                 .iban("NL91ABNA0417164300")
@@ -95,31 +83,14 @@ class AccountServiceTest {
     // --- listAccounts ---
 
     @Test
-    @DisplayName("listAccounts() - should return only own accounts when user is CUSTOMER")
-    void listAccounts_shouldReturnOwnAccounts_whenUserIsCustomer() {
+    @DisplayName("listAccounts() - should return all accounts when customerId is null")
+    void listAccounts_shouldReturnAllAccounts_whenCustomerIdIsNull() {
         Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
 
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
-        when(accountRepository.findByCustomerId(1L, pageable)).thenReturn(page);
-        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
-
-        AccountListResponse result = accountService.listAccounts(null, "customer", pageable);
-
-        assertThat(result.getAccounts()).hasSize(1);
-        verify(accountRepository).findByCustomerId(1L, pageable);
-        verify(accountRepository, never()).findAll(any(Pageable.class));
-    }
-
-    @Test
-    @DisplayName("listAccounts() - should return all accounts when user is EMPLOYEE and no userId filter")
-    void listAccounts_shouldReturnAllAccounts_whenEmployeeNoFilter() {
-        Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
-
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
         when(accountRepository.findAll(pageable)).thenReturn(page);
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
-        AccountListResponse result = accountService.listAccounts(null, "employee", pageable);
+        AccountListResponse result = accountService.listAccounts(null, pageable);
 
         assertThat(result.getAccounts()).hasSize(1);
         verify(accountRepository).findAll(pageable);
@@ -127,45 +98,35 @@ class AccountServiceTest {
     }
 
     @Test
-    @DisplayName("listAccounts() - should filter by userId when user is EMPLOYEE and userId is provided")
-    void listAccounts_shouldFilterByUserId_whenEmployeeWithFilter() {
+    @DisplayName("listAccounts() - should filter by customerId when provided")
+    void listAccounts_shouldFilterByCustomerId_whenProvided() {
         Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
 
-        when(userRepository.findByUsername("employee")).thenReturn(Optional.of(employee));
         when(accountRepository.findByCustomerId(1L, pageable)).thenReturn(page);
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
-        AccountListResponse result = accountService.listAccounts(1L, "employee", pageable);
+        AccountListResponse result = accountService.listAccounts(1L, pageable);
 
         assertThat(result.getAccounts()).hasSize(1);
         verify(accountRepository).findByCustomerId(1L, pageable);
-    }
-
-    @Test
-    @DisplayName("listAccounts() - should ignore userId param and use own id when user is CUSTOMER")
-    void listAccounts_shouldIgnoreUserId_whenUserIsCustomer() {
-        Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
-
-        when(userRepository.findByUsername("customer")).thenReturn(Optional.of(customer));
-        when(accountRepository.findByCustomerId(1L, pageable)).thenReturn(page);
-        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
-
-        AccountListResponse result = accountService.listAccounts(99L, "customer", pageable);
-
-        assertThat(result.getAccounts()).hasSize(1);
-        verify(accountRepository).findByCustomerId(1L, pageable);
-        verify(accountRepository, never()).findByCustomerId(eq(99L), any());
         verify(accountRepository, never()).findAll(any(Pageable.class));
     }
 
-    @Test
-    @DisplayName("listAccounts() - should throw EntityNotFoundException when user not found")
-    void listAccounts_shouldThrow_whenUserNotFound() {
-        when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
+    // --- listAccountsOwnedBy ---
 
-        assertThatThrownBy(() -> accountService.listAccounts(null, "unknown", pageable))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("User not found");
+    @Test
+    @DisplayName("listAccountsOwnedBy() - should return the accounts owned by the given username")
+    void listAccountsOwnedBy_shouldReturnAccountsForUsername() {
+        Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
+
+        when(accountRepository.findByCustomerUsername("customer", pageable)).thenReturn(page);
+        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
+
+        AccountListResponse result = accountService.listAccountsOwnedBy("customer", pageable);
+
+        assertThat(result.getAccounts()).hasSize(1);
+        verify(accountRepository).findByCustomerUsername("customer", pageable);
+        verify(accountRepository, never()).findAll(any(Pageable.class));
     }
 
     // --- getAccount ---
@@ -173,21 +134,20 @@ class AccountServiceTest {
     @Test
     @DisplayName("getAccount() - should return account response when account exists")
     void getAccount_shouldReturnResponse_whenAccountExists() {
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL91ABNA0417164300")).thenReturn(Optional.of(account));
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
-        AccountResponse result = accountService.getAccount(10L);
+        AccountResponse result = accountService.getAccount("NL91ABNA0417164300");
 
-        assertThat(result.getAccountId()).isEqualTo(10L);
         assertThat(result.getIban()).isEqualTo("NL91ABNA0417164300");
     }
 
     @Test
     @DisplayName("getAccount() - should throw EntityNotFoundException when account not found")
     void getAccount_shouldThrow_whenAccountNotFound() {
-        when(accountRepository.findById(99L)).thenReturn(Optional.empty());
+        when(accountRepository.findById("NL00BANK0000000000")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> accountService.getAccount(99L))
+        assertThatThrownBy(() -> accountService.getAccount("NL00BANK0000000000"))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Account not found");
     }
@@ -201,13 +161,32 @@ class AccountServiceTest {
         request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
         request.setDailyTransferLimit(new BigDecimal("3000.00"));
 
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL91ABNA0417164300")).thenReturn(Optional.of(account));
         when(accountRepository.save(account)).thenReturn(account);
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
-        AccountResponse result = accountService.updateAccount(10L, request);
+        AccountResponse result = accountService.updateAccount("NL91ABNA0417164300", request);
 
         assertThat(result).isNotNull();
+        assertThat(account.getAbsoluteTransferLimit()).isEqualByComparingTo("8000.00");
+        assertThat(account.getDailyTransferLimit()).isEqualByComparingTo("3000.00");
+        verify(accountRepository).save(account);
+    }
+
+    @Test
+    @DisplayName("updateAccount() - should update only the provided limit and leave the other unchanged")
+    void updateAccount_shouldUpdateOnlyProvidedLimit_whenOtherIsNull() {
+        AccountUpdateRequest request = new AccountUpdateRequest();
+        request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
+
+        when(accountRepository.findById("NL91ABNA0417164300")).thenReturn(Optional.of(account));
+        when(accountRepository.save(account)).thenReturn(account);
+        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
+
+        accountService.updateAccount("NL91ABNA0417164300", request);
+
+        assertThat(account.getAbsoluteTransferLimit()).isEqualByComparingTo("8000.00");
+        assertThat(account.getDailyTransferLimit()).isEqualByComparingTo("2000.00");
         verify(accountRepository).save(account);
     }
 
@@ -217,11 +196,11 @@ class AccountServiceTest {
         AccountUpdateRequest request = new AccountUpdateRequest();
         request.setStatus(AccountStatus.CLOSED);
 
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL91ABNA0417164300")).thenReturn(Optional.of(account));
         when(accountRepository.save(account)).thenReturn(account);
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
-        accountService.updateAccount(10L, request);
+        accountService.updateAccount("NL91ABNA0417164300", request);
 
         assertThat(account.getStatus()).isEqualTo(AccountStatus.CLOSED);
         assertThat(account.getClosedAt()).isNotNull();
@@ -233,9 +212,9 @@ class AccountServiceTest {
     void updateAccount_shouldThrow_whenAccountNotFound() {
         AccountUpdateRequest request = new AccountUpdateRequest();
 
-        when(accountRepository.findById(99L)).thenReturn(Optional.empty());
+        when(accountRepository.findById("NL00BANK0000000000")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> accountService.updateAccount(99L, request))
+        assertThatThrownBy(() -> accountService.updateAccount("NL00BANK0000000000", request))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Account not found");
     }
@@ -246,11 +225,11 @@ class AccountServiceTest {
         AccountUpdateRequest request = new AccountUpdateRequest();
         request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
 
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL91ABNA0417164300")).thenReturn(Optional.of(account));
         doThrow(new AccountStateException("Cannot update a closed account"))
                 .when(accountPolicy).assertCanUpdateLimits(account);
 
-        assertThatThrownBy(() -> accountService.updateAccount(10L, request))
+        assertThatThrownBy(() -> accountService.updateAccount("NL91ABNA0417164300", request))
                 .isInstanceOf(AccountStateException.class)
                 .hasMessageContaining("closed");
 

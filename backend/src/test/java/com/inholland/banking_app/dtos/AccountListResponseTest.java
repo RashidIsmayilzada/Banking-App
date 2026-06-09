@@ -64,7 +64,6 @@ class AccountListResponseTest {
 
     private AccountResponse buildAccountResponse(BigDecimal balance) {
         return AccountResponse.builder()
-                .accountId(1L)
                 .ownerId(1L)
                 .ownerUsername("customer")
                 .iban("NL91ABNA0417164300")

@@ -88,6 +88,16 @@ class AccountRepositoryTest {
         assertThat(result.getTotalElements()).isZero();
     }
 
+    @Test
+    @DisplayName("findByCustomerUsername() - should return only accounts belonging to the given username")
+    void findByCustomerUsername_shouldReturnOnlyThatCustomersAccounts() {
+        Page<Account> result = accountRepository.findByCustomerUsername("customer1", PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent())
+                .allMatch(a -> a.getCustomer().getUsername().equals("customer1"));
+    }
+
     private Account buildAccount(User customer, String iban) {
         Account account = new Account();
         account.setCustomer(customer);

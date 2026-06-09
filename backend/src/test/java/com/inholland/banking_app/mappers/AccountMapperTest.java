@@ -28,7 +28,6 @@ class AccountMapperTest {
         LocalDateTime closedAt = LocalDateTime.of(2025, 5, 20, 14, 30);
 
         Account account = new Account();
-        account.setId(10L);
         account.setCustomer(owner);
         account.setIban("NL91ABNA0417164300");
         account.setAccountType(AccountType.CHECKING);
@@ -41,7 +40,6 @@ class AccountMapperTest {
 
         AccountResponse result = accountMapper.toResponse(account);
 
-        assertThat(result.getAccountId()).isEqualTo(10L);
         assertThat(result.getOwnerId()).isEqualTo(1L);
         assertThat(result.getOwnerUsername()).isEqualTo("customer");
         assertThat(result.getIban()).isEqualTo("NL91ABNA0417164300");
@@ -63,7 +61,6 @@ class AccountMapperTest {
         owner.setUsername("customer");
 
         Account account = new Account();
-        account.setId(10L);
         account.setCustomer(owner);
         account.setIban("NL91ABNA0417164300");
         account.setAccountType(AccountType.SAVINGS);

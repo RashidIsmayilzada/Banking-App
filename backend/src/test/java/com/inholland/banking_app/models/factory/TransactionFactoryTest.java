@@ -33,8 +33,8 @@ class TransactionFactoryTest {
         initiator.setCreatedAt(LocalDateTime.now());
         initiator.setUpdatedAt(LocalDateTime.now());
 
-        accountA = makeAccount(10L, "NL91INHO0417164300");
-        accountB = makeAccount(20L, "NL91INHO0417164301");
+        accountA = makeAccount("NL91INHO0417164300");
+        accountB = makeAccount("NL91INHO0417164301");
     }
 
     // --- createTransfer ---
@@ -150,9 +150,8 @@ class TransactionFactoryTest {
 
     // --- helper ---
 
-    private Account makeAccount(Long id, String iban) {
+    private Account makeAccount(String iban) {
         Account account = new Account();
-        account.setId(id);
         account.setIban(iban);
         account.setAccountType(AccountType.CHECKING);
         account.setBalance(new BigDecimal("500.00"));

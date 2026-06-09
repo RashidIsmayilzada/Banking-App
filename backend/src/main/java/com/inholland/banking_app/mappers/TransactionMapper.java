@@ -78,7 +78,6 @@ public class TransactionMapper {
                 .map(p -> p.getFirstName() + " " + p.getLastName())
                 .orElse(account.getCustomer().getUsername());
         return TransactionPartyDto.builder()
-                .accountId(account.getId())
                 .iban(account.getIban())
                 .name(name)
                 .userId(account.getCustomer().getId())

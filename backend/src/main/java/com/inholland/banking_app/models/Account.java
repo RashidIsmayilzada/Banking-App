@@ -1,14 +1,11 @@
 package com.inholland.banking_app.models;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -30,19 +27,15 @@ import java.time.LocalDateTime;
 public class Account {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 34)
+    private String iban;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "customer_user_id", nullable = false)
     private User customer;
 
-    @Column(nullable = false, unique = true, length = 34)
-    private String iban;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "account_type", nullable = false, length = 20)
-    @JsonIgnore
     private AccountType accountType;
 
     @Column(nullable = false, precision = 15, scale = 2)
@@ -64,29 +57,4 @@ public class Account {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
-    public boolean hasSufficientBalance(BigDecimal amount) {
-        return balance.subtract(amount).compareTo(absoluteTransferLimit) >= 0;
-    }
-
-    public boolean isClosed() {
-        return this.status == AccountStatus.CLOSED;
-    }
-
-    public boolean isActive() {
-        return this.status == AccountStatus.ACTIVE;
-    }
-
-    public void applyLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
-        if (absoluteLimit != null) {
-            this.absoluteTransferLimit = absoluteLimit;
-        }
-        if (dailyLimit != null) {
-            this.dailyTransferLimit = dailyLimit;
-        }
-    }
-
-    public void markClosed() {
-        this.status = AccountStatus.CLOSED;
-        this.closedAt = LocalDateTime.now();
-    }
 }

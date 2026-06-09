@@ -71,12 +71,10 @@ class TransactionEndToEndTest {
     private static final String PASSWORD = "Test1234!@#$";
 
     // Customer A — the primary actor in most tests
-    private Long customerAAccountId;
     private String customerAIban;
     private String customerAToken;
 
     // Customer B — transfer recipient
-    private Long customerBAccountId;
     private String customerBIban;
     private String customerBToken;
 
@@ -88,7 +86,6 @@ class TransactionEndToEndTest {
         createCustomerProfile(customerA, "Txn", "CustomerA", "400500600", "+31640050060");
         Account accountA = createCheckingAccount(customerA, "NL91INHO0200000001",
                 new BigDecimal("5000.00"), BigDecimal.ZERO, new BigDecimal("10000.00"));
-        customerAAccountId = accountA.getId();
         customerAIban = accountA.getIban();
         customerAToken = login("txn-customer-a@test.com");
 
@@ -96,7 +93,6 @@ class TransactionEndToEndTest {
         createCustomerProfile(customerB, "Txn", "CustomerB", "700800900", "+31670080090");
         Account accountB = createCheckingAccount(customerB, "NL91INHO0200000002",
                 new BigDecimal("3000.00"), BigDecimal.ZERO, new BigDecimal("10000.00"));
-        customerBAccountId = accountB.getId();
         customerBIban = accountB.getIban();
         customerBToken = login("txn-customer-b@test.com");
     }
@@ -119,11 +115,11 @@ class TransactionEndToEndTest {
         String body = """
                 {
                   "type": "DEPOSIT",
-                  "accountId": %d,
+                  "iban": "%s",
                   "amount": 200.0,
                   "description": "Test deposit"
                 }
-                """.formatted(customerAAccountId);
+                """.formatted(customerAIban);
 
         mockMvc.perform(post("/transactions")
                         .header("Authorization", "Bearer " + customerAToken)
@@ -133,7 +129,7 @@ class TransactionEndToEndTest {
                 .andExpect(jsonPath("$.transaction.transactionType").value("DEPOSIT"))
                 .andExpect(jsonPath("$.transaction.amount.amount").value(200.0));
 
-        BigDecimal newBalance = accountRepository.findById(customerAAccountId)
+        BigDecimal newBalance = accountRepository.findById(customerAIban)
                 .orElseThrow().getBalance();
         assertThat(newBalance).isEqualByComparingTo("5200.00");
     }
@@ -146,11 +142,11 @@ class TransactionEndToEndTest {
         String body = """
                 {
                   "type": "WITHDRAWAL",
-                  "accountId": %d,
+                  "iban": "%s",
                   "amount": 300.0,
                   "description": "Test withdrawal"
                 }
-                """.formatted(customerAAccountId);
+                """.formatted(customerAIban);
 
         mockMvc.perform(post("/transactions")
                         .header("Authorization", "Bearer " + customerAToken)
@@ -160,7 +156,7 @@ class TransactionEndToEndTest {
                 .andExpect(jsonPath("$.transaction.transactionType").value("WITHDRAWAL"))
                 .andExpect(jsonPath("$.transaction.amount.amount").value(300.0));
 
-        BigDecimal newBalance = accountRepository.findById(customerAAccountId)
+        BigDecimal newBalance = accountRepository.findById(customerAIban)
                 .orElseThrow().getBalance();
         assertThat(newBalance).isEqualByComparingTo("4700.00");
     }
@@ -171,11 +167,11 @@ class TransactionEndToEndTest {
         String body = """
                 {
                   "type": "WITHDRAWAL",
-                  "accountId": %d,
+                  "iban": "%s",
                   "amount": 99999.0,
                   "description": "Too much"
                 }
-                """.formatted(customerAAccountId);
+                """.formatted(customerAIban);
 
         mockMvc.perform(post("/transactions")
                         .header("Authorization", "Bearer " + customerAToken)
@@ -190,11 +186,11 @@ class TransactionEndToEndTest {
         String body = """
                 {
                   "type": "WITHDRAWAL",
-                  "accountId": %d,
+                  "iban": "%s",
                   "amount": 50.0,
                   "description": "Unauthorized withdrawal"
                 }
-                """.formatted(customerBAccountId);
+                """.formatted(customerBIban);
 
         mockMvc.perform(post("/transactions")
                         .header("Authorization", "Bearer " + customerAToken)
@@ -211,12 +207,12 @@ class TransactionEndToEndTest {
         String body = """
                 {
                   "type": "TRANSFER",
-                  "fromAccountId": %d,
+                  "fromIban": "%s",
                   "toIban": "%s",
                   "amount": 500.0,
                   "description": "Test transfer"
                 }
-                """.formatted(customerAAccountId, customerBIban);
+                """.formatted(customerAIban, customerBIban);
 
         mockMvc.perform(post("/transactions")
                         .header("Authorization", "Bearer " + customerAToken)
@@ -228,9 +224,9 @@ class TransactionEndToEndTest {
                 .andExpect(jsonPath("$.sourceBalance.amount").value(4500.0))
                 .andExpect(jsonPath("$.destinationBalance.amount").value(3500.0));
 
-        assertThat(accountRepository.findById(customerAAccountId).orElseThrow().getBalance())
+        assertThat(accountRepository.findById(customerAIban).orElseThrow().getBalance())
                 .isEqualByComparingTo("4500.00");
-        assertThat(accountRepository.findById(customerBAccountId).orElseThrow().getBalance())
+        assertThat(accountRepository.findById(customerBIban).orElseThrow().getBalance())
                 .isEqualByComparingTo("3500.00");
     }
 
@@ -240,12 +236,12 @@ class TransactionEndToEndTest {
         String body = """
                 {
                   "type": "TRANSFER",
-                  "fromAccountId": %d,
+                  "fromIban": "%s",
                   "toIban": "%s",
                   "amount": 100.0,
                   "description": "Unauthorized transfer"
                 }
-                """.formatted(customerBAccountId, customerAIban);
+                """.formatted(customerBIban, customerAIban);
 
         mockMvc.perform(post("/transactions")
                         .header("Authorization", "Bearer " + customerAToken)
@@ -260,12 +256,12 @@ class TransactionEndToEndTest {
         String body = """
                 {
                   "type": "TRANSFER",
-                  "fromAccountId": %d,
+                  "fromIban": "%s",
                   "toIban": "%s",
                   "amount": 99999.0,
                   "description": "Too much"
                 }
-                """.formatted(customerAAccountId, customerBIban);
+                """.formatted(customerAIban, customerBIban);
 
         mockMvc.perform(post("/transactions")
                         .header("Authorization", "Bearer " + customerAToken)
@@ -283,16 +279,16 @@ class TransactionEndToEndTest {
         mockMvc.perform(post("/transactions")
                         .header("Authorization", "Bearer " + customerAToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"DEPOSIT\",\"accountId\":%d,\"amount\":100.0,\"description\":\"A deposit\"}"
-                                .formatted(customerAAccountId)))
+                        .content("{\"type\":\"DEPOSIT\",\"iban\":\"%s\",\"amount\":100.0,\"description\":\"A deposit\"}"
+                                .formatted(customerAIban)))
                 .andExpect(status().isCreated());
 
         // Customer B makes a deposit
         mockMvc.perform(post("/transactions")
                         .header("Authorization", "Bearer " + customerBToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"DEPOSIT\",\"accountId\":%d,\"amount\":50.0,\"description\":\"B deposit\"}"
-                                .formatted(customerBAccountId)))
+                        .content("{\"type\":\"DEPOSIT\",\"iban\":\"%s\",\"amount\":50.0,\"description\":\"B deposit\"}"
+                                .formatted(customerBIban)))
                 .andExpect(status().isCreated());
 
         // Customer A should only see their own transaction

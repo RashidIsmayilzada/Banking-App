@@ -3,6 +3,7 @@ package com.inholland.banking_app.controllers;
 import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
+import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.services.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,26 +27,30 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountController {
 
     private final AccountService accountService;
+    private final AccountPolicy accountPolicy;
 
     @GetMapping
     public ResponseEntity<AccountListResponse> listAccounts(
             @RequestParam(required = false) Long userId,
             Pageable pageable,
             Authentication authentication) {
-        return ResponseEntity.ok(accountService.listAccounts(userId, authentication.getName(), pageable));
+        AccountListResponse body = accountPolicy.isEmployee(authentication)
+                ? accountService.listAccounts(userId, pageable)
+                : accountService.listAccountsOwnedBy(authentication.getName(), pageable);
+        return ResponseEntity.ok(body);
     }
 
-    @GetMapping("/{accountId}")
+    @GetMapping("/{iban}")
     @PostAuthorize("hasRole('EMPLOYEE') or returnObject.body.ownerUsername == authentication.name")
-    public ResponseEntity<AccountResponse> getAccount(@PathVariable Long accountId) {
-        return ResponseEntity.ok(accountService.getAccount(accountId));
+    public ResponseEntity<AccountResponse> getAccount(@PathVariable String iban) {
+        return ResponseEntity.ok(accountService.getAccount(iban));
     }
 
-    @PatchMapping("/{accountId}")
+    @PatchMapping("/{iban}")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<AccountResponse> updateAccount(
-            @PathVariable Long accountId,
+            @PathVariable String iban,
             @Valid @RequestBody AccountUpdateRequest request) {
-        return ResponseEntity.ok(accountService.updateAccount(accountId, request));
+        return ResponseEntity.ok(accountService.updateAccount(iban, request));
     }
 }

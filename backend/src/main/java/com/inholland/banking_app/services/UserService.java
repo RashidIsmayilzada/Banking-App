@@ -142,12 +142,12 @@ public class UserService {
         }
     }
 
-    public BigDecimal getDailyOutgoingAmount(Long accountId) {
+    public BigDecimal getDailyOutgoingAmount(String iban) {
         LocalDate startOfDay = LocalDate.now();
         LocalDate endOfDay = LocalDate.now();
 
         return transactionRepository
-                .sumOutgoingAmountByAccountIdAndDate(accountId, startOfDay, endOfDay);
+                .sumOutgoingAmountByAccountIbanAndDate(iban, startOfDay, endOfDay);
     }
 
     private void createDefaultAccounts(User user) {

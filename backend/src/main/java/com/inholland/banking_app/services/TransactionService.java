@@ -71,8 +71,9 @@ public class TransactionService {
         // Validates transfer fields, resolves both accounts, moves funds, and persists the transaction
         transactionPolicy.validateTransferFields(request);
 
-        Account from = resolveSourceAccount(request.getFromAccountId(), currentUser);
-        Account to = resolveDestinationAccount(request, currentUser);
+        Account from = resolveSourceAccount(request.getFromIban(), currentUser);
+        Account to = resolveDestinationByIban(request.getToIban());
+        transactionPolicy.validateActiveAccount(to, "Destination account is not active");
         BigDecimal amount = BigDecimal.valueOf(request.getAmount());
 
         applyDebit(from, amount);
@@ -86,9 +87,9 @@ public class TransactionService {
 
     private TransactionResultDto executeDeposit(TransactionRequest request, User currentUser) {
         // Validates the account, credits the balance, and persists the deposit transaction
-        transactionPolicy.requireAccountId(request, "DEPOSIT");
+        transactionPolicy.requireIban(request, "DEPOSIT");
 
-        Account account = resolveActiveAccount(request.getAccountId());
+        Account account = resolveActiveAccount(request.getIban());
         BigDecimal amount = BigDecimal.valueOf(request.getAmount());
 
         applyCredit(account, amount);
@@ -101,9 +102,9 @@ public class TransactionService {
 
     private TransactionResultDto executeWithdrawal(TransactionRequest request, User currentUser) {
         // Validates the account and ownership, debits the balance, and persists the withdrawal transaction
-        transactionPolicy.requireAccountId(request, "WITHDRAWAL");
+        transactionPolicy.requireIban(request, "WITHDRAWAL");
 
-        Account account = resolveActiveAccount(request.getAccountId());
+        Account account = resolveActiveAccount(request.getIban());
         transactionPolicy.validateAccountOwnership(account, currentUser, "You can only withdraw from your own accounts");
         BigDecimal amount = BigDecimal.valueOf(request.getAmount());
 
@@ -117,30 +118,13 @@ public class TransactionService {
 
     // account resolution methods throw EntityNotFoundException if the specified account doesn't exist,
 
-    private Account resolveSourceAccount(Long id, User currentUser) {
+    private Account resolveSourceAccount(String iban, User currentUser) {
         // Finds the source account, verifying ownership and that it is an active checking account
-        Account account = accountRepository.findById(id)
+        Account account = accountRepository.findById(iban)
                 .orElseThrow(() -> new EntityNotFoundException("Source account not found"));
         transactionPolicy.validateAccountOwnership(account, currentUser, "You can only transfer from your own accounts");
         transactionPolicy.validateActiveAccount(account, "Source account is not active");
         transactionPolicy.validateCheckingAccount(account);
-        return account;
-    }
-
-    private Account resolveDestinationAccount(TransactionRequest request, User currentUser) {
-        // Resolves the destination account by ID or IBAN and verifies it is active
-        Account account = request.getToAccountId() != null
-                ? resolveDestinationById(request.getToAccountId(), currentUser)
-                : resolveDestinationByIban(request.getToIban());
-        transactionPolicy.validateActiveAccount(account, "Destination account is not active");
-        return account;
-    }
-
-    private Account resolveDestinationById(Long id, User currentUser) {
-        // Finds the destination account by ID; customers may only use this for their own accounts
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Destination account not found"));
-        transactionPolicy.validateAccountOwnership(account, currentUser, "Use toIban to transfer to another customer's account");
         return account;
     }
 
@@ -151,9 +135,9 @@ public class TransactionService {
                         "Destination account not found for IBAN: " + iban));
     }
 
-    private Account resolveActiveAccount(Long id) {
-        // Finds an account by ID and verifies it is active
-        Account account = accountRepository.findById(id)
+    private Account resolveActiveAccount(String iban) {
+        // Finds an account by IBAN and verifies it is active
+        Account account = accountRepository.findById(iban)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
         transactionPolicy.validateActiveAccount(account, "Account is not active");
         return account;
@@ -193,7 +177,7 @@ public class TransactionService {
         // Creates or updates today's daily transfer usage record for the account
         LocalDate today = LocalDate.now();
         DailyTransferUsage usage = dailyTransferUsageRepository
-                .findByAccountIdAndUsageDate(account.getId(), today)
+                .findByAccountIbanAndUsageDate(account.getIban(), today)
                 .orElseGet(() -> DailyTransferUsageFactory.create(account, today));
         usage.setTotalOutgoingAmount(usage.getTotalOutgoingAmount().add(amount));
         usage.setUpdatedAt(LocalDateTime.now());

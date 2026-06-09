@@ -10,7 +10,6 @@ public class AccountMapper {
 
     public AccountResponse toResponse(Account account) {
         return AccountResponse.builder()
-                .accountId(account.getId())
                 .ownerId(account.getCustomer().getId())
                 .ownerUsername(account.getCustomer().getUsername())
                 .iban(account.getIban())

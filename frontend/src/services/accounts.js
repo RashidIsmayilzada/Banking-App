@@ -5,12 +5,12 @@ export function getAccounts(userId) {
   return apiFetch(`/accounts${query}`)
 }
 
-export function getAccount(accountId) {
-  return apiFetch(`/accounts/${accountId}`)
+export function getAccount(iban) {
+  return apiFetch(`/accounts/${iban}`)
 }
 
-export function updateAccount(accountId, data) {
-  return apiFetch(`/accounts/${accountId}`, {
+export function updateAccount(iban, data) {
+  return apiFetch(`/accounts/${iban}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   })
