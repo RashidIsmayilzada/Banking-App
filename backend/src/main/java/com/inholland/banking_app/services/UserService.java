@@ -136,9 +136,10 @@ public class UserService {
         }
         customerProfile.setStatus(approveCustomerRequest.getStatus());
 
-        if (customerProfile.getStatus() == APPROVED) {
+        // Give the customer their default accounts on approval. Guarded so approving an
+        // already-approved customer again doesn't create duplicate accounts.
+        if (customerProfile.getStatus() == APPROVED && user.getAccounts().isEmpty()) {
             createDefaultAccounts(user);
-
         }
     }
 
@@ -162,7 +163,9 @@ public class UserService {
                 ? AccountFactory.createCheckingAccount(user, iban)
                 : AccountFactory.createSavingsAccount(user, iban);
 
-        accountRepository.save(account);
+        // The account is persisted via the User.accounts cascade (CascadeType.ALL).
+        // Saving it explicitly here would merge() a detached copy and clash with the
+        // cascade at flush ("a different object with the same identifier value...").
         user.getAccounts().add(account);
     }
 

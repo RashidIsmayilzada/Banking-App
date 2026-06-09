@@ -90,7 +90,6 @@ const currentUser = ref(null)
 const transactions = ref([])
 const loading = ref(false)
 const pageMeta = ref({ page: 0, size: 8, totalElements: 0, totalPages: 0 })
-const accountIds = computed(() => currentUser.value?.accounts?.map(account => account.id) || [])
 const pageCount = computed(() => {
   if (!pageMeta.value.totalElements) return '0 of 0'
   const start = pageMeta.value.page * pageMeta.value.size + 1

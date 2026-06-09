@@ -36,9 +36,10 @@ const routes = [
   { path: '/pending',  component: PendingView  },
 
   // ── Customer ───────────────────────────────────────
-  { path: '/customer/dashboard',    component: DashboardView     },
-  { path: '/customer/accounts',     component: AccountDetailView },
-  { path: '/customer/transfer',     component: TransferView      },
+  { path: '/customer/dashboard',      component: DashboardView      },
+  { path: '/customer/accounts',       redirect: '/customer/dashboard' },
+  { path: '/customer/accounts/:iban', component: AccountDetailView  },
+  { path: '/customer/transfer',       component: TransferView       },
   { path: '/customer/transactions', component: TransactionsView  },
 
   // ── ATM ────────────────────────────────────────────

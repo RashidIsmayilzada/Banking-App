@@ -153,9 +153,8 @@ async function submitTransfer() {
     return
   }
 
-  // Employees can transfer by IBAN (toIban) — fromAccountId still requires an accounts API
-  if (!fromCustomer.value.accountId) {
-    submitError.value = 'Source account ID unavailable — accounts API pending.'
+  if (!fromCustomer.value.iban) {
+    submitError.value = 'Source account IBAN unavailable.'
     return
   }
 
@@ -163,7 +162,7 @@ async function submitTransfer() {
   try {
     await createTransaction({
       type: 'TRANSFER',
-      fromAccountId: fromCustomer.value.accountId,
+      fromIban: fromCustomer.value.iban.replace(/\s/g, ''),
       toIban: toCustomer.value.iban.replace(/\s/g, ''),
       amount,
       description: form.value.reason,
