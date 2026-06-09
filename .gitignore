@@ -1,0 +1,10 @@
+# IDE / editor
+.idea/
+.vscode/
+
+# GitHub Copilot / tool-generated hooks (not real workflows)
+.github/
+
+# Environment
+.env
+.env.local
