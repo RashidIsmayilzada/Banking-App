@@ -5,8 +5,8 @@
       <span class="spacer" />
       <div class="row" style="gap:8px;position:relative">
         <AppIcon name="search" :size="14" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--ink-faint)" />
-        <input class="input" placeholder="Search name, email, IBAN…" style="width:320px;padding-left:38px" v-model="search" @input="fetchCustomers" />
-        <select class="select" style="width:160px" v-model="statusFilter" @change="fetchCustomers">
+        <input class="input" placeholder="Search name, email, IBAN…" style="width:320px;padding-left:38px" v-model="search" @input="applyFilters" />
+        <select class="select" style="width:160px" v-model="statusFilter" @change="applyFilters">
           <option value="">All statuses</option>
           <option value="APPROVED">Active</option>
           <option value="PENDING_APPROVAL">Pending</option>
@@ -145,6 +145,11 @@ async function fetchCustomers() {
 
 function handlePageChange(newPage) {
   page.value = newPage - 1
+  fetchCustomers()
+}
+
+function applyFilters() {
+  page.value = 0
   fetchCustomers()
 }
 

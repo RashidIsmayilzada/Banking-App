@@ -4,7 +4,7 @@
       <h2 class="t-h2" style="margin:0 0 6px;text-align:center">Welcome.</h2>
       <p class="t-body muted" style="margin:0 0 28px;text-align:center">Sign in to use this ATM.</p>
       <div class="col" style="gap:16px">
-        <AppField label="Email" v-model="form.email" placeholder="jane.doe@example.com" />
+        <AppField label="Email" v-model="form.email" placeholder="name@example.com" />
         <AppField label="Password" v-model="form.password" type="password" placeholder="••••••••" />
         <p v-if="error" style="margin:0;padding:10px 14px;background:var(--red-soft,#fef2f2);color:var(--red,#dc2626);border-radius:8px;font-size:13px">{{ error }}</p>
         <button class="btn btn--primary btn--xl btn--block" style="margin-top:8px" :disabled="loading" @click="handleLogin">

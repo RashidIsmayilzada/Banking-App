@@ -1,3 +1,44 @@
+registerCustomer:
+  post:
+    tags: [Authentication]
+    summary: Register a new customer account
+    operationId: registerCustomer
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/auth.yaml#/CustomerRegistrationRequest
+    responses:
+      '201':
+        description: Customer registered successfully.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/CustomerRegistrationResponse
+      '400':
+        $ref: ../components/schemas/common.yaml#/BadRequest
+      '409':
+        $ref: ../components/schemas/common.yaml#/Conflict
+
+me:
+  get:
+    tags: [Authentication]
+    summary: Get the currently authenticated user's context
+    operationId: getAuthContext
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Auth context returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/AuthContext
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+
 login:
   post:
     tags: [Authentication]
