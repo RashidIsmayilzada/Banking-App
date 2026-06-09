@@ -1,7 +1,7 @@
 const BASE = '/api'
 
 export async function apiFetch(path, options = {}) {
-  const token = sessionStorage.getItem('accessToken')
+  const token = localStorage.getItem('auth_token')
 
   const headers = { 'Content-Type': 'application/json', ...options.headers }
   if (token) headers['Authorization'] = `Bearer ${token}`

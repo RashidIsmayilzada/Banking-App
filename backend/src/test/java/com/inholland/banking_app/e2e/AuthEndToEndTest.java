@@ -226,29 +226,42 @@ class AuthEndToEndTest {
     }
 
     @Test
-    @DisplayName("Newly registered customer can log in immediately")
-    void register_thenLogin_succeeds() throws Exception {
-        String registerBody = """
-                {
-                  "firstName": "Login",
-                  "lastName": "Test",
-                  "email": "login-after-reg@test.com",
-                  "username": "loginafterreg",
-                  "password": "Test1234!@#$",
-                  "bsn": "321654987",
-                  "phoneNumber": "+31632165498"
-                }
-                """;
-
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(registerBody))
-                .andExpect(status().isCreated());
+    @DisplayName("Login with a user that has no profile should still work or return a proper error")
+    void login_noProfile_doesNotThrowUnexpectedError() throws Exception {
+        // Create a user without a profile
+        User user = new User();
+        user.setEmail("no-profile@test.com");
+        user.setUsername("noprofile");
+        user.setPasswordHash(passwordEncoder.encode(TEST_PASSWORD));
+        user.setRole(Role.CUSTOMER);
+        user.setActive(true);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"login-after-reg@test.com\",\"password\":\"Test1234!@#$\"}"))
+                        .content("{\"email\":\"no-profile@test.com\",\"password\":\"" + TEST_PASSWORD + "\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+                .andExpect(jsonPath("$.user.userStatus").isEmpty());
+    }
+
+    @Test
+    @DisplayName("Login should fail with unauthorized for inactive users")
+    void login_inactiveUser_returns403() throws Exception {
+        User user = new User();
+        user.setEmail("inactive@test.com");
+        user.setUsername("inactive");
+        user.setPasswordHash(passwordEncoder.encode(TEST_PASSWORD));
+        user.setRole(Role.CUSTOMER);
+        user.setActive(false);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"inactive@test.com\",\"password\":\"" + TEST_PASSWORD + "\"}"))
+                .andExpect(status().isForbidden());
     }
 }

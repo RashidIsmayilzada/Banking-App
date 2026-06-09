@@ -27,6 +27,7 @@ public class AccountService {
     private final AccountMapper accountMapper;
     private final AccountPolicy accountPolicy;
 
+    @Transactional(readOnly = true)
     public AccountListResponse listAccounts(Long userId, String username, Pageable pageable) {
         User currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -45,6 +46,7 @@ public class AccountService {
         return AccountListResponse.of(responses);
     }
 
+    @Transactional(readOnly = true)
     public AccountResponse getAccount(Long accountId) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));

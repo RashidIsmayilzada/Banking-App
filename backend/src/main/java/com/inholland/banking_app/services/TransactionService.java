@@ -43,6 +43,7 @@ public class TransactionService {
     private final TransactionMapper transactionMapper;
     private final TransactionPolicy transactionPolicy;
 
+    @Transactional(readOnly = true)
     public TransactionPageDto listTransactions(TransactionFilterParams params, String username) {
         // Restricts results to the caller's own transactions if they are a customer, then returns a filtered page
         User currentUser = resolveUser(username);

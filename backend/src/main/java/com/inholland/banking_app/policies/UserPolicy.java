@@ -1,5 +1,6 @@
 package com.inholland.banking_app.policies;
 
+import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.exceptions.DuplicateResourceException;
 import com.inholland.banking_app.exceptions.ForbiddenException;
 import com.inholland.banking_app.models.CustomerProfile;
@@ -10,7 +11,9 @@ import com.inholland.banking_app.repositories.CustomerProfileRepository;
 import com.inholland.banking_app.repositories.EmployeeProfileRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -21,6 +24,7 @@ public class UserPolicy {
     private final UserRepository userRepository;
     private final CustomerProfileRepository customerProfileRepository;
     private final EmployeeProfileRepository employeeProfileRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public void assertUniqueEmail(String email) {
         if (userRepository.existsByEmail(email)) {
@@ -46,6 +50,19 @@ public class UserPolicy {
         }
     }
 
+    public void assertRegistrationRequest(UserRequest request) {
+        assertUniqueEmail(request.getEmail());
+        assertUniqueUsername(request.getUsername());
+        assertPasswordStrength(request.getPassword());
+
+        Role role = request.getRole() == null ? Role.CUSTOMER : request.getRole();
+        if (role == Role.CUSTOMER) {
+            assertUniqueBsn(request.getBsn());
+        } else {
+            assertUniqueEmployeeNumber(request.getEmployeeNumber());
+        }
+    }
+
     public void assertPasswordStrength(String password) {
         if (password == null || password.length() < 8) {
             throw new IllegalArgumentException("Password does not meet strength requirements");
@@ -59,6 +76,12 @@ public class UserPolicy {
         }
         if (!hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
             throw new IllegalArgumentException("Password does not meet strength requirements");
+        }
+    }
+
+    public void assertPasswordMatches(String rawPassword, User user) {
+        if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
         }
     }
 
