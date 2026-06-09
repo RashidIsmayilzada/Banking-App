@@ -37,7 +37,7 @@ const routes = [
 
   // ── Customer ───────────────────────────────────────
   { path: '/customer/dashboard',    component: DashboardView     },
-  { path: '/customer/accounts/:iban', component: AccountDetailView, props: true },
+  { path: '/customer/accounts',     component: AccountDetailView },
   { path: '/customer/transfer',     component: TransferView      },
   { path: '/customer/transactions', component: TransactionsView  },
 
@@ -48,14 +48,14 @@ const routes = [
   { path: '/atm/confirm',  component: AtmConfirmView  },
 
   // ── Employee ───────────────────────────────────────
-  { path: '/employee/overview',                 component: OverviewView         },
-  { path: '/employee/customers',                component: CustomersView        },
-  { path: '/employee/customers/:id',            component: CustomerDetailView   },
-  { path: '/employee/approvals',                component: ApprovalsView        },
-  { path: '/employee/approvals/:id',            component: ApproveFormView      },
-  { path: '/employee/transactions',             component: AllTransactionsView  },
-  { path: '/employee/transfer',                 component: EmployeeTransferView },
-  { path: '/employee/limits',                   component: SetLimitsView        },
+  { path: '/employee/overview',      component: OverviewView,         meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/customers',     component: CustomersView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/customers/:id', component: CustomerDetailView,   meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/approvals',     component: ApprovalsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/approvals/:id', component: ApproveFormView,      meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/transactions',  component: AllTransactionsView,  meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/transfer',      component: EmployeeTransferView, meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/limits/:id?',   component: SetLimitsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
 ]
 
 const router = createRouter({

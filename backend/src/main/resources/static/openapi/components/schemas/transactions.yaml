@@ -14,9 +14,6 @@ Money:
 TransactionParty:
   type: object
   properties:
-    accountId:
-      type: integer
-      format: int64
     iban:
       type: string
     name:
@@ -79,26 +76,22 @@ TransactionRequest:
     - description
   description: |
     Unified transaction request. Required fields vary by type:
-    - TRANSFER: provide fromAccountId and either toAccountId (own accounts) or toIban (external).
-    - DEPOSIT / WITHDRAWAL: provide accountId (ATM cash operations).
+    - TRANSFER: provide fromIban (source) and toIban (destination).
+    - DEPOSIT / WITHDRAWAL: provide iban (ATM cash operations).
   properties:
     type:
       $ref: ./common.yaml#/TransactionType
-    fromAccountId:
-      type: integer
-      format: int64
-      description: Required for TRANSFER.
-    toAccountId:
-      type: integer
-      format: int64
-      description: Required for internal TRANSFER (between own accounts).
+    fromIban:
+      type: string
+      pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
+      description: Required for TRANSFER (source account).
     toIban:
       type: string
       pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
-      description: Required for external TRANSFER (to another customer).
-    accountId:
-      type: integer
-      format: int64
+      description: Required for TRANSFER (destination account).
+    iban:
+      type: string
+      pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
       description: Required for DEPOSIT and WITHDRAWAL.
     amount:
       type: number

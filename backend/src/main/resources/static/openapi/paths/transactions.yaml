@@ -23,13 +23,6 @@ transactions:
           type: integer
           format: int64
           minimum: 1
-      - name: accountId
-        in: query
-        required: false
-        schema:
-          type: integer
-          format: int64
-          minimum: 1
       - name: channel
         in: query
         required: false
