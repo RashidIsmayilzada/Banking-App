@@ -5,10 +5,10 @@
         <AppIcon name="arrowLeft" :size="16" />
       </RouterLink>
       <span class="spacer" />
-      <span class="badge badge--dark">Withdraw</span>
+      <span class="badge badge--success">Deposit</span>
     </div>
 
-    <div class="t-label">Available</div>
+    <div class="t-label">Current balance</div>
     <div class="t-h2" style="margin:4px 0 24px">{{ formatEur(account?.balance?.amount) }}</div>
 
     <label class="field__label">Amount</label>
@@ -22,7 +22,7 @@
 
     <div class="col" style="gap:8px;margin-top:auto">
       <button class="btn btn--primary btn--xl btn--block" :disabled="!selectedAmount || loading" @click="confirm">
-        {{ loading ? 'Processing…' : 'Confirm withdrawal' }}
+        {{ loading ? 'Processing…' : 'Confirm deposit' }}
       </button>
       <RouterLink to="/atm/home" class="btn btn--ghost btn--block">Cancel</RouterLink>
     </div>
@@ -54,13 +54,13 @@ async function confirm() {
   loading.value = true
   try {
     const result = await atmCreateTransaction({
-      type: 'WITHDRAWAL',
+      type: 'DEPOSIT',
       iban: account.value.iban,
       amount: selectedAmount.value,
       channel: 'ATM',
-      description: 'ATM withdrawal',
+      description: 'ATM deposit',
     })
-    setAtmLastTx({ ...result, mode: 'withdrawal', displayAmount: selectedAmount.value })
+    setAtmLastTx({ ...result, mode: 'deposit', displayAmount: selectedAmount.value })
     if (result.sourceBalance) {
       setAtmAccount({ ...account.value, balance: result.sourceBalance })
     }

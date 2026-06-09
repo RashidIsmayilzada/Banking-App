@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 
 import org.springframework.stereotype.Service;
@@ -143,8 +144,8 @@ public class UserService {
     }
 
     public BigDecimal getDailyOutgoingAmount(String iban) {
-        LocalDate startOfDay = LocalDate.now();
-        LocalDate endOfDay = LocalDate.now();
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(23, 59, 59, 999999999);
 
         return transactionRepository
                 .sumOutgoingAmountByAccountIbanAndDate(iban, startOfDay, endOfDay);

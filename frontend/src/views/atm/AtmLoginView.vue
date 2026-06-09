@@ -6,13 +6,12 @@
       <div class="col" style="gap:16px">
         <AppField label="Email" v-model="form.email" placeholder="jane.doe@example.com" />
         <AppField label="Password" v-model="form.password" type="password" placeholder="••••••••" />
-        <!-- TODO: POST /atm/sessions with form.value (returns X-ATM-Session-Token) -->
-        <button class="btn btn--primary btn--xl btn--block" style="margin-top:8px" @click="handleLogin">
-          Sign in <AppIcon name="arrowRight" :size="20" />
+        <p v-if="error" style="margin:0;padding:10px 14px;background:var(--red-soft,#fef2f2);color:var(--red,#dc2626);border-radius:8px;font-size:13px">{{ error }}</p>
+        <button class="btn btn--primary btn--xl btn--block" style="margin-top:8px" :disabled="loading" @click="handleLogin">
+          <span v-if="loading">Signing in…</span>
+          <template v-else>Sign in <AppIcon name="arrowRight" :size="20" /></template>
         </button>
-        <div class="t-body-sm" style="text-align:center;margin-top:4px">
-          Forgot password? Please see branch staff.
-        </div>
+        <div class="t-body-sm" style="text-align:center;margin-top:4px">Forgot password? Please see branch staff.</div>
       </div>
     </div>
     <div class="row" style="justify-content:center;margin-top:24px;gap:6px;font-size:11px;color:var(--ink-faint)">
@@ -27,12 +26,35 @@ import { useRouter } from 'vue-router'
 import AtmShell from '@/components/layout/AtmShell.vue'
 import AppField from '@/components/shared/AppField.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
+import { atmLogin, setAtmSession, atmGetAccounts, setAtmAccount } from '@/services/atm.js'
 
 const router = useRouter()
 const form = ref({ email: '', password: '' })
+const loading = ref(false)
+const error = ref('')
 
-// TODO: POST /atm/sessions → store returned sessionToken, then navigate to /atm/home
-function handleLogin() {
-  router.push('/atm/home')
+async function handleLogin() {
+  error.value = ''
+  loading.value = true
+  try {
+    const response = await atmLogin(form.value.email, form.value.password)
+    if (response.user?.role !== 'CUSTOMER') {
+      error.value = 'Only customer accounts can use this ATM.'
+      return
+    }
+    setAtmSession(response.accessToken, response.user)
+    const accountData = await atmGetAccounts()
+    const checking = (accountData.accounts || []).find(a => a.accountType === 'CHECKING')
+    if (!checking) {
+      error.value = 'No checking account found. Please visit a branch.'
+      return
+    }
+    setAtmAccount(checking)
+    router.push('/atm/home')
+  } catch (err) {
+    error.value = err.message || 'Login failed.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>

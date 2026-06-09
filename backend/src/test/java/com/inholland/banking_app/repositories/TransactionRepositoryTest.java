@@ -62,59 +62,59 @@ class TransactionRepositoryTest {
     }
 
     @Test
-    @DisplayName("sumOutgoingAmountByAccountIdAndDate() - should return correct sum for transfers on the given day")
+    @DisplayName("sumOutgoingAmountByAccountIbanAndDate() - should return correct sum for transfers on the given day")
     void sumOutgoing_shouldReturnCorrectSum() {
         saveTransaction(fromAccount, new BigDecimal("100.00"), TransactionType.TRANSFER, TODAY.atTime(10, 0));
         saveTransaction(fromAccount, new BigDecimal("200.00"), TransactionType.TRANSFER, TODAY.atTime(14, 0));
 
-        BigDecimal result = transactionRepository.sumOutgoingAmountByAccountIdAndDate(
-                fromAccount.getId(), TODAY, TODAY.plusDays(1));
+        BigDecimal result = transactionRepository.sumOutgoingAmountByAccountIbanAndDate(
+                fromAccount.getIban(), TODAY.atStartOfDay(), TODAY.plusDays(1).atStartOfDay());
 
         assertThat(result).isEqualByComparingTo("300.00");
     }
 
     @Test
-    @DisplayName("sumOutgoingAmountByAccountIdAndDate() - should return 0 when no transfers exist")
+    @DisplayName("sumOutgoingAmountByAccountIbanAndDate() - should return 0 when no transfers exist")
     void sumOutgoing_shouldReturnZero_whenNoTransactions() {
-        BigDecimal result = transactionRepository.sumOutgoingAmountByAccountIdAndDate(
-                fromAccount.getId(), TODAY, TODAY.plusDays(1));
+        BigDecimal result = transactionRepository.sumOutgoingAmountByAccountIbanAndDate(
+                fromAccount.getIban(), TODAY.atStartOfDay(), TODAY.plusDays(1).atStartOfDay());
 
         assertThat(result).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test
-    @DisplayName("sumOutgoingAmountByAccountIdAndDate() - should exclude non-TRANSFER transactions")
+    @DisplayName("sumOutgoingAmountByAccountIbanAndDate() - should exclude non-TRANSFER transactions")
     void sumOutgoing_shouldExcludeDepositsAndWithdrawals() {
         saveTransaction(fromAccount, new BigDecimal("500.00"), TransactionType.DEPOSIT, TODAY.atTime(9, 0));
         saveTransaction(fromAccount, new BigDecimal("300.00"), TransactionType.WITHDRAWAL, TODAY.atTime(11, 0));
         saveTransaction(fromAccount, new BigDecimal("100.00"), TransactionType.TRANSFER, TODAY.atTime(12, 0));
 
-        BigDecimal result = transactionRepository.sumOutgoingAmountByAccountIdAndDate(
-                fromAccount.getId(), TODAY, TODAY.plusDays(1));
+        BigDecimal result = transactionRepository.sumOutgoingAmountByAccountIbanAndDate(
+                fromAccount.getIban(), TODAY.atStartOfDay(), TODAY.plusDays(1).atStartOfDay());
 
         assertThat(result).isEqualByComparingTo("100.00");
     }
 
     @Test
-    @DisplayName("sumOutgoingAmountByAccountIdAndDate() - should exclude transactions from other accounts")
+    @DisplayName("sumOutgoingAmountByAccountIbanAndDate() - should exclude transactions from other accounts")
     void sumOutgoing_shouldExcludeOtherAccounts() {
         saveTransaction(otherAccount, new BigDecimal("999.00"), TransactionType.TRANSFER, TODAY.atTime(10, 0));
         saveTransaction(fromAccount, new BigDecimal("50.00"), TransactionType.TRANSFER, TODAY.atTime(11, 0));
 
-        BigDecimal result = transactionRepository.sumOutgoingAmountByAccountIdAndDate(
-                fromAccount.getId(), TODAY, TODAY.plusDays(1));
+        BigDecimal result = transactionRepository.sumOutgoingAmountByAccountIbanAndDate(
+                fromAccount.getIban(), TODAY.atStartOfDay(), TODAY.plusDays(1).atStartOfDay());
 
         assertThat(result).isEqualByComparingTo("50.00");
     }
 
     @Test
-    @DisplayName("sumOutgoingAmountByAccountIdAndDate() - should exclude transactions outside the date range")
+    @DisplayName("sumOutgoingAmountByAccountIbanAndDate() - should exclude transactions outside the date range")
     void sumOutgoing_shouldExcludeTransactionsOutsideDateRange() {
         saveTransaction(fromAccount, new BigDecimal("400.00"), TransactionType.TRANSFER, TODAY.minusDays(1).atTime(23, 59));
         saveTransaction(fromAccount, new BigDecimal("100.00"), TransactionType.TRANSFER, TODAY.atTime(10, 0));
 
-        BigDecimal result = transactionRepository.sumOutgoingAmountByAccountIdAndDate(
-                fromAccount.getId(), TODAY, TODAY.plusDays(1));
+        BigDecimal result = transactionRepository.sumOutgoingAmountByAccountIbanAndDate(
+                fromAccount.getIban(), TODAY.atStartOfDay(), TODAY.plusDays(1).atStartOfDay());
 
         assertThat(result).isEqualByComparingTo("100.00");
     }

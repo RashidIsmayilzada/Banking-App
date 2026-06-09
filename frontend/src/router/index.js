@@ -10,10 +10,12 @@ import DashboardView     from '@/views/customer/DashboardView.vue'
 import AccountDetailView from '@/views/customer/AccountDetailView.vue'
 import TransactionsView  from '@/views/customer/TransactionsView.vue'
 import TransferView      from '@/views/customer/TransferView.vue'
+import AtmSimView        from '@/views/customer/AtmSimView.vue'
 
 // ATM
 import AtmLoginView    from '@/views/atm/AtmLoginView.vue'
 import AtmHomeView     from '@/views/atm/AtmHomeView.vue'
+import AtmDepositView  from '@/views/atm/AtmDepositView.vue'
 import AtmWithdrawView from '@/views/atm/AtmWithdrawView.vue'
 import AtmConfirmView  from '@/views/atm/AtmConfirmView.vue'
 
@@ -40,11 +42,13 @@ const routes = [
   { path: '/customer/accounts',       redirect: '/customer/dashboard' },
   { path: '/customer/accounts/:iban', component: AccountDetailView  },
   { path: '/customer/transfer',       component: TransferView       },
+  { path: '/customer/atm',           component: AtmSimView         },
   { path: '/customer/transactions', component: TransactionsView  },
 
   // ── ATM ────────────────────────────────────────────
   { path: '/atm/login',    component: AtmLoginView    },
   { path: '/atm/home',     component: AtmHomeView     },
+  { path: '/atm/deposit',  component: AtmDepositView  },
   { path: '/atm/withdraw', component: AtmWithdrawView },
   { path: '/atm/confirm',  component: AtmConfirmView  },
 
