@@ -27,7 +27,6 @@
           </div>
         </div>
         <AppField label="Counterparty IBAN" v-model="filters.iban" placeholder="NL.. INHO .." />
-        <!-- TODO: Apply filters and call GET /api/transactions with query params -->
         <button class="btn btn--primary" @click="applyFilters">Apply</button>
       </div>
       <div v-if="activeFilters.length" class="row" style="margin-top:14px;gap:6px;flex-wrap:wrap">
@@ -39,7 +38,6 @@
     </div>
 
     <!-- Table -->
-    <!-- TODO: Fetch transactions from GET /api/transactions with pagination and filters -->
     <div class="card" style="padding:0">
       <table class="table">
         <thead>
@@ -52,6 +50,12 @@
           </tr>
         </thead>
         <tbody>
+          <tr v-if="loading">
+            <td colspan="5" class="muted" style="padding:24px;text-align:center">Loading transactions...</td>
+          </tr>
+          <tr v-else-if="transactions.length === 0">
+            <td colspan="5" class="muted" style="padding:24px;text-align:center">No transactions found.</td>
+          </tr>
           <tr v-for="tx in transactions" :key="tx.id">
             <td class="num" style="padding-left:20px">{{ tx.date }}</td>
             <td style="font-weight:500">{{ tx.description }}</td>
@@ -65,36 +69,71 @@
           </tr>
         </tbody>
       </table>
-      <div style="padding:0 16px 12px">
-        <AppPager :current-page="1" :total="7" count="1–8 of 64" />
+      <div v-if="pageMeta.totalPages > 0" style="padding:0 16px 12px">
+        <AppPager :current-page="pageMeta.page + 1" :total="pageMeta.totalPages" :count="pageCount" @change="handlePageChange" />
       </div>
     </div>
   </CustomerShell>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import CustomerShell from '@/components/layout/CustomerShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import AppPager from '@/components/shared/AppPager.vue'
+import * as userService from '@/services/user'
 
 const filters = ref({ startDate: '', endDate: '', amountOp: '=', amount: '', iban: '' })
 const activeFilters = ref([])
+const currentUser = ref(null)
+const transactions = ref([])
+const loading = ref(false)
+const pageMeta = ref({ page: 0, size: 8, totalElements: 0, totalPages: 0 })
+const accountIds = computed(() => currentUser.value?.accounts?.map(account => account.id) || [])
+const pageCount = computed(() => {
+  if (!pageMeta.value.totalElements) return '0 of 0'
+  const start = pageMeta.value.page * pageMeta.value.size + 1
+  const end = Math.min((pageMeta.value.page + 1) * pageMeta.value.size, pageMeta.value.totalElements)
+  return `${start}–${end} of ${pageMeta.value.totalElements}`
+})
 
-function clearFilters() { filters.value = { startDate: '', endDate: '', amountOp: '=', amount: '', iban: '' }; activeFilters.value = [] }
-// TODO: Call GET /api/transactions with filters as query params
-function applyFilters() { activeFilters.value = Object.entries(filters.value).filter(([k,v]) => v && k !== 'amountOp').map(([,v]) => v) }
+function clearFilters() {
+  filters.value = { startDate: '', endDate: '', amountOp: '=', amount: '', iban: '' }
+  activeFilters.value = []
+  pageMeta.value = { ...pageMeta.value, page: 0 }
+  fetchTransactions()
+}
 
-// TODO: Fetch transactions from GET /api/transactions
-const transactions = [
-  { id: 1, date: '28 Apr · 14:22', description: 'Card · Albert Heijn',    from: 'NL42 INHO …89', to: 'NL91 ABNA …42', amount: '−€42,18'    },
-  { id: 2, date: '28 Apr · 09:01', description: 'Transfer · M. Janssen',  from: 'NL42 INHO …89', to: 'NL11 RABO …07', amount: '−€250,00'   },
-  { id: 3, date: '27 Apr · 18:30', description: 'Salary · ACME BV',       from: 'NL91 RABO …01', to: 'NL42 INHO …89', amount: '+€2 400,00' },
-  { id: 4, date: '26 Apr · 12:10', description: 'Transfer to savings',     from: 'NL42 INHO …89', to: 'NL42 INHO …21', amount: '−€300,00'   },
-  { id: 5, date: '25 Apr · 20:45', description: 'ATM withdrawal #14',      from: '—',              to: 'NL42 INHO …89', amount: '−€100,00'   },
-  { id: 6, date: '24 Apr · 11:02', description: 'Spotify subscription',    from: 'NL42 INHO …89', to: 'NL11 INGB …55', amount: '−€9,99'     },
-  { id: 7, date: '23 Apr · 16:40', description: 'Refund · Bol.com',        from: 'NL55 ABNA …88', to: 'NL42 INHO …89', amount: '+€18,40'    },
-  { id: 8, date: '22 Apr · 08:15', description: 'Transfer from savings',   from: 'NL42 INHO …21', to: 'NL42 INHO …89', amount: '+€150,00'   },
-]
+function applyFilters() {
+  activeFilters.value = Object.entries(filters.value).filter(([k, v]) => v && k !== 'amountOp').map(([, v]) => v)
+  pageMeta.value = { ...pageMeta.value, page: 0 }
+}
+
+function parseMoney(value) {
+  return value ? value.replace(/[€\s]/g, '').replace(',', '.') : ''
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(value || 0))
+}
+
+function formatDateTime(value) {
+  return value ? new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
+}
+
+async function fetchTransactions() {
+  transactions.value = []
+  pageMeta.value = { page: 0, size: 8, totalElements: 0, totalPages: 0 }
+}
+
+function handlePageChange(newPage) {
+  pageMeta.value = { ...pageMeta.value, page: newPage - 1 }
+  fetchTransactions()
+}
+
+onMounted(async () => {
+  currentUser.value = await userService.getCurrentUser()
+  await fetchTransactions()
+})
 </script>

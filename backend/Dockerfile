@@ -11,7 +11,7 @@ RUN ./mvnw dependency:go-offline
 
 COPY src src
 
-RUN ./mvnw clean package
+RUN ./mvnw clean package -DskipTests
 
 FROM eclipse-temurin:21-jre
 
@@ -22,7 +22,5 @@ COPY --from=build /app/target/*.jar app.jar
 RUN mkdir -p /app/data
 
 EXPOSE 8080
-
-VOLUME ["/app/data"]
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

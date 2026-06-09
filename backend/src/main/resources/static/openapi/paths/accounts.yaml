@@ -28,12 +28,12 @@ accounts:
 accountById:
   get:
     tags: [Accounts]
-    summary: Get a single account by ID.
+    summary: Get a single account by IBAN.
     operationId: getAccount
     security:
       - bearerAuth: []
     parameters:
-      - $ref: ../components/schemas/common.yaml#/AccountId
+      - $ref: ../components/schemas/common.yaml#/AccountIban
     responses:
       '200':
         description: Account returned.
@@ -54,7 +54,7 @@ accountById:
     security:
       - bearerAuth: []
     parameters:
-      - $ref: ../components/schemas/common.yaml#/AccountId
+      - $ref: ../components/schemas/common.yaml#/AccountIban
     requestBody:
       required: true
       content:

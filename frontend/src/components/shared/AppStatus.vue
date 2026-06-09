@@ -12,6 +12,8 @@ const props = defineProps({
 const map = {
   active:  ['success', 'Active'],
   pending: ['warn',    'Pending'],
+  rejected:['danger',  'Rejected'],
+  denied:  ['danger',  'Rejected'],
   closed:  ['danger',  'Closed'],
 }
 

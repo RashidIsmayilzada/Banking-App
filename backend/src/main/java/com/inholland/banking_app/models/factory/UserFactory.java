@@ -1,6 +1,6 @@
 package com.inholland.banking_app.models.factory;
 
-import com.inholland.banking_app.dtos.UserCreateRequest;
+import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.EmployeeProfile;
 import com.inholland.banking_app.models.User;
@@ -8,45 +8,76 @@ import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public final class UserFactory {
 
-    private UserFactory() {}
-
-    public static User createUser(UserCreateRequest request, String passwordHash, Role role) {
-        LocalDateTime now = LocalDateTime.now();
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setUsername(request.getUsername());
-        user.setPasswordHash(passwordHash);
-        user.setRole(role);
-        user.setActive(true);
-        user.setCreatedAt(now);
-        user.setUpdatedAt(now);
-        return user;
+    public static User createUser(UserRequest request){
+        if(request.getRole() == Role.CUSTOMER){
+            return createPendingCustomer(request);
+        }
+        return createEmployee(request);
     }
 
-    public static CustomerProfile createCustomerProfile(User user, UserCreateRequest request) {
+    public static User createPendingCustomer(UserRequest request) {
+        return createPendingCustomer(request, LocalDateTime.now());
+    }
+
+    private static CustomerProfile createCustomer(UserRequest request, LocalDateTime now) {
         CustomerProfile profile = new CustomerProfile();
-        profile.setUser(user);
         profile.setFirstName(request.getFirstName());
         profile.setLastName(request.getLastName());
         profile.setBsn(request.getBsn());
         profile.setPhoneNumber(request.getPhoneNumber());
         profile.setStatus(CustomerStatus.PENDING_APPROVAL);
-        profile.setRegisteredAt(LocalDateTime.now());
+        profile.setRegisteredAt(now);
         return profile;
     }
 
-    public static EmployeeProfile createEmployeeProfile(User user, UserCreateRequest request) {
+    private static User createPendingCustomer(UserRequest request, LocalDateTime now) {
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setUsername(request.getUsername());
+        user.setPasswordHash(request.getPassword());
+        user.setRole(Role.CUSTOMER);
+        user.setActive(true);
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
+
+        CustomerProfile profile = createCustomer(request, now);
+        profile.setUser(user);
+        user.setCustomerProfile(profile);
+        return user;
+    }
+
+    // Employee factory
+
+    public static User createEmployee(UserRequest request) {
+        return createEmployee(request, LocalDateTime.now());
+    }
+
+    private static EmployeeProfile createEmployeeProfile(User user, UserRequest request) {
         EmployeeProfile profile = new EmployeeProfile();
         profile.setUser(user);
         profile.setFirstName(request.getFirstName());
         profile.setLastName(request.getLastName());
-        profile.setEmployeeNumber("EMP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
+        profile.setEmployeeNumber("EMP-" + user.getId());
         profile.setEnabled(true);
         profile.setCreatedAt(LocalDateTime.now());
         return profile;
+    }
+
+    private static User createEmployee(UserRequest request, LocalDateTime now) {
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setUsername(request.getUsername());
+        user.setPasswordHash(request.getPassword());
+        user.setRole(Role.EMPLOYEE);
+        user.setActive(true);
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
+
+        EmployeeProfile profile =  createEmployeeProfile(user, request);
+        user.setEmployeeProfile(profile);
+        return user;
     }
 }

@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Docker Dev: Start App",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml up -d",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker Dev: Restart Backend",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml restart backend",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker Dev: Stop App",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml down",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

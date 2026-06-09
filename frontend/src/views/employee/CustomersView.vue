@@ -5,18 +5,18 @@
       <span class="spacer" />
       <div class="row" style="gap:8px;position:relative">
         <AppIcon name="search" :size="14" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--ink-faint)" />
-        <!-- TODO: GET /employees/customers?q=… to search -->
         <input class="input" placeholder="Search name, email, IBAN…" style="width:320px;padding-left:38px" v-model="search" @input="fetchCustomers" />
         <select class="select" style="width:160px" v-model="statusFilter" @change="fetchCustomers">
           <option value="">All statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="PENDING">Pending</option>
+          <option value="APPROVED">Active</option>
+          <option value="PENDING_APPROVAL">Pending</option>
+          <option value="REJECTED">Rejected</option>
           <option value="CLOSED">Closed</option>
         </select>
       </div>
     </div>
 
-    <!-- TODO: Fetch customers from GET /employees/customers?q=search&status=statusFilter&page=page&size=10 -->
+    <div v-if="error" class="banner banner--danger" style="margin-bottom:16px">{{ error }}</div>
     <div class="card" style="padding:0">
       <table class="table">
         <thead>
@@ -30,6 +30,12 @@
           </tr>
         </thead>
         <tbody>
+          <tr v-if="loading">
+            <td colspan="6" class="muted" style="padding:24px;text-align:center">Loading customers...</td>
+          </tr>
+          <tr v-else-if="customers.length === 0">
+            <td colspan="6" class="muted" style="padding:24px;text-align:center">No customers found.</td>
+          </tr>
           <tr v-for="c in customers" :key="c.id">
             <td style="padding-left:24px">
               <div class="row">
@@ -61,34 +67,88 @@
           </tr>
         </tbody>
       </table>
-      <div style="padding:0 16px 12px">
-        <AppPager :current-page="1" :total="36" count="1–7 of 247" />
+      <div style="padding:0 16px 12px" v-if="totalPages > 0">
+        <AppPager 
+          :current-page="page + 1" 
+          :total="totalPages" 
+          :count="`${page * 10 + 1}–${Math.min((page + 1) * 10, totalElements)} of ${totalElements}`"
+          @change="handlePageChange"
+        />
       </div>
     </div>
   </EmployeeShell>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import EmployeeShell from '@/components/layout/EmployeeShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppAvatar from '@/components/shared/AppAvatar.vue'
 import AppStatus from '@/components/shared/AppStatus.vue'
 import AppPager from '@/components/shared/AppPager.vue'
+import * as userService from '@/services/user'
 
 const search = ref('')
 const statusFilter = ref('')
+const customers = ref([])
+const loading = ref(false)
+const error = ref(null)
+const page = ref(0)
+const totalElements = ref(0)
+const totalPages = ref(0)
 
-// TODO: Fetch from GET /employees/customers with filters and pagination
-function fetchCustomers() {}
+function displayName(user) {
+  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || user.email
+}
 
-const customers = [
-  { id: '00247', name: 'Jane Doe',        email: 'jane.doe@example.com',    ibans: 'NL42 INHO …89  ·  …21', status: 'active',  joined: '12 Jan 2026' },
-  { id: '00198', name: 'Maarten Janssen', email: 'maarten.j@example.com',   ibans: 'NL11 INHO …07  ·  …08', status: 'active',  joined: '04 Mar 2026' },
-  { id: '00231', name: 'Sara El-Amin',    email: 'sara.e@example.com',      ibans: 'NL55 INHO …14',          status: 'active',  joined: '21 Mar 2026' },
-  { id: '00248', name: 'Tom Bakker',      email: 'tom.b@example.com',       ibans: '— (no accounts yet)',    status: 'pending', joined: '27 Apr 2026' },
-  { id: '00112', name: 'Lisa Vermeer',    email: 'lisa.v@example.com',      ibans: 'NL08 INHO …62  ·  …63', status: 'closed',  joined: '02 Feb 2025' },
-  { id: '00219', name: 'Pieter de Vries', email: 'pieter.dv@example.com',   ibans: 'NL77 INHO …40',          status: 'active',  joined: '15 Apr 2026' },
-  { id: '00249', name: 'Yusuf Demir',     email: 'yusuf.d@example.com',     ibans: '— (no accounts yet)',    status: 'pending', joined: '26 Apr 2026' },
-]
+function statusKind(status) {
+  if (status === 'APPROVED') return 'active'
+  if (status === 'REJECTED') return 'rejected'
+  if (status === 'CLOSED') return 'closed'
+  return 'pending'
+}
+
+function formatDate(value) {
+  return value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+}
+
+async function fetchCustomers() {
+  loading.value = true
+  error.value = null
+  try {
+    const params = {
+      role: 'CUSTOMER',
+      page: page.value,
+      size: 10,
+      search: search.value
+    }
+    
+    if (statusFilter.value) params.status = statusFilter.value
+    
+    const response = await userService.getAllUsers(params)
+    customers.value = response.content.map(user => ({
+      id: user.id,
+      name: displayName(user),
+      email: user.email,
+      ibans: user.accounts && user.accounts.length > 0 ? user.accounts.map(a => a.iban).join(', ') : '— (no accounts yet)',
+      status: statusKind(user.status),
+      joined: formatDate(user.registeredAt)
+    }))
+    totalElements.value = response.totalElements
+    totalPages.value = response.totalPages
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    loading.value = false
+  }
+}
+
+function handlePageChange(newPage) {
+  page.value = newPage - 1
+  fetchCustomers()
+}
+
+onMounted(() => {
+  fetchCustomers()
+})
 </script>

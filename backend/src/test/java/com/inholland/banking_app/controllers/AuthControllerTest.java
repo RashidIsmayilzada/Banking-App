@@ -6,6 +6,8 @@ import com.inholland.banking_app.dtos.LoginRequest;
 import com.inholland.banking_app.dtos.LoginResponse;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.security.JwtAuthenticationFilter;
+import com.inholland.banking_app.security.JwtUtil;
+import com.inholland.banking_app.security.TokenBlacklistService;
 import com.inholland.banking_app.services.AuthService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,7 +22,12 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
+
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -38,6 +45,12 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -131,5 +144,21 @@ class AuthControllerTest {
         mockMvc.perform(post("/auth/logout"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Logged out successfully."));
+    }
+
+    @Test
+    @DisplayName("POST /auth/logout - should blacklist the token when a valid Bearer token is present")
+    void logout_shouldBlacklistToken_whenValidTokenIsPresent() throws Exception {
+        String token = "valid.jwt.token";
+        Instant expiry = Instant.now().plusSeconds(3600);
+
+        when(jwtUtil.validateJwtToken(token)).thenReturn(true);
+        when(jwtUtil.getExpirationFromToken(token)).thenReturn(expiry);
+
+        mockMvc.perform(post("/auth/logout")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        verify(tokenBlacklistService).blacklist(eq(token), eq(expiry));
     }
 }

@@ -3,8 +3,7 @@
     <div class="row" style="margin-bottom:28px">
       <div>
         <div class="t-body-sm" style="margin-bottom:4px">{{ todayLabel }}</div>
-        <!-- TODO: Fetch user name from GET /api/user/profile -->
-        <h1 class="t-h1" style="margin:0">Good afternoon, Jane.</h1>
+        <h1 class="t-h1" style="margin:0">Good afternoon.</h1>
       </div>
       <span class="spacer" />
       <button class="btn btn--secondary"><AppIcon name="download" :size="16" /> Statements</button>
@@ -13,71 +12,66 @@
       </RouterLink>
     </div>
 
-    <!-- Total balance hero -->
-    <!-- TODO: Fetch account summary from GET /api/accounts/summary -->
-    <div class="card card--dark" style="padding:32px;margin-bottom:20px">
-      <div class="row">
-        <div>
-          <div class="t-label" style="margin-bottom:8px">Total balance · all accounts</div>
-          <div class="t-display" style="margin:0;font-size:64px;color:#fff">
-            €8 421<span style="opacity:0.55;font-size:40px">,55</span>
-          </div>
-          <div class="row" style="margin-top:16px;gap:24px;font-size:14px">
-            <div class="row" style="gap:6px;color:rgba(255,255,255,0.85)">
-              <AppIcon name="arrowDown" :size="14" /> €1 200,00 in this month
-            </div>
-            <div class="row" style="gap:6px;color:rgba(255,255,255,0.6)">
-              <AppIcon name="arrowUp" :size="14" /> €860,00 out
-            </div>
-          </div>
-        </div>
-        <span class="spacer" />
-        <SparkChart
-          :bars="[35,50,30,65,45,70,55,80,60,75,90,85]"
-          :width="200"
-          :accent-last="true"
-        />
-      </div>
-    </div>
+    <div v-if="error" class="card" style="padding:20px;color:red">{{ error }}</div>
+    <div v-if="loading" class="card" style="padding:32px;text-align:center">Loading accounts...</div>
 
-    <!-- Account tiles -->
-    <!-- TODO: Fetch accounts from GET /api/accounts -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px">
-      <div class="acct-card">
+    <!-- Total balance hero -->
+    <template v-if="!loading && !error">
+      <div class="card card--dark" style="padding:32px;margin-bottom:20px">
         <div class="row">
-          <span class="badge">Checking</span>
+          <div>
+            <div class="t-label" style="margin-bottom:8px">Total balance · all accounts</div>
+            <div class="t-display" style="margin:0;font-size:64px;color:#fff">
+              {{ formatEur(combinedBalance) }}
+            </div>
+          </div>
           <span class="spacer" />
-          <AppIcon name="moreH" :size="16" />
-        </div>
-        <div class="acct-card__balance">€6 218,40</div>
-        <div class="acct-card__iban">NL42 INHO 0123 4567 89</div>
-        <div class="row" style="margin-top:16px;gap:8px">
-          <RouterLink to="/customer/transfer" class="btn btn--xs" style="background:var(--surface-soft)">
-            <AppIcon name="arrowUpRight" :size="12" /> Send
-          </RouterLink>
-          <button class="btn btn--xs" style="background:var(--surface-soft)">
-            <AppIcon name="arrowDownLeft" :size="12" /> Add money
-          </button>
+          <SparkChart
+            :bars="[35,50,30,65,45,70,55,80,60,75,90,85]"
+            :width="200"
+            :accent-last="true"
+          />
         </div>
       </div>
-      <div class="acct-card acct-card--teal">
-        <div class="row">
-          <span class="badge" style="background:rgba(255,255,255,0.15);color:#fff">Savings</span>
-          <span class="spacer" />
-          <AppIcon name="moreH" :size="16" />
-        </div>
-        <div class="acct-card__balance">€2 203,15</div>
-        <div class="acct-card__iban">NL42 INHO 0987 6543 21</div>
-        <div class="row" style="margin-top:16px;gap:8px">
-          <RouterLink to="/customer/transfer" class="btn btn--xs" style="background:rgba(255,255,255,0.15);color:#fff">
-            <AppIcon name="arrowUpRight" :size="12" /> Send
-          </RouterLink>
-          <button class="btn btn--xs" style="background:rgba(255,255,255,0.15);color:#fff">
-            <AppIcon name="arrowDownLeft" :size="12" /> Add money
-          </button>
+
+      <!-- Account tiles -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px">
+        <div
+          v-for="acct in accounts"
+          :key="acct.iban"
+          :class="['acct-card', acct.accountType === 'SAVINGS' ? 'acct-card--teal' : '']"
+        >
+          <div class="row">
+            <span
+              class="badge"
+              :style="acct.accountType === 'SAVINGS' ? 'background:rgba(255,255,255,0.15);color:#fff' : ''"
+            >
+              {{ acct.accountType === 'CHECKING' ? 'Checking' : 'Savings' }}
+            </span>
+            <span class="spacer" />
+            <AppStatus :kind="acct.status === 'ACTIVE' ? 'active' : 'closed'" />
+          </div>
+          <div class="acct-card__balance">{{ formatEur(acct.balance.amount) }}</div>
+          <div class="acct-card__iban">{{ acct.iban }}</div>
+          <div class="row" style="margin-top:16px;gap:8px">
+            <RouterLink
+              :to="`/customer/accounts/${acct.iban}`"
+              class="btn btn--xs"
+              :style="acct.accountType === 'SAVINGS' ? 'background:rgba(255,255,255,0.15);color:#fff' : 'background:var(--surface-soft)'"
+            >
+              <AppIcon name="arrowUpRight" :size="12" /> Details
+            </RouterLink>
+            <RouterLink
+              to="/customer/transfer"
+              class="btn btn--xs"
+              :style="acct.accountType === 'SAVINGS' ? 'background:rgba(255,255,255,0.15);color:#fff' : 'background:var(--surface-soft)'"
+            >
+              <AppIcon name="arrowUpRight" :size="12" /> Send
+            </RouterLink>
+          </div>
         </div>
       </div>
-    </div>
+    </template>
 
     <!-- Quick actions -->
     <div class="row" style="margin-bottom:16px">
@@ -96,7 +90,6 @@
     </div>
 
     <!-- Recent activity -->
-    <!-- TODO: Fetch transactions from GET /api/transactions?page=0&size=5 -->
     <div class="row" style="margin-bottom:12px">
       <h2 class="t-h3" style="margin:0">Recent activity</h2>
       <span class="spacer" />
@@ -107,6 +100,12 @@
     <div class="card" style="padding:0">
       <table class="table">
         <tbody>
+          <tr v-if="transactionsLoading">
+            <td colspan="4" class="muted" style="padding:24px;text-align:center">Loading activity...</td>
+          </tr>
+          <tr v-else-if="recentTransactions.length === 0">
+            <td colspan="4" class="muted" style="padding:24px;text-align:center">No recent activity.</td>
+          </tr>
           <tr v-for="tx in recentTransactions" :key="tx.id">
             <td style="width:56px">
               <div :class="['icon-box', `icon-box--${tx.iconTone}`]" style="width:36px;height:36px">
@@ -129,25 +128,42 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import CustomerShell from '@/components/layout/CustomerShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
+import AppStatus from '@/components/shared/AppStatus.vue'
 import SparkChart from '@/components/shared/SparkChart.vue'
+import { getAccounts } from '@/services/accounts.js'
 
 const todayLabel = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+
+const accounts = ref([])
+const combinedBalance = ref(0)
+const loading = ref(true)
+const error = ref(null)
+const recentTransactions = ref([])
+const transactionsLoading = ref(false)
+
+function formatEur(amount) {
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount)
+}
+
+onMounted(async () => {
+  try {
+    const data = await getAccounts()
+    accounts.value = data.accounts
+    combinedBalance.value = data.totals.combinedBalance.amount
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    loading.value = false
+  }
+})
 
 const quickActions = [
   ['arrowUpRight', 'Send',      'blue'],
   ['arrowSwap',    'Move',      'teal'],
   ['receipt',      'Pay bill',  'pink'],
   ['copy',         'Copy IBAN', 'brown'],
-]
-
-// TODO: Fetch transactions from GET /api/transactions?page=0&size=5
-const recentTransactions = [
-  { id: 1, icon: 'cash',       iconTone: 'warn',  title: 'Albert Heijn',        sub: 'NL91 ABNA …42', when: '28 Apr · 14:22', amount: '−€42,18',     positive: false },
-  { id: 2, icon: 'building',   iconTone: 'teal',  title: 'Salary · ACME BV',    sub: 'NL91 RABO …01', when: '27 Apr · 18:30', amount: '+€2 400,00',   positive: true  },
-  { id: 3, icon: 'arrowSwap',  iconTone: 'ink',   title: 'Transfer to savings',  sub: 'NL42 INHO …21', when: '26 Apr · 12:10', amount: '−€300,00',    positive: false },
-  { id: 4, icon: 'withdraw',   iconTone: 'brown', title: 'ATM withdrawal',       sub: 'ATM #14 · Centrum', when: '25 Apr · 20:45', amount: '−€100,00', positive: false },
-  { id: 5, icon: 'creditCard', iconTone: 'pink',  title: 'Spotify subscription', sub: 'NL11 INGB …55', when: '24 Apr · 11:02', amount: '−€9,99',     positive: false },
 ]
 </script>

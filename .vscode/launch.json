@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Docker Dev: Start App",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "docker compose -f docker-compose.dev.yml up -d; docker compose -f docker-compose.dev.yml logs -f --tail=80",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Docker Dev: Restart Backend",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "docker compose -f docker-compose.dev.yml restart backend; docker compose -f docker-compose.dev.yml logs -f --tail=80 backend",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
