@@ -25,10 +25,9 @@ public class AccountService {
     private final AccountMapper accountMapper;
     private final AccountPolicy accountPolicy;
 
-    /**
-     * Lists accounts, optionally narrowed to a single customer. The caller
-     * decides the scope; this method applies no role-based rules.
-     */
+    // --- Reads ---
+
+    // Lists all accounts, or just one customer's when customerId is given.
     public AccountListResponse listAccounts(Long customerId, Pageable pageable) {
         Page<Account> accounts = (customerId != null)
                 ? accountRepository.findByCustomerId(customerId, pageable)
@@ -37,22 +36,20 @@ public class AccountService {
         return toListResponse(accounts);
     }
 
-    /**
-     * Lists the accounts owned by the given username.
-     */
+    // Lists the accounts owned by the given username.
     public AccountListResponse listAccountsOwnedBy(String username, Pageable pageable) {
         return toListResponse(accountRepository.findByCustomerUsername(username, pageable));
     }
 
-    private AccountListResponse toListResponse(Page<Account> accounts) {
-        return AccountListResponse.of(accounts.map(accountMapper::toResponse));
-    }
-
+    // Returns a single account by IBAN.
     public AccountResponse getAccount(String iban) {
         Account account = findAccountOrThrow(iban);
         return accountMapper.toResponse(account);
     }
 
+    // --- Updates ---
+
+    // Applies limit changes and/or closes the account, enforcing account rules.
     @Transactional
     public AccountResponse updateAccount(String iban, AccountUpdateRequest request) {
         Account account = findAccountOrThrow(iban);
@@ -64,15 +61,19 @@ public class AccountService {
         if (request.getDailyTransferLimit() != null) {
             account.setDailyTransferLimit(request.getDailyTransferLimit());
         }
-
         if (AccountStatus.CLOSED.equals(request.getStatus())) {
             accountPolicy.assertCanClose(account);
             account.setStatus(AccountStatus.CLOSED);
             account.setClosedAt(LocalDateTime.now());
         }
-
         accountRepository.save(account);
         return accountMapper.toResponse(account);
+    }
+
+    // --- Helpers ---
+
+    private AccountListResponse toListResponse(Page<Account> accounts) {
+        return AccountListResponse.of(accounts.map(accountMapper::toResponse));
     }
 
     private Account findAccountOrThrow(String iban) {
