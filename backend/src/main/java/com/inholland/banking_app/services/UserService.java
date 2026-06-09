@@ -42,6 +42,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
 
+    @Transactional(readOnly = true)
     public Page<UserResponse> getAllUsers(Pageable pageable, UserFilterRequest userFilterRequest) {
         return userRepository.findAll(buildUserFilter(userFilterRequest), pageable)
                 .map(userResponseMapper::toUserResponse);
@@ -117,6 +118,7 @@ public class UserService {
         };
     }
 
+    @Transactional(readOnly = true)
     public UserResponse getUserById(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User with id " + userId + " not found"));

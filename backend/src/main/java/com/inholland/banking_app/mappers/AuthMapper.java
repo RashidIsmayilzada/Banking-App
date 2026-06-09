@@ -17,9 +17,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AuthMapper {
 
-    private final CustomerProfileRepository customerProfileRepository;
-    private final EmployeeProfileRepository employeeProfileRepository;
-
     public AuthContextResponse toAuthContextResponse(User user) {
         AuthContextResponse response = new AuthContextResponse();
         response.setUserId(user.getId());
@@ -29,9 +26,8 @@ public class AuthMapper {
         response.setActive(user.isActive());
         response.setLastLoginAt(user.getLastLoginAt());
 
-        Optional<CustomerProfile> customerProfile = customerProfileRepository.findById(user.getId());
-        if (customerProfile.isPresent()) {
-            CustomerStatus status = customerProfile.get().getStatus();
+        if (user.getCustomerProfile() != null) {
+            CustomerStatus status = user.getCustomerProfile().getStatus();
             response.setUserStatus(status);
             response.setAuthorizedFeatures(status == CustomerStatus.APPROVED
                     ? List.of("CUSTOMER_BANKING")
@@ -39,9 +35,8 @@ public class AuthMapper {
             return response;
         }
 
-        Optional<EmployeeProfile> employeeProfile = employeeProfileRepository.findById(user.getId());
-        if (employeeProfile.isPresent()) {
-            response.setAuthorizedFeatures(employeeProfile.get().isEnabled()
+        if (user.getEmployeeProfile() != null) {
+            response.setAuthorizedFeatures(user.getEmployeeProfile().isEnabled()
                     ? List.of("EMPLOYEE_BANKING")
                     : List.of());
             return response;

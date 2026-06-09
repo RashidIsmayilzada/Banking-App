@@ -41,7 +41,7 @@ public class AuthService {
         User user = userRepository.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new BadCredentialsException(INVALID_CREDENTIALS_MESSAGE));
 
-        validatePassword(password, user);
+        userPolicy.assertPasswordMatches(password, user);
         userPolicy.assertActiveUser(user);
         userPolicy.assertLoginAllowed(user);
 
@@ -58,7 +58,7 @@ public class AuthService {
         if (request.getRole() == null) {
             request.setRole(Role.CUSTOMER);
         }
-        validateRegistrationRequest(request);
+        userPolicy.assertRegistrationRequest(request);
         request.setPassword(passwordEncoder.encode(request.getPassword()));
         request.setEmail(normalizeEmail(request.getEmail()));
         request.setUsername(request.getUsername().toLowerCase());
@@ -72,25 +72,6 @@ public class AuthService {
                 .orElseThrow(() -> new BadCredentialsException("Authenticated user not found"));
 
         return authMapper.toAuthContextResponse(user);
-    }
-
-    public void validateRegistrationRequest(UserRequest request) {
-        userPolicy.assertUniqueEmail(request.getEmail());
-        userPolicy.assertUniqueUsername(request.getUsername());
-        userPolicy.assertPasswordStrength(request.getPassword());
-
-        Role role = request.getRole() == null ? Role.CUSTOMER : request.getRole();
-        if (role == Role.CUSTOMER) {
-            userPolicy.assertUniqueBsn(request.getBsn());
-        } else {
-            userPolicy.assertUniqueEmployeeNumber(request.getEmployeeNumber());
-        }
-    }
-
-    private void validatePassword(String password, User user) {
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new BadCredentialsException(INVALID_CREDENTIALS_MESSAGE);
-        }
     }
 
     private String normalizeEmail(String email) {
