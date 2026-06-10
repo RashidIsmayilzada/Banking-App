@@ -15,6 +15,9 @@ public class AccountResponse {
 
     private Long ownerId;
     private String ownerUsername;
+    private String ownerFirstName;
+    private String ownerLastName;
+    private String ownerEmail;
     private String iban;
     private AccountType accountType;
     private MoneyResponse balance;

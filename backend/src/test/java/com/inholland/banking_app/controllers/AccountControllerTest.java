@@ -79,7 +79,7 @@ class AccountControllerTest {
 
         List<AccountResponse> accounts = List.of(accountResponse);
         Page<AccountResponse> page = new PageImpl<>(accounts, PageRequest.of(0, 10), 1);
-        listResponse = AccountListResponse.of(page);
+        listResponse = AccountListResponse.of(page, new BigDecimal("1000.00"));
 
         customerAuth = new UsernamePasswordAuthenticationToken(
                 "customer", null, List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
@@ -117,7 +117,7 @@ class AccountControllerTest {
     @DisplayName("GET /accounts - should return 200 with empty list when no accounts exist")
     void listAccounts_shouldReturn200_withEmptyList() throws Exception {
         Page<AccountResponse> emptyPage = new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 10), 0);
-        AccountListResponse emptyResponse = AccountListResponse.of(emptyPage);
+        AccountListResponse emptyResponse = AccountListResponse.of(emptyPage, BigDecimal.ZERO);
 
         when(accountService.listAccountsOwnedBy(anyString(), any())).thenReturn(emptyResponse);
 

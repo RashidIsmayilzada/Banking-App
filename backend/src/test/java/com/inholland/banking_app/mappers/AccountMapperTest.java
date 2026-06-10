@@ -2,6 +2,7 @@ package com.inholland.banking_app.mappers;
 
 import com.inholland.banking_app.dtos.AccountResponse;
 import com.inholland.banking_app.models.Account;
+import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
@@ -23,6 +24,12 @@ class AccountMapperTest {
         User owner = new User();
         owner.setId(1L);
         owner.setUsername("customer");
+        owner.setEmail("john.doe@example.com");
+
+        CustomerProfile profile = new CustomerProfile();
+        profile.setFirstName("John");
+        profile.setLastName("Doe");
+        owner.setCustomerProfile(profile);
 
         LocalDateTime createdAt = LocalDateTime.of(2025, 1, 15, 10, 0);
         LocalDateTime closedAt = LocalDateTime.of(2025, 5, 20, 14, 30);
@@ -42,6 +49,9 @@ class AccountMapperTest {
 
         assertThat(result.getOwnerId()).isEqualTo(1L);
         assertThat(result.getOwnerUsername()).isEqualTo("customer");
+        assertThat(result.getOwnerFirstName()).isEqualTo("John");
+        assertThat(result.getOwnerLastName()).isEqualTo("Doe");
+        assertThat(result.getOwnerEmail()).isEqualTo("john.doe@example.com");
         assertThat(result.getIban()).isEqualTo("NL91ABNA0417164300");
         assertThat(result.getAccountType()).isEqualTo(AccountType.CHECKING);
         assertThat(result.getBalance().getAmount()).isEqualByComparingTo("1500.50");

@@ -34,26 +34,11 @@ class AccountRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        customer1 = new User();
-        customer1.setEmail("customer1@bank.com");
-        customer1.setUsername("customer1");
-        customer1.setPasswordHash("hashed");
-        customer1.setRole(Role.CUSTOMER);
-        customer1.setActive(true);
-        customer1.setCreatedAt(LocalDateTime.now());
-        customer1.setUpdatedAt(LocalDateTime.now());
-        customer1 = userRepository.save(customer1);
+        customer1 = buildCustomer("customer1");
+        customer2 = buildCustomer("customer2");
 
-        customer2 = new User();
-        customer2.setEmail("customer2@bank.com");
-        customer2.setUsername("customer2");
-        customer2.setPasswordHash("hashed");
-        customer2.setRole(Role.CUSTOMER);
-        customer2.setActive(true);
-        customer2.setCreatedAt(LocalDateTime.now());
-        customer2.setUpdatedAt(LocalDateTime.now());
-        customer2 = userRepository.save(customer2);
-
+        // customer1 owns two accounts, customer2 owns one. Every account holds 1000.00,
+        // so the expected sums are: all = 3000.00, customer1 = 2000.00, customer2 = 1000.00.
         accountRepository.save(buildAccount(customer1, "NL91ABNA0417164300"));
         accountRepository.save(buildAccount(customer1, "NL91ABNA0417164301"));
         accountRepository.save(buildAccount(customer2, "NL91ABNA0417164302"));
@@ -72,15 +57,7 @@ class AccountRepositoryTest {
     @Test
     @DisplayName("findByCustomerId() - should return empty page when customer has no accounts")
     void findByCustomerId_shouldReturnEmptyPage_whenNoAccounts() {
-        User customer3 = new User();
-        customer3.setEmail("customer3@bank.com");
-        customer3.setUsername("customer3");
-        customer3.setPasswordHash("hashed");
-        customer3.setRole(Role.CUSTOMER);
-        customer3.setActive(true);
-        customer3.setCreatedAt(LocalDateTime.now());
-        customer3.setUpdatedAt(LocalDateTime.now());
-        customer3 = userRepository.save(customer3);
+        User customer3 = buildCustomer("customer3");
 
         Page<Account> result = accountRepository.findByCustomerId(customer3.getId(), PageRequest.of(0, 10));
 
@@ -96,6 +73,49 @@ class AccountRepositoryTest {
         assertThat(result.getContent()).hasSize(2);
         assertThat(result.getContent())
                 .allMatch(a -> a.getCustomer().getUsername().equals("customer1"));
+    }
+
+    // --- balance sums (run against real H2, so they verify the JPQL itself) ---
+
+    @Test
+    @DisplayName("sumBalance() - should sum the balances of every account")
+    void sumBalance_shouldSumAllAccounts() {
+        assertThat(accountRepository.sumBalance()).isEqualByComparingTo("3000.00");
+    }
+
+    @Test
+    @DisplayName("sumBalanceByCustomerId() - should sum only the given customer's balances")
+    void sumBalanceByCustomerId_shouldSumOnlyThatCustomer() {
+        assertThat(accountRepository.sumBalanceByCustomerId(customer1.getId()))
+                .isEqualByComparingTo("2000.00");
+    }
+
+    @Test
+    @DisplayName("sumBalanceByCustomerId() - should return zero when the customer has no accounts")
+    void sumBalanceByCustomerId_shouldReturnZero_whenNoAccounts() {
+        User customer3 = buildCustomer("customer3");
+
+        assertThat(accountRepository.sumBalanceByCustomerId(customer3.getId()))
+                .isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("sumBalanceByCustomerUsername() - should sum only the given username's balances")
+    void sumBalanceByCustomerUsername_shouldSumOnlyThatCustomer() {
+        assertThat(accountRepository.sumBalanceByCustomerUsername("customer1"))
+                .isEqualByComparingTo("2000.00");
+    }
+
+    private User buildCustomer(String username) {
+        User customer = new User();
+        customer.setEmail(username + "@bank.com");
+        customer.setUsername(username);
+        customer.setPasswordHash("hashed");
+        customer.setRole(Role.CUSTOMER);
+        customer.setActive(true);
+        customer.setCreatedAt(LocalDateTime.now());
+        customer.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(customer);
     }
 
     private Account buildAccount(User customer, String iban) {
