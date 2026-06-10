@@ -3,7 +3,7 @@
     <div class="row" style="margin-bottom:24px">
       <h1 class="t-h1" style="margin:0">Employees</h1>
       <span class="spacer" />
-      <button class="btn btn--primary" @click="showForm = true">
+      <button class="btn btn--primary" @click="openCreate">
         <AppIcon name="plus" :size="16" /> Add employee
       </button>
     </div>
@@ -50,7 +50,7 @@
           <td class="num muted">{{ formatDate(emp.createdAt) }}</td>
           <td style="padding-right:24px;text-align:right">
             <div class="row" style="justify-content:flex-end;gap:6px">
-              <button class="btn btn--ghost btn--xs">Edit</button>
+              <button class="btn btn--ghost btn--xs" @click="openEdit(emp)">Edit</button>
               <button
                   :class="['btn', 'btn--xs', emp.active ? 'btn--ghost-danger' : 'btn--ghost']"
                   @click="toggleStatus(emp)"
@@ -66,6 +66,7 @@
 
     <EmployeeForm
         :show="showForm"
+        :employee="selectedEmployee"
         @close="showForm = false"
         @saved="handleFormSaved"
     />
@@ -84,7 +85,10 @@ import * as adminService from '@/services/admin'
 const employees = ref([])
 const loading = ref(false)
 const error = ref(null)
-const showForm = ref(false) // Controls modal visibility
+
+// 4. Added state for tracking the form and the selected employee
+const showForm = ref(false)
+const selectedEmployee = ref(null)
 
 async function fetchEmployees() {
   loading.value = true
@@ -96,6 +100,19 @@ async function fetchEmployees() {
   } finally {
     loading.value = false
   }
+}
+
+// 5. Added openCreate function
+function openCreate() {
+  selectedEmployee.value = null
+  showForm.value = true
+}
+
+// 6. Added openEdit function
+function openEdit(emp) {
+  // Clone the object so we don't mutate the table row directly until it is saved to the DB
+  selectedEmployee.value = { ...emp }
+  showForm.value = true
 }
 
 async function toggleStatus(emp) {
@@ -110,8 +127,8 @@ async function toggleStatus(emp) {
 }
 
 function handleFormSaved() {
-  showForm.value = false // Hide the modal
-  fetchEmployees()       // Refresh the table to show the new employee!
+  showForm.value = false
+  fetchEmployees()
 }
 
 function displayName(emp) {
