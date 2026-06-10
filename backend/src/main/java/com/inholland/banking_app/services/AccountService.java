@@ -4,10 +4,10 @@ import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
 import com.inholland.banking_app.dtos.AccountSearchResult;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
+import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.mappers.AccountMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.enums.AccountStatus;
-import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,6 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final AccountMapper accountMapper;
-    private final AccountPolicy accountPolicy;
 
     // --- Reads ---
 
@@ -49,29 +48,6 @@ public class AccountService {
         return accountMapper.toResponse(account);
     }
 
-    // --- Updates ---
-
-    // Applies limit changes and/or closes the account, enforcing account rules.
-    @Transactional
-    public AccountResponse updateAccount(String iban, AccountUpdateRequest request) {
-        Account account = findAccountOrThrow(iban);
-
-        accountPolicy.assertCanUpdateLimits(account);
-        if (request.getAbsoluteTransferLimit() != null) {
-            account.setAbsoluteTransferLimit(request.getAbsoluteTransferLimit());
-        }
-        if (request.getDailyTransferLimit() != null) {
-            account.setDailyTransferLimit(request.getDailyTransferLimit());
-        }
-        if (AccountStatus.CLOSED.equals(request.getStatus())) {
-            accountPolicy.assertCanClose(account);
-            account.setStatus(AccountStatus.CLOSED);
-            account.setClosedAt(LocalDateTime.now());
-        }
-        accountRepository.save(account);
-        return accountMapper.toResponse(account);
-    }
-
     @Transactional(readOnly = true)
     public List<AccountSearchResult> searchByCustomerName(String name) {
         return accountRepository.searchCheckingByCustomerName(name).stream()
@@ -85,10 +61,47 @@ public class AccountService {
                 .toList();
     }
 
+    // --- Updates ---
+
+    // Applies limit changes and/or closes the account, enforcing account rules.
+    @Transactional
+    public AccountResponse updateAccount(String iban, AccountUpdateRequest request) {
+        Account account = findAccountOrThrow(iban);
+
+        assertCanUpdateLimits(account);
+        if (request.getAbsoluteTransferLimit() != null) {
+            account.setAbsoluteTransferLimit(request.getAbsoluteTransferLimit());
+        }
+        if (request.getDailyTransferLimit() != null) {
+            account.setDailyTransferLimit(request.getDailyTransferLimit());
+        }
+        if (AccountStatus.CLOSED.equals(request.getStatus())) {
+            assertCanClose(account);
+            account.setStatus(AccountStatus.CLOSED);
+            account.setClosedAt(LocalDateTime.now());
+        }
+        accountRepository.save(account);
+        return accountMapper.toResponse(account);
+    }
+
     // --- Helpers ---
 
     private Account findAccountOrThrow(String iban) {
         return accountRepository.findById(iban)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
+    }
+
+    // A closed account is frozen: its transfer limits can no longer be changed.
+    private void assertCanUpdateLimits(Account account) {
+        if (account.getStatus() == AccountStatus.CLOSED) {
+            throw new AccountStateException("Cannot update a closed account");
+        }
+    }
+
+    // An account can only be closed once.
+    private void assertCanClose(Account account) {
+        if (account.getStatus() == AccountStatus.CLOSED) {
+            throw new AccountStateException("Account is already closed");
+        }
     }
 }

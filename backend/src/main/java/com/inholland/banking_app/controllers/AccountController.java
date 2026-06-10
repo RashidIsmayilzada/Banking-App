@@ -4,11 +4,13 @@ import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
 import com.inholland.banking_app.dtos.AccountSearchResult;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
-import com.inholland.banking_app.policies.AccountPolicy;
+import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.services.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,15 +32,14 @@ import java.util.List;
 public class AccountController {
 
     private final AccountService accountService;
-    private final AccountPolicy accountPolicy;
 
     // Lists every account (employee, optionally by user) or just the caller's own (customer).
     @GetMapping
     public ResponseEntity<AccountListResponse> listAccounts(
             @RequestParam(required = false) Long userId,
-            Pageable pageable,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication authentication) {
-        AccountListResponse body = accountPolicy.isEmployee(authentication)
+        AccountListResponse body = isEmployee(authentication)
                 ? accountService.listAccounts(userId, pageable)
                 : accountService.listAccountsOwnedBy(authentication.getName(), pageable);
         return ResponseEntity.ok(body);
@@ -66,5 +67,13 @@ public class AccountController {
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<List<AccountSearchResult>> searchAccounts(@RequestParam String name) {
         return ResponseEntity.ok(accountService.searchByCustomerName(name));
+    }
+
+    // Authorization scoping is a web-layer concern; the role is already carried
+    // in the token's authorities, so there is no need to load the User entity.
+    private boolean isEmployee(Authentication authentication) {
+        String employeeAuthority = "ROLE_" + Role.EMPLOYEE.name();
+        return authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(employeeAuthority));
     }
 }
