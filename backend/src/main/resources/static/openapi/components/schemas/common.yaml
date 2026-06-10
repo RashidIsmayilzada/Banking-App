@@ -176,6 +176,12 @@ PageMetadata:
 Role:
   type: string
   enum: [CUSTOMER, EMPLOYEE]
+CustomerStatus:
+  type: string
+  enum: [PENDING_APPROVAL, APPROVED, REJECTED, CLOSED]
+ApprovalDecision:
+  type: string
+  enum: [APPROVED, REJECTED]
 UserStatus:
   type: string
   enum: [PENDING_APPROVAL, APPROVED, REJECTED, CLOSED]

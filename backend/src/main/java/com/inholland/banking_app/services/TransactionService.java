@@ -20,6 +20,7 @@ import com.inholland.banking_app.repositories.TransactionRepository;
 import com.inholland.banking_app.specifications.TransactionSpecification;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +35,7 @@ import java.time.LocalDateTime;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
@@ -47,12 +49,17 @@ public class TransactionService {
     public TransactionPageDto listTransactions(TransactionFilterParams params, String username) {
         // Restricts results to the caller's own transactions if they are a customer, then returns a filtered page
         User currentUser = resolveUser(username);
+        log.info("[DEBUG_LOG] listTransactions for user: {}, role: {}", username, currentUser.getRole());
+        
         restrictToOwnerIfCustomer(params, currentUser);
+        log.info("[DEBUG_LOG] Applied userId filter: {}", params.getUserId());
 
         Pageable pageable = buildPageable(params);
         Specification<Transaction> spec = TransactionSpecification.fromParams(params);
 
         Page<Transaction> page = transactionRepository.findAll(spec, pageable);
+        log.info("[DEBUG_LOG] Found {} transactions", page.getTotalElements());
+        
         return transactionMapper.toPageDto(page);
     }
 
@@ -79,7 +86,7 @@ public class TransactionService {
         applyDebit(from, amount);
         credit(to, amount);
 
-        Transaction tx = TransactionFactory.createTransfer(from, to, amount, currentUser, determineChannel(currentUser), request.getDescription());
+        Transaction tx = TransactionFactory.createTransfer(from, to, amount, currentUser, determineChannel(request, currentUser), request.getDescription());
         transactionRepository.save(tx);
 
         return transactionMapper.toTransferResult(tx, from, to);
@@ -90,11 +97,12 @@ public class TransactionService {
         transactionPolicy.requireIban(request, "DEPOSIT");
 
         Account account = resolveActiveAccount(request.getIban());
+        transactionPolicy.validateAccountOwnership(account, currentUser, "You can only deposit to your own accounts");
         BigDecimal amount = BigDecimal.valueOf(request.getAmount());
 
         applyCredit(account, amount);
 
-        Transaction tx = TransactionFactory.createDeposit(account, amount, currentUser, request.getDescription());
+        Transaction tx = TransactionFactory.createDeposit(account, amount, currentUser, determineChannel(request, currentUser), request.getDescription());
         transactionRepository.save(tx);
 
         return transactionMapper.toSingleAccountResult(tx, account);
@@ -110,7 +118,7 @@ public class TransactionService {
 
         applyDebit(account, amount);
 
-        Transaction tx = TransactionFactory.createWithdrawal(account, amount, currentUser, request.getDescription());
+        Transaction tx = TransactionFactory.createWithdrawal(account, amount, currentUser, determineChannel(request, currentUser), request.getDescription());
         transactionRepository.save(tx);
 
         return transactionMapper.toSingleAccountResult(tx, account);
@@ -196,11 +204,12 @@ public class TransactionService {
     private Pageable buildPageable(TransactionFilterParams params) {
         // Converts filter params into a Spring Pageable with the requested page, size, and sort order
         Sort sort = parseSort(params.getSort());
-        return PageRequest.of(params.getPage(), params.getSize(), sort);
+        int size = params.getSize() > 0 ? params.getSize() : 20;
+        return PageRequest.of(params.getPage(), size, sort);
     }
 
-    private Channel determineChannel(User currentUser) {
-        // Returns EMPLOYEE channel for staff, WEB channel for customers
+    private Channel determineChannel(TransactionRequest request, User currentUser) {
+        if (request.getChannel() != null) return request.getChannel();
         return currentUser.getRole() == Role.EMPLOYEE ? Channel.EMPLOYEE : Channel.WEB;
     }
 

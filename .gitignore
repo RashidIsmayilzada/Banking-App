@@ -5,6 +5,9 @@
 *.ipr
 .vscode/
 
+# GitHub Copilot / tool-generated hooks
+.github/
+
 # OS
 .DS_Store
 Thumbs.db

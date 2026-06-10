@@ -57,6 +57,17 @@ export function searchCustomers(search, params = {}) {
   })
 }
 
+export async function getPendingApprovalCount() {
+  const response = await getAllUsers({
+    role: 'CUSTOMER',
+    status: 'PENDING_APPROVAL',
+    page: 0,
+    size: 1,
+  })
+
+  return response.totalElements ?? 0
+}
+
 export function approveUser(id, status) {
   return request(`/users/${id}/approval`, {
     method: 'PATCH',

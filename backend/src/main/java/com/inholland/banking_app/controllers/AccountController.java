@@ -2,11 +2,10 @@ package com.inholland.banking_app.controllers;
 
 import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
+import com.inholland.banking_app.dtos.AccountSearchResult;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
 import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.services.AccountService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +21,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Accounts", description = "View and manage customer accounts")
+import java.util.List;
+
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/accounts")
@@ -32,10 +32,7 @@ public class AccountController {
     private final AccountService accountService;
     private final AccountPolicy accountPolicy;
 
-    @Operation(
-            summary = "List accounts",
-            description = "Employees see every account (optionally filtered by userId); "
-                    + "customers see only their own. Results are paginated and include the combined balance.")
+    // Lists every account (employee, optionally by user) or just the caller's own (customer).
     @GetMapping
     public ResponseEntity<AccountListResponse> listAccounts(
             @RequestParam(required = false) Long userId,
@@ -47,25 +44,27 @@ public class AccountController {
         return ResponseEntity.ok(body);
     }
 
-    @Operation(
-            summary = "Get account details",
-            description = "Returns a single account by IBAN, including the owner's personal details. "
-                    + "Customers may only view their own accounts; employees may view any.")
+    // Returns one account by IBAN; customers may only read their own, employees any.
     @GetMapping("/{iban}")
     @PostAuthorize("hasRole('EMPLOYEE') or returnObject.body.ownerUsername == authentication.name")
     public ResponseEntity<AccountResponse> getAccount(@PathVariable String iban) {
         return ResponseEntity.ok(accountService.getAccount(iban));
     }
 
-    @Operation(
-            summary = "Update an account (employee only)",
-            description = "Updates the absolute and/or daily transfer limits, or closes the account "
-                    + "by setting its status to CLOSED.")
+    // Updates transfer limits or closes the account (employee only).
     @PatchMapping("/{iban}")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<AccountResponse> updateAccount(
             @PathVariable String iban,
             @Valid @RequestBody AccountUpdateRequest request) {
         return ResponseEntity.ok(accountService.updateAccount(iban, request));
+    }
+
+    // Searches accounts by customer name. Created for the transaction feature
+    // (employee transfers/deposits need to look an account up by name).
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public ResponseEntity<List<AccountSearchResult>> searchAccounts(@RequestParam String name) {
+        return ResponseEntity.ok(accountService.searchByCustomerName(name));
     }
 }

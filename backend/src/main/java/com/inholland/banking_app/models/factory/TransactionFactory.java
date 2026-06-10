@@ -29,13 +29,13 @@ public final class TransactionFactory {
     }
 
     public static Transaction createDeposit(Account account, BigDecimal amount,
-                                            User initiatedBy, String description) {
+                                            User initiatedBy, Channel channel, String description) {
         Transaction transaction = new Transaction();
         transaction.setTransactionType(TransactionType.DEPOSIT);
         transaction.setToAccount(account);
         transaction.setAmount(amount);
         transaction.setCurrency("EUR");
-        transaction.setChannel(Channel.ATM);
+        transaction.setChannel(channel);
         transaction.setInitiatedBy(initiatedBy);
         transaction.setCreatedAt(LocalDateTime.now());
         transaction.setDescription(description);
@@ -43,13 +43,13 @@ public final class TransactionFactory {
     }
 
     public static Transaction createWithdrawal(Account account, BigDecimal amount,
-                                               User initiatedBy, String description) {
+                                               User initiatedBy, Channel channel, String description) {
         Transaction transaction = new Transaction();
         transaction.setTransactionType(TransactionType.WITHDRAWAL);
         transaction.setFromAccount(account);
         transaction.setAmount(amount);
         transaction.setCurrency("EUR");
-        transaction.setChannel(Channel.ATM);
+        transaction.setChannel(channel);
         transaction.setInitiatedBy(initiatedBy);
         transaction.setCreatedAt(LocalDateTime.now());
         transaction.setDescription(description);
