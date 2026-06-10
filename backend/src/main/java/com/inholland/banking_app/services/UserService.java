@@ -5,8 +5,10 @@ import com.inholland.banking_app.dtos.UserFilterRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.mappers.UserResponseMapper;
 import com.inholland.banking_app.models.*;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.AccountType;
+import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.TransactionRepository;
@@ -107,23 +109,44 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse blockUser(Long userId) {
+    public UserResponse closeUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User with id " + userId + " not found"));
-        user.setActive(false);
-        user = userRepository.save(user);
+        if (user.getRole() == Role.EMPLOYEE) {
+            user.setActive(false);
+            userRepository.save(user);
+        } else {
+            CustomerProfile customerProfile = user.getCustomerProfile();
+            if (customerProfile == null) {
+                throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
+            }
+            customerProfile.setStatus(CustomerStatus.CLOSED);
+            for (Account account : user.getAccounts()) {
+                account.setStatus(AccountStatus.CLOSED);
+                account.setClosedAt(java.time.LocalDateTime.now());
+            }
+        }
         return userResponseMapper.toUserResponse(user);
     }
 
     @Transactional
-    public UserResponse closeCustomer(Long userId) {
+    public UserResponse reopenUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User with id " + userId + " not found"));
-        CustomerProfile customerProfile = user.getCustomerProfile();
-        if (customerProfile == null) {
-            throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
+        if (user.getRole() == Role.EMPLOYEE) {
+            user.setActive(true);
+            userRepository.save(user);
+        } else {
+            CustomerProfile customerProfile = user.getCustomerProfile();
+            if (customerProfile == null) {
+                throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
+            }
+            customerProfile.setStatus(CustomerStatus.APPROVED);
+            for (Account account : user.getAccounts()) {
+                account.setStatus(AccountStatus.ACTIVE);
+                account.setClosedAt(null);
+            }
         }
-        customerProfile.setStatus(CustomerStatus.CLOSED);
         return userResponseMapper.toUserResponse(user);
     }
 

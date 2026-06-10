@@ -7,6 +7,7 @@ import com.inholland.banking_app.mappers.UserResponseMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
@@ -270,6 +271,152 @@ class UserServiceTest {
         userService.approveCustomer(request, 1L);
 
         verify(accountRepository, never()).save(any());
+    }
+
+    // --- closeUser ---
+
+    @Test
+    @DisplayName("closeUser() - should set profile CLOSED and close all accounts for a customer")
+    void closeUser_shouldCloseProfileAndAccounts_whenCustomer() {
+        Account account = new Account();
+        account.setIban("NL10INHO0000000011");
+        account.setStatus(AccountStatus.ACTIVE);
+        account.setClosedAt(null);
+        customerUser.getAccounts().add(account);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
+        when(userResponseMapper.toUserResponse(customerUser)).thenReturn(userResponse);
+
+        userService.closeUser(1L);
+
+        assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.CLOSED);
+        assertThat(account.getStatus()).isEqualTo(AccountStatus.CLOSED);
+        assertThat(account.getClosedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("closeUser() - should set active=false for an employee")
+    void closeUser_shouldSetInactive_whenEmployee() {
+        User employeeUser = new User();
+        employeeUser.setId(2L);
+        employeeUser.setRole(Role.EMPLOYEE);
+        employeeUser.setActive(true);
+
+        UserResponse employeeResponse = UserResponse.builder()
+                .id(2L).role(Role.EMPLOYEE).active(false).build();
+
+        when(userRepository.findById(2L)).thenReturn(Optional.of(employeeUser));
+        when(userResponseMapper.toUserResponse(employeeUser)).thenReturn(employeeResponse);
+
+        userService.closeUser(2L);
+
+        assertThat(employeeUser.isActive()).isFalse();
+        verify(userRepository).save(employeeUser);
+    }
+
+    @Test
+    @DisplayName("closeUser() - should throw EntityNotFoundException when user not found")
+    void closeUser_shouldThrow_whenUserNotFound() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.closeUser(99L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("User with id 99 not found");
+    }
+
+    @Test
+    @DisplayName("closeUser() - should throw EntityNotFoundException when customer has no profile")
+    void closeUser_shouldThrow_whenCustomerProfileIsNull() {
+        customerUser.setCustomerProfile(null);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
+
+        assertThatThrownBy(() -> userService.closeUser(1L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("Customer profile not found");
+    }
+
+    @Test
+    @DisplayName("closeUser() - should leave accounts already CLOSED unchanged")
+    void closeUser_shouldCloseAlreadyClosedAccounts_withoutError() {
+        Account account = new Account();
+        account.setIban("NL10INHO0000000011");
+        account.setStatus(AccountStatus.CLOSED);
+        account.setClosedAt(LocalDateTime.now().minusDays(1));
+        customerUser.getAccounts().add(account);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
+        when(userResponseMapper.toUserResponse(customerUser)).thenReturn(userResponse);
+
+        userService.closeUser(1L);
+
+        assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.CLOSED);
+        assertThat(account.getStatus()).isEqualTo(AccountStatus.CLOSED);
+    }
+
+    // --- reopenUser ---
+
+    @Test
+    @DisplayName("reopenUser() - should set profile APPROVED and reopen all accounts for a customer")
+    void reopenUser_shouldApproveProfileAndReopenAccounts_whenCustomer() {
+        Account account = new Account();
+        account.setIban("NL10INHO0000000011");
+        account.setStatus(AccountStatus.CLOSED);
+        account.setClosedAt(LocalDateTime.now().minusDays(1));
+        customerUser.getAccounts().add(account);
+        customerProfile.setStatus(CustomerStatus.CLOSED);
+
+        UserResponse reopenedResponse = UserResponse.builder()
+                .id(1L).role(Role.CUSTOMER).status(CustomerStatus.APPROVED).build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
+        when(userResponseMapper.toUserResponse(customerUser)).thenReturn(reopenedResponse);
+
+        userService.reopenUser(1L);
+
+        assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.APPROVED);
+        assertThat(account.getStatus()).isEqualTo(AccountStatus.ACTIVE);
+        assertThat(account.getClosedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("reopenUser() - should set active=true for an employee")
+    void reopenUser_shouldSetActive_whenEmployee() {
+        User employeeUser = new User();
+        employeeUser.setId(2L);
+        employeeUser.setRole(Role.EMPLOYEE);
+        employeeUser.setActive(false);
+
+        UserResponse employeeResponse = UserResponse.builder()
+                .id(2L).role(Role.EMPLOYEE).active(true).build();
+
+        when(userRepository.findById(2L)).thenReturn(Optional.of(employeeUser));
+        when(userResponseMapper.toUserResponse(employeeUser)).thenReturn(employeeResponse);
+
+        userService.reopenUser(2L);
+
+        assertThat(employeeUser.isActive()).isTrue();
+        verify(userRepository).save(employeeUser);
+    }
+
+    @Test
+    @DisplayName("reopenUser() - should throw EntityNotFoundException when user not found")
+    void reopenUser_shouldThrow_whenUserNotFound() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.reopenUser(99L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("User with id 99 not found");
+    }
+
+    @Test
+    @DisplayName("reopenUser() - should throw EntityNotFoundException when customer has no profile")
+    void reopenUser_shouldThrow_whenCustomerProfileIsNull() {
+        customerUser.setCustomerProfile(null);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
+
+        assertThatThrownBy(() -> userService.reopenUser(1L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("Customer profile not found");
     }
 
 }

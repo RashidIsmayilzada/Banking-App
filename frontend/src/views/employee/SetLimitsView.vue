@@ -11,6 +11,8 @@
       <span class="iban" style="color:var(--ink)">{{ account?.iban || '—' }}</span>
     </p>
 
+    <div v-if="error" class="banner banner--danger" style="margin-bottom:20px">{{ error }}</div>
+
     <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;align-items:flex-start">
       <div class="card" style="padding:28px">
         <div class="col" style="gap:20px">
@@ -60,10 +62,11 @@
           </div>
 
           <div class="row">
-            <button class="btn btn--ghost" @click="$router.back()">Cancel</button>
+            <button class="btn btn--ghost" @click="$router.back()" :disabled="saving">Cancel</button>
             <span class="spacer" />
-            <!-- TODO: PATCH /employees/accounts/{accountId}/limits with absoluteTransferLimit, dailyTransferLimit -->
-            <button class="btn btn--primary" @click="saveLimits">Save limits</button>
+            <button class="btn btn--primary" @click="saveLimits" :disabled="saving">
+              {{ saving ? 'Saving...' : 'Save limits' }}
+            </button>
           </div>
         </div>
       </div>
@@ -101,6 +104,7 @@ import EmployeeShell from '@/components/layout/EmployeeShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import * as userService from '@/services/user'
+import * as accountService from '@/services/accounts'
 
 const router = useRouter()
 const route = useRoute()
@@ -109,8 +113,42 @@ const customerName = computed(() => customer.value ? [customer.value.firstName, 
 const account = computed(() => customer.value?.accounts?.find(item => item.accountType === 'CHECKING') || customer.value?.accounts?.[0] || null)
 
 const form = ref({ absoluteLimit: '', dailyLimit: '', reason: '' })
+const saving = ref(false)
+const error = ref(null)
 
-function saveLimits() { router.push('/employee/customers') }
+async function saveLimits() {
+  if (!account.value?.iban) {
+    error.value = 'No account found for this customer'
+    return
+  }
+
+  saving.value = true
+  error.value = null
+
+  try {
+    const payload = {}
+
+    if (form.value.absoluteLimit && form.value.absoluteLimit !== String(account.value?.absoluteTransferLimit?.amount ?? '')) {
+      payload.absoluteTransferLimit = { amount: parseFloat(form.value.absoluteLimit), currency: 'EUR' }
+    }
+
+    if (form.value.dailyLimit && form.value.dailyLimit !== String(account.value?.dailyTransferLimit?.amount ?? '')) {
+      payload.dailyTransferLimit = { amount: parseFloat(form.value.dailyLimit), currency: 'EUR' }
+    }
+
+    if (Object.keys(payload).length === 0) {
+      error.value = 'No changes to save'
+      saving.value = false
+      return
+    }
+
+    await accountService.updateAccount(account.value.iban, payload)
+    router.push(`/employee/customers/${route.params.id}`)
+  } catch (err) {
+    error.value = err.message || 'Failed to update limits'
+    saving.value = false
+  }
+}
 
 const history = ref([])
 
