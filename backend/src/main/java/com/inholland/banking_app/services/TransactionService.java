@@ -162,11 +162,7 @@ public class TransactionService {
     }
 
     private void applyCredit(Account account, BigDecimal amount) {
-        // Runs all pre-credit checks then credits the account balance and records daily usage
-        transactionPolicy.checkBalance(account, amount);
-        transactionPolicy.checkDailyLimit(account, amount);
         credit(account, amount);
-        updateDailyUsage(account, amount);
     }
 
     private void debit(Account account, BigDecimal amount) {
