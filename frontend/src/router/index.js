@@ -10,7 +10,6 @@ import DashboardView     from '@/views/customer/DashboardView.vue'
 import AccountDetailView from '@/views/customer/AccountDetailView.vue'
 import TransactionsView  from '@/views/customer/TransactionsView.vue'
 import TransferView      from '@/views/customer/TransferView.vue'
-import AtmSimView        from '@/views/customer/AtmSimView.vue'
 
 // ATM
 import AtmLoginView    from '@/views/atm/AtmLoginView.vue'
@@ -42,8 +41,7 @@ const routes = [
   { path: '/customer/accounts',       redirect: '/customer/dashboard' },
   { path: '/customer/accounts/:iban', component: AccountDetailView  },
   { path: '/customer/transfer',       component: TransferView       },
-  { path: '/customer/atm',           component: AtmSimView         },
-  { path: '/customer/transactions', component: TransactionsView  },
+{ path: '/customer/transactions', component: TransactionsView  },
 
   // ── ATM ────────────────────────────────────────────
   { path: '/atm/login',    component: AtmLoginView    },

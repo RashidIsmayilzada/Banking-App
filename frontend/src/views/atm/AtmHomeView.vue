@@ -47,7 +47,7 @@ import { getAtmUser, getAtmAccount, setAtmAccount, atmGetAccounts, atmLogout, cl
 const router = useRouter()
 const account = ref(getAtmAccount())
 const user = getAtmUser()
-const firstName = computed(() => user?.firstName || user?.username || 'there')
+const firstName = computed(() => user?.username || 'there')
 
 function formatEur(amount) {
   return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(amount || 0))

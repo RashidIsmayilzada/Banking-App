@@ -26,7 +26,7 @@ import { useRouter } from 'vue-router'
 import AtmShell from '@/components/layout/AtmShell.vue'
 import AppField from '@/components/shared/AppField.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
-import { atmLogin, setAtmSession, atmGetAccounts, setAtmAccount } from '@/services/atm.js'
+import { atmLogin, setAtmSession, clearAtmSession, atmGetAccounts, setAtmAccount } from '@/services/atm.js'
 
 const router = useRouter()
 const form = ref({ email: '', password: '' })
@@ -42,16 +42,22 @@ async function handleLogin() {
       error.value = 'Only customer accounts can use this ATM.'
       return
     }
+    if (response.user?.userStatus !== 'APPROVED') {
+      error.value = 'Your account is not yet approved. Please visit a branch.'
+      return
+    }
     setAtmSession(response.accessToken, response.user)
     const accountData = await atmGetAccounts()
     const checking = (accountData.accounts || []).find(a => a.accountType === 'CHECKING')
     if (!checking) {
+      clearAtmSession()
       error.value = 'No checking account found. Please visit a branch.'
       return
     }
     setAtmAccount(checking)
     router.push('/atm/home')
   } catch (err) {
+    clearAtmSession()
     error.value = err.message || 'Login failed.'
   } finally {
     loading.value = false
