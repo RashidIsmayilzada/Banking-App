@@ -3,7 +3,7 @@
     <div class="row" style="margin-bottom:24px">
       <div>
         <h1 class="t-h1" style="margin:0">Pending approvals</h1>
-        <p class="t-body muted" style="margin:6px 0 0">{{ pending.length }} customers awaiting account creation.</p>
+        <p class="t-body muted" style="margin:6px 0 0">{{ pendingCount }} customers awaiting account creation.</p>
       </div>
       <span class="spacer" />
       <button class="btn btn--secondary"><AppIcon name="filter" :size="16" /> Filter</button>
@@ -71,6 +71,7 @@ import AppAvatar from '@/components/shared/AppAvatar.vue'
 import * as userService from '@/services/user'
 
 const pending = ref([])
+const pendingCount = ref(0)
 const loading = ref(false)
 const error = ref(null)
 
@@ -84,6 +85,7 @@ async function fetchPending() {
       size: 100
     })
     
+    pendingCount.value = response.totalElements ?? response.content.length
     pending.value = response.content
       .map(user => {
         const submittedDate = user.registeredAt ? new Date(user.registeredAt) : new Date()

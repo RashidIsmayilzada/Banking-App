@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -65,6 +66,7 @@ public class User {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, optional = true)
     private EmployeeProfile employeeProfile;
 
+    @BatchSize(size = 25)
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL)
     @JsonIgnore
     private List<Account> accounts = new ArrayList<>();

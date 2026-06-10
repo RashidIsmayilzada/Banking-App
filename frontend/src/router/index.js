@@ -20,6 +20,7 @@ import AtmConfirmView  from '@/views/atm/AtmConfirmView.vue'
 
 // Employee
 import OverviewView          from '@/views/employee/OverviewView.vue'
+import UserDirectoryView     from '@/views/employee/UserDirectoryView.vue'
 import CustomersView         from '@/views/employee/CustomersView.vue'
 import CustomerDetailView    from '@/views/employee/CustomerDetailView.vue'
 import ApprovalsView         from '@/views/employee/ApprovalsView.vue'
@@ -52,6 +53,8 @@ const routes = [
 
   // ── Employee ───────────────────────────────────────
   { path: '/employee/overview',      component: OverviewView,         meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/users',         component: UserDirectoryView,    props: { title: 'All users' }, meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+  { path: '/employee/employees',     component: UserDirectoryView,    props: { title: 'Employees', fixedRole: 'EMPLOYEE' }, meta: { requiresAuth: true, role: 'EMPLOYEE' } },
   { path: '/employee/customers',     component: CustomersView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
   { path: '/employee/customers/:id', component: CustomerDetailView,   meta: { requiresAuth: true, role: 'EMPLOYEE' } },
   { path: '/employee/approvals',     component: ApprovalsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },

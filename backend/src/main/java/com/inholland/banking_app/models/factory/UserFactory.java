@@ -60,7 +60,7 @@ public final class UserFactory {
         profile.setUser(user);
         profile.setFirstName(request.getFirstName());
         profile.setLastName(request.getLastName());
-        profile.setEmployeeNumber("EMP-" + user.getId());
+        profile.setEmployeeNumber("EMP-" + request.getEmployeeNumber());
         profile.setEnabled(true);
         profile.setCreatedAt(LocalDateTime.now());
         return profile;

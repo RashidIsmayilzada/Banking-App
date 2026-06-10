@@ -9,9 +9,9 @@
     >
       <AppIcon :name="item.icon" :size="18" class="nav-item__icon" />
       <span>{{ item.label }}</span>
-      <span v-if="item.badge" class="spacer" />
+      <span v-if="item.badge !== undefined && item.badge !== null" class="spacer" />
       <span
-        v-if="item.badge"
+        v-if="item.badge !== undefined && item.badge !== null"
         class="badge badge--warn"
         style="padding:2px 8px;font-size:11px"
       >{{ item.badge }}</span>

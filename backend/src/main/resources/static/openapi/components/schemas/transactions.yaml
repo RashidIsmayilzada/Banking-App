@@ -101,7 +101,7 @@ TransactionRequest:
       type: string
       maxLength: 255
 
-TransactionResult:
+TransferResult:
   type: object
   required:
     - transaction
