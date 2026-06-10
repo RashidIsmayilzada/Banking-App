@@ -56,7 +56,7 @@
           <tr v-else-if="transactions.length === 0">
             <td colspan="5" class="muted" style="padding:24px;text-align:center">No transactions found.</td>
           </tr>
-          <tr v-for="tx in transactions" :key="tx.id">
+          <tr v-for="tx in transactions" :key="tx.transactionId">
             <td class="num" style="padding-left:20px">{{ tx.date }}</td>
             <td style="font-weight:500">{{ tx.description }}</td>
             <td class="iban">{{ tx.from }}</td>
@@ -87,7 +87,7 @@ import { listTransactions } from '@/services/transaction.js'
 
 const filters = ref({ startDate: '', endDate: '', amountOp: '=', amount: '', iban: '' })
 const activeFilters = ref([])
-const currentUser = ref(null)
+const { user: currentUser } = useAuth()
 const transactions = ref([])
 const loading = ref(false)
 const pageMeta = ref({ page: 0, size: 8, totalElements: 0, totalPages: 0 })
@@ -121,6 +121,34 @@ function formatMoney(value) {
 
 function formatDateTime(value) {
   return value ? new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
+}
+
+function buildParams() {
+  const params = { page: pageMeta.value.page, size: pageMeta.value.size }
+  if (filters.value.startDate) params.startDateTime = `${filters.value.startDate}T00:00:00`
+  if (filters.value.endDate) params.endDateTime = `${filters.value.endDate}T23:59:59`
+  if (filters.value.iban) params.iban = filters.value.iban
+  const amount = parseMoney(filters.value.amount)
+  if (amount) {
+    if (filters.value.amountOp === '>') params.amountMin = amount
+    else if (filters.value.amountOp === '<') params.amountMax = amount
+    else params.amountEquals = amount
+  }
+  return params
+}
+
+function mapTransaction(tx) {
+  // Outgoing when the source account belongs to the current user (deposits have no source).
+  const outgoing = tx.fromAccount?.userId === currentUser.value?.userId
+  const sign = outgoing ? '-' : '+'
+  return {
+    transactionId: tx.transactionId,
+    date: formatDateTime(tx.createdAt),
+    description: tx.description || '—',
+    from: tx.fromAccount?.iban || '—',
+    to: tx.toAccount?.iban || '—',
+    amount: `${sign}${formatMoney(tx.amount.amount)}`,
+  }
 }
 
 async function fetchTransactions() {
@@ -176,7 +204,6 @@ function handlePageChange(newPage) {
 }
 
 onMounted(async () => {
-  currentUser.value = await userService.getCurrentUser()
   await fetchTransactions()
 })
 </script>
