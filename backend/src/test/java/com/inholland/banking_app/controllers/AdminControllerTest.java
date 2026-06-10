@@ -23,6 +23,9 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -32,8 +35,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -59,6 +61,14 @@ class AdminControllerTest {
 
     @BeforeEach
     void setUp() {
+        Authentication authentication = mock(Authentication.class);
+
+        lenient().when(authentication.getName()).thenReturn("admin");
+
+        SecurityContext securityContext = mock(SecurityContext.class);
+
+        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
         employeeResponse = new EmployeeResponse();
         employeeResponse.setId(1L);
         employeeResponse.setFirstName("Test");
@@ -74,7 +84,13 @@ class AdminControllerTest {
                 .status(AccountStatus.ACTIVE)
                 .build();
 
-
+        validEmployeeRequest = new EmployeeCreateRequest();
+        validEmployeeRequest.setFirstName("New");
+        validEmployeeRequest.setLastName("User");
+        validEmployeeRequest.setEmail("new@bank.com");
+        validEmployeeRequest.setUsername("newuser");
+        validEmployeeRequest.setPassword("Test1234!@#$");
+        validEmployeeRequest.setEmployeeNumber("EMP999");
     }
 
     @Test
