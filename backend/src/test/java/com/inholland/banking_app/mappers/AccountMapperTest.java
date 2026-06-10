@@ -6,21 +6,21 @@ import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class AccountMapperTest {
 
     private final AccountMapper accountMapper = new AccountMapper();
 
     @Test
-    @DisplayName("toResponse() - should map all fields correctly")
-    void toResponse_shouldMapAllFieldsCorrectly() {
+    void toResponse_mapsEveryField() {
         User owner = new User();
         owner.setId(1L);
         owner.setUsername("customer");
@@ -47,25 +47,25 @@ class AccountMapperTest {
 
         AccountResponse result = accountMapper.toResponse(account);
 
-        assertThat(result.getOwnerId()).isEqualTo(1L);
-        assertThat(result.getOwnerUsername()).isEqualTo("customer");
-        assertThat(result.getOwnerFirstName()).isEqualTo("John");
-        assertThat(result.getOwnerLastName()).isEqualTo("Doe");
-        assertThat(result.getOwnerEmail()).isEqualTo("john.doe@example.com");
-        assertThat(result.getIban()).isEqualTo("NL91ABNA0417164300");
-        assertThat(result.getAccountType()).isEqualTo(AccountType.CHECKING);
+        assertEquals(1L, result.getOwnerId());
+        assertEquals("customer", result.getOwnerUsername());
+        assertEquals("John", result.getOwnerFirstName());
+        assertEquals("Doe", result.getOwnerLastName());
+        assertEquals("john.doe@example.com", result.getOwnerEmail());
+        assertEquals("NL91ABNA0417164300", result.getIban());
+        assertEquals(AccountType.CHECKING, result.getAccountType());
+        // BigDecimal equals() is scale-sensitive (1500.50 != 1500.5); compare money by value.
         assertThat(result.getBalance().getAmount()).isEqualByComparingTo("1500.50");
-        assertThat(result.getBalance().getCurrency()).isEqualTo("EUR");
+        assertEquals("EUR", result.getBalance().getCurrency());
         assertThat(result.getAbsoluteTransferLimit().getAmount()).isEqualByComparingTo("5000.00");
         assertThat(result.getDailyTransferLimit().getAmount()).isEqualByComparingTo("2000.00");
-        assertThat(result.getStatus()).isEqualTo(AccountStatus.CLOSED);
-        assertThat(result.getCreatedAt()).isEqualTo(createdAt);
-        assertThat(result.getClosedAt()).isEqualTo(closedAt);
+        assertEquals(AccountStatus.CLOSED, result.getStatus());
+        assertEquals(createdAt, result.getCreatedAt());
+        assertEquals(closedAt, result.getClosedAt());
     }
 
     @Test
-    @DisplayName("toResponse() - should map closedAt as null when account is active")
-    void toResponse_shouldMapClosedAtAsNull_whenAccountIsActive() {
+    void toResponse_omitsNameAndClosedAt_whenProfileMissingAndAccountActive() {
         User owner = new User();
         owner.setId(1L);
         owner.setUsername("customer");
@@ -82,7 +82,9 @@ class AccountMapperTest {
 
         AccountResponse result = accountMapper.toResponse(account);
 
-        assertThat(result.getClosedAt()).isNull();
-        assertThat(result.getStatus()).isEqualTo(AccountStatus.ACTIVE);
+        assertNull(result.getOwnerFirstName());
+        assertNull(result.getOwnerLastName());
+        assertNull(result.getClosedAt());
+        assertEquals(AccountStatus.ACTIVE, result.getStatus());
     }
 }
