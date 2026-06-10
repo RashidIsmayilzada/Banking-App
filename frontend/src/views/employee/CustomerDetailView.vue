@@ -62,7 +62,7 @@
                   </span>
                   <span class="iban">{{ acc.iban }}</span>
                   <span class="spacer" />
-                  <span style="font-weight:500">{{ formatMoney(acc.balance) }}</span>
+                  <span style="font-weight:500">{{ formatMoney(acc.balance?.amount) }}</span>
                 </div>
               </div>
             </template>
@@ -73,12 +73,12 @@
             <div class="row" style="font-size:13px">
               <span class="muted">Daily transfer limit</span>
               <span class="spacer" />
-              <span style="font-weight:500">{{ formatMoney(primaryAccount?.dailyTransferLimit) }}</span>
+              <span style="font-weight:500">{{ formatMoney(primaryAccount?.dailyTransferLimit?.amount) }}</span>
             </div>
             <div class="row" style="font-size:13px">
               <span class="muted">Absolute limit</span>
               <span class="spacer" />
-              <span style="font-weight:500">{{ formatMoney(primaryAccount?.absoluteTransferLimit) }}</span>
+              <span style="font-weight:500">{{ formatMoney(primaryAccount?.absoluteTransferLimit?.amount) }}</span>
             </div>
           </div>
         </div>

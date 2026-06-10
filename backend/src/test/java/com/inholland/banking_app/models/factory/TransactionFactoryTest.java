@@ -79,14 +79,14 @@ class TransactionFactoryTest {
     @Test
     @DisplayName("createDeposit() - should set transaction type to DEPOSIT")
     void createDeposit_shouldSetTypeToDeposit() {
-        Transaction tx = TransactionFactory.createDeposit(accountA, new BigDecimal("200.00"), initiator, "cash in");
+        Transaction tx = TransactionFactory.createDeposit(accountA, new BigDecimal("200.00"), initiator, Channel.ATM, "cash in");
         assertThat(tx.getTransactionType()).isEqualTo(TransactionType.DEPOSIT);
     }
 
     @Test
     @DisplayName("createDeposit() - should set toAccount and leave fromAccount null")
     void createDeposit_shouldSetToAccountAndLeaveFromAccountNull() {
-        Transaction tx = TransactionFactory.createDeposit(accountA, new BigDecimal("200.00"), initiator, "cash in");
+        Transaction tx = TransactionFactory.createDeposit(accountA, new BigDecimal("200.00"), initiator, Channel.ATM, "cash in");
         assertThat(tx.getToAccount()).isSameAs(accountA);
         assertThat(tx.getFromAccount()).isNull();
     }
@@ -94,7 +94,7 @@ class TransactionFactoryTest {
     @Test
     @DisplayName("createDeposit() - should always use ATM channel")
     void createDeposit_shouldUseAtmChannel() {
-        Transaction tx = TransactionFactory.createDeposit(accountA, new BigDecimal("200.00"), initiator, "cash in");
+        Transaction tx = TransactionFactory.createDeposit(accountA, new BigDecimal("200.00"), initiator, Channel.ATM, "cash in");
         assertThat(tx.getChannel()).isEqualTo(Channel.ATM);
     }
 
@@ -102,7 +102,7 @@ class TransactionFactoryTest {
     @DisplayName("createDeposit() - should set amount, currency, initiatedBy, description and createdAt")
     void createDeposit_shouldSetAllCoreFields() {
         BigDecimal amount = new BigDecimal("150.00");
-        Transaction tx = TransactionFactory.createDeposit(accountA, amount, initiator, "deposit");
+        Transaction tx = TransactionFactory.createDeposit(accountA, amount, initiator, Channel.ATM, "deposit");
 
         assertThat(tx.getAmount()).isEqualByComparingTo(amount);
         assertThat(tx.getCurrency()).isEqualTo("EUR");
@@ -116,14 +116,14 @@ class TransactionFactoryTest {
     @Test
     @DisplayName("createWithdrawal() - should set transaction type to WITHDRAWAL")
     void createWithdrawal_shouldSetTypeToWithdrawal() {
-        Transaction tx = TransactionFactory.createWithdrawal(accountA, new BigDecimal("50.00"), initiator, "cash out");
+        Transaction tx = TransactionFactory.createWithdrawal(accountA, new BigDecimal("50.00"), initiator, Channel.ATM, "cash out");
         assertThat(tx.getTransactionType()).isEqualTo(TransactionType.WITHDRAWAL);
     }
 
     @Test
     @DisplayName("createWithdrawal() - should set fromAccount and leave toAccount null")
     void createWithdrawal_shouldSetFromAccountAndLeaveToAccountNull() {
-        Transaction tx = TransactionFactory.createWithdrawal(accountA, new BigDecimal("50.00"), initiator, "cash out");
+        Transaction tx = TransactionFactory.createWithdrawal(accountA, new BigDecimal("50.00"), initiator, Channel.ATM, "cash out");
         assertThat(tx.getFromAccount()).isSameAs(accountA);
         assertThat(tx.getToAccount()).isNull();
     }
@@ -131,7 +131,7 @@ class TransactionFactoryTest {
     @Test
     @DisplayName("createWithdrawal() - should always use ATM channel")
     void createWithdrawal_shouldUseAtmChannel() {
-        Transaction tx = TransactionFactory.createWithdrawal(accountA, new BigDecimal("50.00"), initiator, "cash out");
+        Transaction tx = TransactionFactory.createWithdrawal(accountA, new BigDecimal("50.00"), initiator, Channel.ATM, "cash out");
         assertThat(tx.getChannel()).isEqualTo(Channel.ATM);
     }
 
@@ -139,7 +139,7 @@ class TransactionFactoryTest {
     @DisplayName("createWithdrawal() - should set amount, currency, initiatedBy, description and createdAt")
     void createWithdrawal_shouldSetAllCoreFields() {
         BigDecimal amount = new BigDecimal("75.00");
-        Transaction tx = TransactionFactory.createWithdrawal(accountA, amount, initiator, "withdrawal");
+        Transaction tx = TransactionFactory.createWithdrawal(accountA, amount, initiator, Channel.ATM, "withdrawal");
 
         assertThat(tx.getAmount()).isEqualByComparingTo(amount);
         assertThat(tx.getCurrency()).isEqualTo("EUR");

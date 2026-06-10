@@ -5,24 +5,22 @@ import com.inholland.banking_app.dtos.UserFilterRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.mappers.UserResponseMapper;
 import com.inholland.banking_app.models.*;
-import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.TransactionRepository;
 import com.inholland.banking_app.repositories.UserRepository;
+import com.inholland.banking_app.specifications.UserSpecification;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
+import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,87 +36,12 @@ public class UserService {
     private final AccountRepository accountRepository;
     private final UserResponseMapper userResponseMapper;
     private final TransactionRepository transactionRepository;
-    private final AuthService authService;
-    private final PasswordEncoder passwordEncoder;
 
-
-    @Transactional(readOnly = true)
     public Page<UserResponse> getAllUsers(Pageable pageable, UserFilterRequest userFilterRequest) {
-        return userRepository.findAll(buildUserFilter(userFilterRequest), pageable)
+        return userRepository.findAll(UserSpecification.fromFilter(userFilterRequest), pageable)
                 .map(userResponseMapper::toUserResponse);
     }
 
-    private Specification<User> buildUserFilter(UserFilterRequest userFilterRequest) {
-        return Specification.allOf(
-                hasRole(userFilterRequest.getRole()),
-                hasActive(userFilterRequest.getActive()),
-                hasAccount(userFilterRequest.getHasAccount()),
-                hasCustomerStatus(userFilterRequest.getStatus()),
-                containsSearch(userFilterRequest.getSearch()));
-    }
-
-    private Specification<User> hasRole(String role) {
-        return (root, query, criteriaBuilder) -> {
-            if (role == null || role.isBlank()) {
-                return null;
-            }
-            Role enumRole = Role.valueOf(role.trim().toUpperCase());
-            return criteriaBuilder.equal(root.get("role"), enumRole);
-        };
-    }
-
-    private Specification<User> hasActive(Boolean active) {
-        return (root, query, criteriaBuilder) -> active == null
-                ? null
-                : criteriaBuilder.equal(root.get("active"), active);
-    }
-
-    private Specification<User> hasAccount(Boolean hasAccount) {
-        return (root, query, criteriaBuilder) -> {
-            if (hasAccount == null) {
-                return null;
-            }
-
-            return hasAccount
-                    ? criteriaBuilder.isNotEmpty(root.get("accounts"))
-                    : criteriaBuilder.isEmpty(root.get("accounts"));
-        };
-    }
-
-    private Specification<User> hasCustomerStatus(String status) {
-        return (root, query, criteriaBuilder) -> {
-            if (status == null || status.isBlank()) {
-                return null;
-            }
-            CustomerStatus customerStatus = CustomerStatus.valueOf(status.trim().toUpperCase());
-            return criteriaBuilder.equal(root.get("customerProfile").get("status"), customerStatus);
-        };
-    }
-
-    private Specification<User> containsSearch(String search) {
-        return (root, query, criteriaBuilder) -> {
-            query.distinct(true);
-            if (search == null || search.isBlank()) {
-                return null;
-            }
-
-            String pattern = "%" + search.trim().toLowerCase() + "%";
-            return criteriaBuilder.or(
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), pattern),
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("username")), pattern),
-                    criteriaBuilder.like(
-                            criteriaBuilder.lower(root.get("customerProfile").get("firstName")),
-                            pattern
-                    ),
-                    criteriaBuilder.like(
-                            criteriaBuilder.lower(root.get("customerProfile").get("lastName")),
-                            pattern
-                    )
-            );
-        };
-    }
-
-    @Transactional(readOnly = true)
     public UserResponse getUserById(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User with id " + userId + " not found"));
@@ -134,35 +57,40 @@ public class UserService {
         if (customerProfile == null) {
             throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
         }
+
+        CustomerStatus previousStatus = customerProfile.getStatus();
         customerProfile.setStatus(approveCustomerRequest.getStatus());
 
-        // Create default accounts on approval, only when the customer has none yet.
-        if (customerProfile.getStatus() == APPROVED && user.getAccounts().isEmpty()) {
-            createDefaultAccounts(user);
+        if (customerProfile.getStatus() == APPROVED && previousStatus != APPROVED) {
+            createDefaultAccounts(user, approveCustomerRequest.getCheckingDailyLimit(),
+                    approveCustomerRequest.getSavingsDailyLimit());
         }
     }
 
     public BigDecimal getDailyOutgoingAmount(String iban) {
-        LocalDate startOfDay = LocalDate.now();
-        LocalDate endOfDay = LocalDate.now();
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(23, 59, 59, 999999999);
 
         return transactionRepository
                 .sumOutgoingAmountByAccountIbanAndDate(iban, startOfDay, endOfDay);
     }
 
-    private void createDefaultAccounts(User user) {
-        createAccount(user, AccountType.CHECKING);
-        createAccount(user, AccountType.SAVINGS);
+    private void createDefaultAccounts(User user, BigDecimal checkingDailyLimit, BigDecimal savingsDailyLimit) {
+        createAccount(user, AccountType.CHECKING, checkingDailyLimit);
+        createAccount(user, AccountType.SAVINGS, savingsDailyLimit);
     }
 
-    private void createAccount(User user, AccountType accountType) {
-
+    private void createAccount(User user, AccountType accountType, BigDecimal customDailyLimit) {
         String iban = generateIban(user.getId(), accountType);
         Account account = accountType == AccountType.CHECKING
                 ? AccountFactory.createCheckingAccount(user, iban)
                 : AccountFactory.createSavingsAccount(user, iban);
 
-        // Persisted via the User.accounts cascade; an explicit save() here would clash with it.
+        if (customDailyLimit != null) {
+            account.setDailyTransferLimit(customDailyLimit);
+        }
+
+        accountRepository.save(account);
         user.getAccounts().add(account);
     }
 
@@ -176,6 +104,27 @@ public class UserService {
         }
 
         return iban;
+    }
+
+    @Transactional
+    public UserResponse blockUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User with id " + userId + " not found"));
+        user.setActive(false);
+        user = userRepository.save(user);
+        return userResponseMapper.toUserResponse(user);
+    }
+
+    @Transactional
+    public UserResponse closeCustomer(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User with id " + userId + " not found"));
+        CustomerProfile customerProfile = user.getCustomerProfile();
+        if (customerProfile == null) {
+            throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
+        }
+        customerProfile.setStatus(CustomerStatus.CLOSED);
+        return userResponseMapper.toUserResponse(user);
     }
 
     public User getByUsername(String username) {

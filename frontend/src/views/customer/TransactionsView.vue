@@ -82,8 +82,8 @@ import CustomerShell from '@/components/layout/CustomerShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import AppPager from '@/components/shared/AppPager.vue'
-import { useAuth } from '@/stores/auth'
-import { listTransactions } from '@/services/transaction'
+import * as userService from '@/services/user'
+import { listTransactions } from '@/services/transaction.js'
 
 const filters = ref({ startDate: '', endDate: '', amountOp: '=', amount: '', iban: '' })
 const activeFilters = ref([])
@@ -153,16 +153,45 @@ function mapTransaction(tx) {
 
 async function fetchTransactions() {
   loading.value = true
+  transactions.value = []
   try {
-    const page = await listTransactions(buildParams())
-    transactions.value = page.items.map(mapTransaction)
-    pageMeta.value = {
-      page: page.page.page,
-      size: page.page.size,
-      totalElements: page.page.totalElements,
-      totalPages: page.page.totalPages,
+    const params = {
+      page: pageMeta.value.page,
+      size: pageMeta.value.size,
     }
-  } catch (e) {
+
+    if (filters.value.startDate) params.startDateTime = filters.value.startDate + 'T00:00:00'
+    if (filters.value.endDate) params.endDateTime = filters.value.endDate + 'T23:59:59'
+
+    const amount = parseMoney(filters.value.amount)
+    if (amount) {
+      if (filters.value.amountOp === '=') params.amountEquals = amount
+      else if (filters.value.amountOp === '>') params.amountMin = amount
+      else if (filters.value.amountOp === '<') params.amountMax = amount
+    }
+
+    if (filters.value.iban) params.iban = filters.value.iban.replace(/\s/g, '')
+
+    const data = await listTransactions(params)
+    console.log('[DEBUG] Received transactions data:', data)
+    pageMeta.value = data.page
+
+    const userId = currentUser.value?.id
+    console.log('[DEBUG] Current userId:', userId)
+    transactions.value = (data.items || []).map(tx => {
+      const isIncoming = tx.transactionType === 'DEPOSIT' ||
+        (tx.transactionType === 'TRANSFER' && tx.toAccount?.userId === userId)
+      return {
+        id: tx.transactionId,
+        date: formatDateTime(tx.createdAt),
+        description: tx.description,
+        from: tx.fromAccount?.iban || '—',
+        to: tx.toAccount?.iban || '—',
+        amount: (isIncoming ? '+' : '-') + formatMoney(tx.amount?.amount),
+      }
+    })
+  } catch (err) {
+    console.error('[DEBUG] Failed to fetch transactions:', err)
     transactions.value = []
   } finally {
     loading.value = false

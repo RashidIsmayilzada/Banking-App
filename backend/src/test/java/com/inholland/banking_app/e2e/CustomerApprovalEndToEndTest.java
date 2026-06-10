@@ -48,11 +48,15 @@ class CustomerApprovalEndToEndTest {
     private AccountRepository accountRepository;
 
     @Autowired
+    private com.inholland.banking_app.repositories.TransactionRepository transactionRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     @AfterEach
     void cleanup() {
+        transactionRepository.deleteAll();
         accountRepository.deleteAll();
         customerProfileRepository.deleteAll();
         userRepository.deleteAll();

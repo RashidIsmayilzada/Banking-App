@@ -45,6 +45,6 @@ const NAV = [
   { label: 'Dashboard',    icon: 'home',       to: '/customer/dashboard' },
   { label: 'Transfer',     icon: 'transfer',   to: '/customer/transfer' },
   { label: 'Transactions', icon: 'list',       to: '/customer/transactions' },
-  { label: 'Cards',        icon: 'creditCard', to: '/customer/cards' },
+{ label: 'Cards',        icon: 'creditCard', to: '/customer/cards' },
 ]
 </script>

@@ -23,7 +23,7 @@
             />
             <div class="row" style="margin-top:8px;font-size:13px">
               <span class="muted">Current</span>
-              <span style="font-weight:500;margin-left:6px">{{ formatMoney(account?.absoluteTransferLimit) }}</span>
+              <span style="font-weight:500;margin-left:6px">{{ formatMoney(account?.absoluteTransferLimit?.amount) }}</span>
               <span class="muted" style="margin:0 8px">→</span>
               <span style="font-weight:500">{{ form.absoluteLimit || '—' }}</span>
               <span class="badge" style="margin-left:8px">No change</span>
@@ -121,7 +121,7 @@ function formatMoney(value) {
 onMounted(async () => {
   if (!route.params.id) return
   customer.value = await userService.getUserById(route.params.id)
-  form.value.absoluteLimit = formatMoney(account.value?.absoluteTransferLimit)
-  form.value.dailyLimit = formatMoney(account.value?.dailyTransferLimit)
+  form.value.absoluteLimit = String(account.value?.absoluteTransferLimit?.amount ?? '')
+  form.value.dailyLimit = String(account.value?.dailyTransferLimit?.amount ?? '')
 })
 </script>

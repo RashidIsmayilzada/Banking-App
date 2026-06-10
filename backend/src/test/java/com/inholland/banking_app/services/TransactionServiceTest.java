@@ -364,7 +364,6 @@ class TransactionServiceTest {
 
         when(userService.getByUsername("employee")).thenReturn(employee);
         when(accountRepository.findById(FROM_IBAN)).thenReturn(Optional.of(account));
-        when(dailyTransferUsageRepository.findByAccountIbanAndUsageDate(eq(account.getIban()), any())).thenReturn(Optional.empty());
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionMapper.toSingleAccountResult(any(Transaction.class), eq(account)))
