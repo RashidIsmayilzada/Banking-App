@@ -18,8 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AccountListResponseTest {
 
     @Test
-    @DisplayName("of() - should expose the combined balance it is given")
-    void of_shouldExposeGivenCombinedBalance() {
+    @DisplayName("of() - should calculate correct combined balance from multiple accounts")
+    void of_shouldCalculateCorrectCombinedBalance() {
         List<AccountResponse> accounts = List.of(
                 buildAccountResponse(new BigDecimal("1000.00")),
                 buildAccountResponse(new BigDecimal("2500.50")),
@@ -27,9 +27,7 @@ class AccountListResponseTest {
         );
         Page<AccountResponse> page = new PageImpl<>(accounts, PageRequest.of(0, 10), 3);
 
-        // The total is summed in the database (across all pages) and passed in,
-        // so it can legitimately differ from the sum of this page's accounts.
-        AccountListResponse result = AccountListResponse.of(page, new BigDecimal("4000.75"));
+        AccountListResponse result = AccountListResponse.of(page);
 
         assertThat(result.getTotals().getCombinedBalance().getAmount())
                 .isEqualByComparingTo("4000.75");
@@ -43,7 +41,7 @@ class AccountListResponseTest {
     void of_shouldReturnZeroBalance_whenPageIsEmpty() {
         Page<AccountResponse> page = new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 10), 0);
 
-        AccountListResponse result = AccountListResponse.of(page, BigDecimal.ZERO);
+        AccountListResponse result = AccountListResponse.of(page);
 
         assertThat(result.getTotals().getCombinedBalance().getAmount())
                 .isEqualByComparingTo("0");
@@ -56,7 +54,7 @@ class AccountListResponseTest {
         List<AccountResponse> accounts = List.of(buildAccountResponse(new BigDecimal("1000.00")));
         Page<AccountResponse> page = new PageImpl<>(accounts, PageRequest.of(2, 5), 25);
 
-        AccountListResponse result = AccountListResponse.of(page, new BigDecimal("1000.00"));
+        AccountListResponse result = AccountListResponse.of(page);
 
         assertThat(result.getPage().getCurrentPage()).isEqualTo(2);
         assertThat(result.getPage().getPageSize()).isEqualTo(5);

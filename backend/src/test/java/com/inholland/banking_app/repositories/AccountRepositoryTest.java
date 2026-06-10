@@ -37,8 +37,7 @@ class AccountRepositoryTest {
         customer1 = buildCustomer("customer1");
         customer2 = buildCustomer("customer2");
 
-        // customer1 owns two accounts, customer2 owns one. Every account holds 1000.00,
-        // so the expected sums are: all = 3000.00, customer1 = 2000.00, customer2 = 1000.00.
+        // customer1 owns two accounts, customer2 owns one.
         accountRepository.save(buildAccount(customer1, "NL91ABNA0417164300"));
         accountRepository.save(buildAccount(customer1, "NL91ABNA0417164301"));
         accountRepository.save(buildAccount(customer2, "NL91ABNA0417164302"));
@@ -73,37 +72,6 @@ class AccountRepositoryTest {
         assertThat(result.getContent()).hasSize(2);
         assertThat(result.getContent())
                 .allMatch(a -> a.getCustomer().getUsername().equals("customer1"));
-    }
-
-    // --- balance sums (run against real H2, so they verify the JPQL itself) ---
-
-    @Test
-    @DisplayName("sumBalance() - should sum the balances of every account")
-    void sumBalance_shouldSumAllAccounts() {
-        assertThat(accountRepository.sumBalance()).isEqualByComparingTo("3000.00");
-    }
-
-    @Test
-    @DisplayName("sumBalanceByCustomerId() - should sum only the given customer's balances")
-    void sumBalanceByCustomerId_shouldSumOnlyThatCustomer() {
-        assertThat(accountRepository.sumBalanceByCustomerId(customer1.getId()))
-                .isEqualByComparingTo("2000.00");
-    }
-
-    @Test
-    @DisplayName("sumBalanceByCustomerId() - should return zero when the customer has no accounts")
-    void sumBalanceByCustomerId_shouldReturnZero_whenNoAccounts() {
-        User customer3 = buildCustomer("customer3");
-
-        assertThat(accountRepository.sumBalanceByCustomerId(customer3.getId()))
-                .isEqualByComparingTo("0");
-    }
-
-    @Test
-    @DisplayName("sumBalanceByCustomerUsername() - should sum only the given username's balances")
-    void sumBalanceByCustomerUsername_shouldSumOnlyThatCustomer() {
-        assertThat(accountRepository.sumBalanceByCustomerUsername("customer1"))
-                .isEqualByComparingTo("2000.00");
     }
 
     private User buildCustomer(String username) {

@@ -30,11 +30,16 @@ public class AccountListResponse {
         private int totalPages;
     }
 
-    // combinedBalance is summed in the database over every matching account
-    public static AccountListResponse of(Page<AccountResponse> page, BigDecimal combinedBalance) {
+    public static AccountListResponse of(Page<AccountResponse> page) {
+        List<AccountResponse> accounts = page.getContent();
+
+        BigDecimal combined = accounts.stream()
+                .map(a -> a.getBalance().getAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         return new AccountListResponse(
-                page.getContent(),
-                new Totals(MoneyResponse.eur(combinedBalance)),
+                accounts,
+                new Totals(MoneyResponse.eur(combined)),
                 new PageInfo(
                         page.getNumber(),
                         page.getSize(),

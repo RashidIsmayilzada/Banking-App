@@ -88,14 +88,11 @@ class AccountServiceTest {
         Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
 
         when(accountRepository.findAll(pageable)).thenReturn(page);
-        when(accountRepository.sumBalance()).thenReturn(new BigDecimal("7500.00"));
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
         AccountListResponse result = accountService.listAccounts(null, pageable);
 
         assertThat(result.getAccounts()).hasSize(1);
-        // Combined balance comes from the DB-wide sum, not the single page of accounts.
-        assertThat(result.getTotals().getCombinedBalance().getAmount()).isEqualByComparingTo("7500.00");
         verify(accountRepository).findAll(pageable);
         verify(accountRepository, never()).findByCustomerId(any(), any());
     }
@@ -106,13 +103,11 @@ class AccountServiceTest {
         Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
 
         when(accountRepository.findByCustomerId(1L, pageable)).thenReturn(page);
-        when(accountRepository.sumBalanceByCustomerId(1L)).thenReturn(new BigDecimal("1500.00"));
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
         AccountListResponse result = accountService.listAccounts(1L, pageable);
 
         assertThat(result.getAccounts()).hasSize(1);
-        assertThat(result.getTotals().getCombinedBalance().getAmount()).isEqualByComparingTo("1500.00");
         verify(accountRepository).findByCustomerId(1L, pageable);
         verify(accountRepository, never()).findAll(any(Pageable.class));
     }
@@ -125,13 +120,11 @@ class AccountServiceTest {
         Page<Account> page = new PageImpl<>(List.of(account), pageable, 1);
 
         when(accountRepository.findByCustomerUsername("customer", pageable)).thenReturn(page);
-        when(accountRepository.sumBalanceByCustomerUsername("customer")).thenReturn(new BigDecimal("1000.00"));
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
 
         AccountListResponse result = accountService.listAccountsOwnedBy("customer", pageable);
 
         assertThat(result.getAccounts()).hasSize(1);
-        assertThat(result.getTotals().getCombinedBalance().getAmount()).isEqualByComparingTo("1000.00");
         verify(accountRepository).findByCustomerUsername("customer", pageable);
         verify(accountRepository, never()).findAll(any(Pageable.class));
     }

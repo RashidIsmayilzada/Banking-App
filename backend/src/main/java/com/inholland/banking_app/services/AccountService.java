@@ -15,7 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @RequiredArgsConstructor
@@ -33,18 +32,13 @@ public class AccountService {
         Page<Account> accounts = (customerId != null)
                 ? accountRepository.findByCustomerId(customerId, pageable)
                 : accountRepository.findAll(pageable);
-        BigDecimal combinedBalance = (customerId != null)
-                ? accountRepository.sumBalanceByCustomerId(customerId)
-                : accountRepository.sumBalance();
-
-        return AccountListResponse.of(accounts.map(accountMapper::toResponse), combinedBalance);
+        return AccountListResponse.of(accounts.map(accountMapper::toResponse));
     }
 
     // Lists the accounts owned by the given username.
     public AccountListResponse listAccountsOwnedBy(String username, Pageable pageable) {
         Page<Account> accounts = accountRepository.findByCustomerUsername(username, pageable);
-        BigDecimal combinedBalance = accountRepository.sumBalanceByCustomerUsername(username);
-        return AccountListResponse.of(accounts.map(accountMapper::toResponse), combinedBalance);
+        return AccountListResponse.of(accounts.map(accountMapper::toResponse));
     }
 
     // Returns a single account by IBAN.
