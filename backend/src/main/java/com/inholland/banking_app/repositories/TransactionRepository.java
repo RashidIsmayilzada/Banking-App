@@ -24,8 +24,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
    \s""")
     BigDecimal sumOutgoingAmountByAccountIbanAndDate(
             @Param("iban") String iban,
-            @Param("startOfDay") LocalDate startOfDay,
-            @Param("endOfDay") LocalDate endOfDay
+            @Param("startOfDay") java.time.LocalDateTime startOfDay,
+            @Param("endOfDay") java.time.LocalDateTime endOfDay
 
     );
 }

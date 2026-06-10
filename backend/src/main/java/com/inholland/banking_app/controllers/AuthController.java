@@ -11,6 +11,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,6 +46,12 @@ public class AuthController {
         }
         log.info("User logged out");
         return ResponseEntity.ok(new LogoutResponse("Logged out successfully."));
+    }
+
+    @Operation(summary = "Get current authenticated user context")
+    @GetMapping("/me")
+    public ResponseEntity<AuthContextResponse> me(Authentication authentication) {
+        return ResponseEntity.ok(authService.getCurrentUser(authentication.getName()));
     }
 
     @PostMapping("/register")

@@ -43,9 +43,8 @@ async function handleSignOut() {
 
 const NAV = [
   { label: 'Dashboard',    icon: 'home',       to: '/customer/dashboard' },
-  { label: 'Accounts',     icon: 'wallet',     to: '/customer/accounts' },
   { label: 'Transfer',     icon: 'transfer',   to: '/customer/transfer' },
   { label: 'Transactions', icon: 'list',       to: '/customer/transactions' },
-  { label: 'Cards',        icon: 'creditCard', to: '/customer/cards' },
+{ label: 'Cards',        icon: 'creditCard', to: '/customer/cards' },
 ]
 </script>

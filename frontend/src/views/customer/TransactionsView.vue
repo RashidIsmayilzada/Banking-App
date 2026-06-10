@@ -83,6 +83,7 @@ import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import AppPager from '@/components/shared/AppPager.vue'
 import * as userService from '@/services/user'
+import { listTransactions } from '@/services/transaction.js'
 
 const filters = ref({ startDate: '', endDate: '', amountOp: '=', amount: '', iban: '' })
 const activeFilters = ref([])
@@ -90,7 +91,6 @@ const currentUser = ref(null)
 const transactions = ref([])
 const loading = ref(false)
 const pageMeta = ref({ page: 0, size: 8, totalElements: 0, totalPages: 0 })
-const accountIds = computed(() => currentUser.value?.accounts?.map(account => account.id) || [])
 const pageCount = computed(() => {
   if (!pageMeta.value.totalElements) return '0 of 0'
   const start = pageMeta.value.page * pageMeta.value.size + 1
@@ -108,6 +108,7 @@ function clearFilters() {
 function applyFilters() {
   activeFilters.value = Object.entries(filters.value).filter(([k, v]) => v && k !== 'amountOp').map(([, v]) => v)
   pageMeta.value = { ...pageMeta.value, page: 0 }
+  fetchTransactions()
 }
 
 function parseMoney(value) {
@@ -123,8 +124,50 @@ function formatDateTime(value) {
 }
 
 async function fetchTransactions() {
+  loading.value = true
   transactions.value = []
-  pageMeta.value = { page: 0, size: 8, totalElements: 0, totalPages: 0 }
+  try {
+    const params = {
+      page: pageMeta.value.page,
+      size: pageMeta.value.size,
+    }
+
+    if (filters.value.startDate) params.startDateTime = filters.value.startDate + 'T00:00:00'
+    if (filters.value.endDate) params.endDateTime = filters.value.endDate + 'T23:59:59'
+
+    const amount = parseMoney(filters.value.amount)
+    if (amount) {
+      if (filters.value.amountOp === '=') params.amountEquals = amount
+      else if (filters.value.amountOp === '>') params.amountMin = amount
+      else if (filters.value.amountOp === '<') params.amountMax = amount
+    }
+
+    if (filters.value.iban) params.iban = filters.value.iban.replace(/\s/g, '')
+
+    const data = await listTransactions(params)
+    console.log('[DEBUG] Received transactions data:', data)
+    pageMeta.value = data.page
+
+    const userId = currentUser.value?.id
+    console.log('[DEBUG] Current userId:', userId)
+    transactions.value = (data.items || []).map(tx => {
+      const isIncoming = tx.transactionType === 'DEPOSIT' ||
+        (tx.transactionType === 'TRANSFER' && tx.toAccount?.userId === userId)
+      return {
+        id: tx.transactionId,
+        date: formatDateTime(tx.createdAt),
+        description: tx.description,
+        from: tx.fromAccount?.iban || '—',
+        to: tx.toAccount?.iban || '—',
+        amount: (isIncoming ? '+' : '-') + formatMoney(tx.amount?.amount),
+      }
+    })
+  } catch (err) {
+    console.error('[DEBUG] Failed to fetch transactions:', err)
+    transactions.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
 function handlePageChange(newPage) {

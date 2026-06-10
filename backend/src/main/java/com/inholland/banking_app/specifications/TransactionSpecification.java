@@ -3,6 +3,7 @@ package com.inholland.banking_app.specifications;
 import com.inholland.banking_app.dtos.TransactionFilterParams;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.Transaction;
+import com.inholland.banking_app.models.User;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -26,6 +27,11 @@ public class TransactionSpecification {
     // then merges all collected predicates into a single AND condition.
     public static Specification<Transaction> fromParams(TransactionFilterParams params) {
         return (root, query, cb) -> {
+            // Ensure we don't get duplicate transactions due to LEFT JOINs on accounts
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                query.distinct(true);
+            }
+
             List<Predicate> predicates = new ArrayList<>();
 
             addPartyPredicates(predicates, root, params, cb);
@@ -49,21 +55,27 @@ public class TransactionSpecification {
 
         if (!needsJoins) return;
 
-        Join<Transaction, Account> from = root.join("fromAccount", JoinType.LEFT);
-        Join<Transaction, Account> to = root.join("toAccount", JoinType.LEFT);
+        // We use LEFT JOIN for accounts so that transactions with only one side 
+        // (like ATM deposits/withdrawals) are not dropped from the results.
+        Join<Transaction, Account> fromAccount = root.join("fromAccount", JoinType.LEFT);
+        Join<Transaction, Account> toAccount = root.join("toAccount", JoinType.LEFT);
 
-        // LEFT JOIN is used so that transactions with a null fromAccount or toAccount
-        // (e.g. ATM deposits have no fromAccount) are not excluded from results.
         if (params.getUserId() != null) {
+            // We also need to LEFT JOIN from Account to User. 
+            // If we just used fromAccount.get("customer"), JPA would often use an implicit INNER JOIN,
+            // which would exclude any transaction where fromAccount is null.
+            Join<Account, User> fromCustomer = fromAccount.join("customer", JoinType.LEFT);
+            Join<Account, User> toCustomer = toAccount.join("customer", JoinType.LEFT);
+
             predicates.add(cb.or(
-                    cb.equal(from.get("customer").get("id"), params.getUserId()),
-                    cb.equal(to.get("customer").get("id"), params.getUserId())
+                    cb.equal(fromCustomer.get("id"), params.getUserId()),
+                    cb.equal(toCustomer.get("id"), params.getUserId())
             ));
         }
         if (params.getIban() != null) {
             predicates.add(cb.or(
-                    cb.equal(from.get("iban"), params.getIban()),
-                    cb.equal(to.get("iban"), params.getIban())
+                    cb.equal(fromAccount.get("iban"), params.getIban()),
+                    cb.equal(toAccount.get("iban"), params.getIban())
             ));
         }
     }

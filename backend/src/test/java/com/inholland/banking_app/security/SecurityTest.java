@@ -170,7 +170,7 @@ class SecurityTest {
     void postTransactions_noToken_returns401() throws Exception {
         mockMvc.perform(post("/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"DEPOSIT\",\"accountId\":1,\"amount\":100.0,\"description\":\"test\"}"))
+                        .content("{\"type\":\"DEPOSIT\",\"iban\":\"NL01INHO0000000001\",\"amount\":100.0,\"description\":\"test\"}"))
                 .andExpect(status().isUnauthorized());
     }
 

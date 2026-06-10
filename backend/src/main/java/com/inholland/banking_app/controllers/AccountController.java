@@ -2,6 +2,7 @@ package com.inholland.banking_app.controllers;
 
 import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
+import com.inholland.banking_app.dtos.AccountSearchResult;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
 import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.services.AccountService;
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RequiredArgsConstructor
 @RestController
@@ -44,6 +47,12 @@ public class AccountController {
     @PostAuthorize("hasRole('EMPLOYEE') or returnObject.body.ownerUsername == authentication.name")
     public ResponseEntity<AccountResponse> getAccount(@PathVariable String iban) {
         return ResponseEntity.ok(accountService.getAccount(iban));
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public ResponseEntity<List<AccountSearchResult>> searchAccounts(@RequestParam String name) {
+        return ResponseEntity.ok(accountService.searchByCustomerName(name));
     }
 
     @PatchMapping("/{iban}")
