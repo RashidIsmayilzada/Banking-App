@@ -32,6 +32,7 @@ public class SecurityConfig {
 
     private final JwtEntryPoint jwtEntryPoint;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -89,6 +90,7 @@ public class SecurityConfig {
                         .permitAll()
                             .requestMatchers(HttpMethod.PATCH, "/users/*/approval").hasRole("EMPLOYEE")
                         .anyRequest().authenticated())
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -41,26 +41,57 @@ public class DataSeeder implements CommandLineRunner {
         seedEmployee("employee02@bank.com", "employee02", "EMP002", "Jane", "Doe");
         seedEmployee("employee03@bank.com", "employee03", "EMP003", "Employee", "Three", "Test1234!");
 
-        // Seed Customers
-        User customer1 = seedCustomer("john.doe@gmail.com", "johndoe", "John", "Doe", "123456789", "0612345678");
-        User customer2 = seedCustomer("jane.smith@gmail.com", "janesmith", "Jane", "Smith", "987654321", "0687654321");
-        User customer3 = seedCustomer("bob.jones@hotmail.com", "bobjones", "Bob", "Jones", "555555555", "0655555555");
+        // Seed Customers (approved)
+        User customer1 = seedCustomer("john.doe@gmail.com",       "johndoe",      "John",    "Doe",      "123456789", "0612345678");
+        User customer2 = seedCustomer("jane.smith@gmail.com",     "janesmith",    "Jane",    "Smith",    "987654321", "0687654321");
+        User customer3 = seedCustomer("bob.jones@hotmail.com",    "bobjones",     "Bob",     "Jones",    "555555555", "0655555555");
+        User customer4 = seedCustomer("alice.wong@gmail.com",     "alicewong",    "Alice",   "Wong",     "111222333", "0611122233");
+        User customer5 = seedCustomer("carlos.martin@gmail.com",  "carlosmartin", "Carlos",  "Martin",   "444555666", "0644455566");
+        User customer6 = seedCustomer("emma.white@hotmail.com",   "emmawhite",    "Emma",    "White",    "777888999", "0677788899");
 
-        // Seed Accounts
-        Account c1Checking = seedAccount(customer1, AccountType.CHECKING, new BigDecimal("1500.00"), "NL10INHO0000000001");
-        Account c1Savings = seedAccount(customer1, AccountType.SAVINGS, new BigDecimal("5000.00"), "NL20INHO0000000001");
-        
-        Account c2Checking = seedAccount(customer2, AccountType.CHECKING, new BigDecimal("250.00"), "NL10INHO0000000002");
-        
+        // Seed Customers (pending approval — no accounts)
+        seedPendingCustomer("michael.brown@gmail.com",  "michaelbrown",  "Michael", "Brown",  "222333444", "0622233344");
+        seedPendingCustomer("sarah.green@yahoo.com",    "sarahgreen",    "Sarah",   "Green",  "333444555", "0633344455");
+        seedPendingCustomer("david.lee@gmail.com",      "davidlee",      "David",   "Lee",    "666777888", "0666677788");
+
+        // Seed Accounts — every approved customer gets Checking + Savings
+        Account c1Checking = seedAccount(customer1, AccountType.CHECKING, new BigDecimal("1500.00"),  "NL10INHO0000000001");
+        Account c1Savings  = seedAccount(customer1, AccountType.SAVINGS,  new BigDecimal("5000.00"),  "NL20INHO0000000001");
+
+        Account c2Checking = seedAccount(customer2, AccountType.CHECKING, new BigDecimal("250.00"),   "NL10INHO0000000002");
+        Account c2Savings  = seedAccount(customer2, AccountType.SAVINGS,  new BigDecimal("3200.00"),  "NL20INHO0000000002");
+
         Account c3Checking = seedAccount(customer3, AccountType.CHECKING, new BigDecimal("10000.00"), "NL10INHO0000000003");
-        Account c3Savings = seedAccount(customer3, AccountType.SAVINGS, new BigDecimal("50000.00"), "NL20INHO0000000003");
+        Account c3Savings  = seedAccount(customer3, AccountType.SAVINGS,  new BigDecimal("50000.00"), "NL20INHO0000000003");
+
+        Account c4Checking = seedAccount(customer4, AccountType.CHECKING, new BigDecimal("800.00"),   "NL10INHO0000000004");
+        Account c4Savings  = seedAccount(customer4, AccountType.SAVINGS,  new BigDecimal("12000.00"), "NL20INHO0000000004");
+
+        Account c5Checking = seedAccount(customer5, AccountType.CHECKING, new BigDecimal("3400.00"),  "NL10INHO0000000005");
+        Account c5Savings  = seedAccount(customer5, AccountType.SAVINGS,  new BigDecimal("7500.00"),  "NL20INHO0000000005");
+
+        Account c6Checking = seedAccount(customer6, AccountType.CHECKING, new BigDecimal("620.00"),   "NL10INHO0000000006");
+        Account c6Savings  = seedAccount(customer6, AccountType.SAVINGS,  new BigDecimal("2100.00"),  "NL20INHO0000000006");
 
         // Seed Transactions
-        seedTransaction(TransactionType.DEPOSIT, null, c1Checking, new BigDecimal("100.00"), customer1, "Initial ATM deposit");
-        seedTransaction(TransactionType.TRANSFER, c1Checking, c2Checking, new BigDecimal("50.00"), customer1, "Dinner reimbursement");
-        seedTransaction(TransactionType.TRANSFER, c3Checking, c1Checking, new BigDecimal("500.00"), customer3, "Monthly rent");
-        seedTransaction(TransactionType.WITHDRAWAL, c1Checking, null, new BigDecimal("20.00"), customer1, "Cash withdrawal");
-        seedTransaction(TransactionType.TRANSFER, c1Checking, c1Savings, new BigDecimal("200.00"), customer1, "Internal transfer to savings");
+        seedTransaction(TransactionType.DEPOSIT,    null,       c1Checking, new BigDecimal("100.00"),  customer1, "Initial ATM deposit");
+        seedTransaction(TransactionType.TRANSFER,   c1Checking, c2Checking, new BigDecimal("50.00"),   customer1, "Dinner reimbursement");
+        seedTransaction(TransactionType.TRANSFER,   c3Checking, c1Checking, new BigDecimal("500.00"),  customer3, "Monthly rent");
+        seedTransaction(TransactionType.WITHDRAWAL, c1Checking, null,       new BigDecimal("20.00"),   customer1, "Cash withdrawal");
+        seedTransaction(TransactionType.TRANSFER,   c1Checking, c1Savings,  new BigDecimal("200.00"),  customer1, "Internal transfer to savings");
+        seedTransaction(TransactionType.DEPOSIT,    null,       c2Checking, new BigDecimal("300.00"),  customer2, "ATM deposit");
+        seedTransaction(TransactionType.TRANSFER,   c2Checking, c2Savings,  new BigDecimal("150.00"),  customer2, "Move to savings");
+        seedTransaction(TransactionType.TRANSFER,   c4Checking, c1Checking, new BigDecimal("75.00"),   customer4, "Concert ticket split");
+        seedTransaction(TransactionType.TRANSFER,   c5Checking, c3Checking, new BigDecimal("1200.00"), customer5, "Freelance invoice");
+        seedTransaction(TransactionType.DEPOSIT,    null,       c4Checking, new BigDecimal("500.00"),  customer4, "Salary advance");
+        seedTransaction(TransactionType.WITHDRAWAL, c3Checking, null,       new BigDecimal("200.00"),  customer3, "ATM withdrawal");
+        seedTransaction(TransactionType.TRANSFER,   c6Checking, c2Checking, new BigDecimal("40.00"),   customer6, "Shared groceries");
+        seedTransaction(TransactionType.TRANSFER,   c3Checking, c5Checking, new BigDecimal("850.00"),  customer3, "Loan repayment");
+        seedTransaction(TransactionType.TRANSFER,   c1Checking, c4Checking, new BigDecimal("95.00"),   customer1, "Birthday gift");
+        seedTransaction(TransactionType.DEPOSIT,    null,       c6Checking, new BigDecimal("1000.00"), customer6, "Salary deposit");
+        seedTransaction(TransactionType.TRANSFER,   c5Checking, c5Savings,  new BigDecimal("500.00"),  customer5, "Monthly savings transfer");
+        seedTransaction(TransactionType.WITHDRAWAL, c2Checking, null,       new BigDecimal("60.00"),   customer2, "Cash withdrawal");
+        seedTransaction(TransactionType.TRANSFER,   c4Checking, c6Checking, new BigDecimal("120.00"),  customer4, "Utilities split");
     }
 
     private void seedEmployee(String email, String username, String empNumber, String firstName, String lastName) {
@@ -124,6 +155,36 @@ public class DataSeeder implements CommandLineRunner {
             log.info("[DEBUG_LOG] Successfully seeded customer: {}", email);
             return user;
         });
+    }
+
+    private void seedPendingCustomer(String email, String username, String firstName, String lastName, String bsn, String phone) {
+        if (userRepository.findByEmail(email).isEmpty()) {
+            log.info("[DEBUG_LOG] Seeding pending customer: {}", email);
+            User user = new User();
+            user.setEmail(email);
+            user.setUsername(username);
+            user.setPasswordHash(passwordEncoder.encode("Password@123"));
+            user.setRole(Role.CUSTOMER);
+            user.setActive(false);
+            user.setCreatedAt(LocalDateTime.now());
+            user.setUpdatedAt(LocalDateTime.now());
+
+            user = userRepository.save(user);
+
+            CustomerProfile profile = new CustomerProfile();
+            profile.setUser(user);
+            profile.setUserId(user.getId());
+            profile.setFirstName(firstName);
+            profile.setLastName(lastName);
+            profile.setBsn(bsn);
+            profile.setPhoneNumber(phone);
+            profile.setStatus(CustomerStatus.PENDING_APPROVAL);
+            profile.setRegisteredAt(LocalDateTime.now());
+
+            user.setCustomerProfile(profile);
+            userRepository.save(user);
+            log.info("[DEBUG_LOG] Successfully seeded pending customer: {}", email);
+        }
     }
 
     private Account seedAccount(User customer, AccountType type, BigDecimal balance, String iban) {
