@@ -2,7 +2,6 @@ package com.inholland.banking_app.services;
 
 import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
-import com.inholland.banking_app.dtos.AccountSearchResult;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
 import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.mappers.AccountMapper;
@@ -21,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @RequiredArgsConstructor
 @Service
@@ -50,19 +48,6 @@ public class AccountService {
     public AccountResponse getAccount(String iban) {
         Account account = findAccountOrThrow(iban);
         return accountMapper.toResponse(account);
-    }
-
-    @Transactional(readOnly = true)
-    public List<AccountSearchResult> searchByCustomerName(String name) {
-        return accountRepository.searchCheckingByCustomerName(name).stream()
-                .map(a -> {
-                    var profile = a.getCustomer().getCustomerProfile();
-                    String fullName = profile != null
-                            ? profile.getFirstName() + " " + profile.getLastName()
-                            : a.getCustomer().getUsername();
-                    return new AccountSearchResult(a.getIban(), fullName);
-                })
-                .toList();
     }
 
     // --- Updates ---

@@ -92,6 +92,7 @@ const ROLE_ROUTES = {
   CUSTOMER: '/customer/dashboard',
   EMPLOYEE: '/employee/overview',
   ATM:      '/atm/home',
+  ADMIN:    '/admin/dashboard',
 }
 
 async function handleLogin() {
@@ -99,15 +100,24 @@ async function handleLogin() {
   loading.value = true
   try {
     const response = await login(form.value.email, form.value.password)
+    console.log('Full response:', response)
+    console.log('response.user:', response.user)
+    console.log('response.user.role:', response.user?.role)
+    
     setSession(response)
 
     const { role, userStatus } = response.user ?? {}
+    console.log('Extracted role:', role)
+    console.log('ROLE_ROUTES:', ROLE_ROUTES)
+    console.log('Route lookup:', ROLE_ROUTES[role])
 
     if (role === 'CUSTOMER' && userStatus === 'PENDING_APPROVAL') {
       sessionStorage.setItem('pending_user', JSON.stringify(response.user))
       router.push('/pending')
     } else {
-      router.push(ROLE_ROUTES[role] || '/customer/dashboard')
+      const redirectPath = ROLE_ROUTES[role] || '/customer/dashboard'
+      console.log('Redirecting to:', redirectPath)
+      router.push(redirectPath)
     }
   } catch (err) {
     error.value = err.message || 'Login failed. Please check your credentials.'

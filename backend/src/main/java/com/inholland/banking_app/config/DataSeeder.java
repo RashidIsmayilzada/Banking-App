@@ -39,6 +39,7 @@ public class DataSeeder implements CommandLineRunner {
         // Seed Employees
         seedEmployee("employee01@bank.com", "employee01", "EMP001", "Admin", "User");
         seedEmployee("employee02@bank.com", "employee02", "EMP002", "Jane", "Doe");
+        seedAdmin("admin@bank.com", "admin");
         seedEmployee("employee03@bank.com", "employee03", "EMP003", "Employee", "Three", "Test1234!");
 
         // Seed Customers (approved)
@@ -94,6 +95,24 @@ public class DataSeeder implements CommandLineRunner {
         seedTransaction(TransactionType.TRANSFER,   c4Checking, c6Checking, new BigDecimal("120.00"),  customer4, "Utilities split");
     }
 
+    private void seedAdmin(String email, String username) {
+        if (userRepository.findByEmail(email).isEmpty()) {
+            log.info("[DEBUG_LOG] Seeding admin user: {}", email);
+            User user = new User();
+            user.setEmail(email);
+            user.setUsername(username);
+            user.setPasswordHash(passwordEncoder.encode("Admin@123"));
+            user.setRole(Role.ADMIN);
+            user.setActive(true);
+            user.setCreatedAt(LocalDateTime.now());
+            user.setUpdatedAt(LocalDateTime.now());
+
+            userRepository.save(user);
+            log.info("[DEBUG_LOG] Successfully seeded admin: {}", email);
+        }
+    }
+
+
     private void seedEmployee(String email, String username, String empNumber, String firstName, String lastName) {
         seedEmployee(email, username, empNumber, firstName, lastName, "Password@123");
     }
@@ -109,7 +128,7 @@ public class DataSeeder implements CommandLineRunner {
             user.setActive(true);
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
-            
+
             user = userRepository.save(user);
 
             EmployeeProfile profile = new EmployeeProfile();
