@@ -64,8 +64,12 @@ public class UserService {
         customerProfile.setStatus(approveCustomerRequest.getStatus());
 
         if (customerProfile.getStatus() == APPROVED && previousStatus != APPROVED) {
-            createDefaultAccounts(user, approveCustomerRequest.getCheckingDailyLimit(),
-                    approveCustomerRequest.getSavingsDailyLimit());
+            user.setActive(true);
+            boolean hasNoAccounts = accountRepository.findByCustomerId(user.getId(), Pageable.unpaged()).isEmpty();
+            if (hasNoAccounts) {
+                createDefaultAccounts(user, approveCustomerRequest.getCheckingDailyLimit(),
+                        approveCustomerRequest.getSavingsDailyLimit());
+            }
         }
     }
 
@@ -92,7 +96,6 @@ public class UserService {
             account.setDailyTransferLimit(customDailyLimit);
         }
 
-        accountRepository.save(account);
         user.getAccounts().add(account);
     }
 
