@@ -2,7 +2,8 @@ package com.inholland.banking_app.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inholland.banking_app.config.RateLimitFilter;
-import com.inholland.banking_app.dtos.MoneyDto;
+import com.inholland.banking_app.dtos.MoneyResponse;
+import java.math.BigDecimal;
 import com.inholland.banking_app.dtos.PageMetadataDto;
 import com.inholland.banking_app.dtos.TransactionDto;
 import com.inholland.banking_app.dtos.TransactionPageDto;
@@ -73,7 +74,7 @@ class TransactionControllerTest {
         sampleTransactionDto = TransactionDto.builder()
                 .transactionId(1L)
                 .transactionType(TransactionType.TRANSFER)
-                .amount(MoneyDto.builder().amount(100.0).currency("EUR").build())
+                .amount(new MoneyResponse(BigDecimal.valueOf(100.0), "EUR"))
                 .channel(Channel.WEB)
                 .initiatedByUserId(1L)
                 .createdAt(LocalDateTime.of(2025, 6, 1, 12, 0))
@@ -145,8 +146,8 @@ class TransactionControllerTest {
     void createTransaction_transfer_shouldReturn201_withTransactionResult() throws Exception {
         TransactionResultDto result = TransactionResultDto.builder()
                 .transaction(sampleTransactionDto)
-                .sourceBalance(MoneyDto.builder().amount(900.0).currency("EUR").build())
-                .destinationBalance(MoneyDto.builder().amount(600.0).currency("EUR").build())
+                .sourceBalance(new MoneyResponse(BigDecimal.valueOf(900.0), "EUR"))
+                .destinationBalance(new MoneyResponse(BigDecimal.valueOf(600.0), "EUR"))
                 .build();
 
         when(transactionService.createTransaction(any(), anyString())).thenReturn(result);
@@ -165,7 +166,7 @@ class TransactionControllerTest {
     void createTransaction_deposit_shouldReturn201_withTransactionResult() throws Exception {
         TransactionResultDto result = TransactionResultDto.builder()
                 .transaction(sampleTransactionDto)
-                .sourceBalance(MoneyDto.builder().amount(1250.0).currency("EUR").build())
+                .sourceBalance(new MoneyResponse(BigDecimal.valueOf(1250.0), "EUR"))
                 .build();
 
         when(transactionService.createTransaction(any(), anyString())).thenReturn(result);
@@ -182,7 +183,7 @@ class TransactionControllerTest {
     void createTransaction_withdrawal_shouldReturn201_withTransactionResult() throws Exception {
         TransactionResultDto result = TransactionResultDto.builder()
                 .transaction(sampleTransactionDto)
-                .sourceBalance(MoneyDto.builder().amount(800.0).currency("EUR").build())
+                .sourceBalance(new MoneyResponse(BigDecimal.valueOf(800.0), "EUR"))
                 .build();
 
         when(transactionService.createTransaction(any(), anyString())).thenReturn(result);
