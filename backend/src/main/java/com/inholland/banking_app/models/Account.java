@@ -57,4 +57,41 @@ public class Account {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
+    public boolean hasSufficientBalance(BigDecimal amount) {
+        return balance.subtract(amount).compareTo(absoluteTransferLimit) >= 0;
+    }
+
+    public boolean isClosed() {
+        return this.status == AccountStatus.CLOSED;
+    }
+
+    public boolean isActive() {
+        return this.status == AccountStatus.ACTIVE;
+    }
+
+    public boolean isFrozen() {
+        return this.status == AccountStatus.FROZEN;
+    }
+
+    public void markFrozen() {
+        this.status = AccountStatus.FROZEN;
+    }
+
+    public void unfreeze() {
+        this.status = AccountStatus.ACTIVE;
+    }
+
+    public void applyLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
+        if (absoluteLimit != null) {
+            this.absoluteTransferLimit = absoluteLimit;
+        }
+        if (dailyLimit != null) {
+            this.dailyTransferLimit = dailyLimit;
+        }
+    }
+
+    public void markClosed() {
+        this.status = AccountStatus.CLOSED;
+        this.closedAt = LocalDateTime.now();
+    }
 }
