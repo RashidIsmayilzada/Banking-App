@@ -59,7 +59,9 @@
                 >Approve →</RouterLink>
                 <template v-else-if="c.status === 'active'">
                   <RouterLink :to="`/employee/customers/${c.id}`" class="btn btn--ghost btn--xs">View</RouterLink>
-                  <button class="btn btn--ghost-danger btn--xs">Close</button>
+                  <button class="btn btn--ghost-danger btn--xs" @click="closeCustomerAccounts(c.id)" :disabled="closing === c.id">
+                    {{ closing === c.id ? 'Closing...' : 'Close' }}
+                  </button>
                 </template>
                 <RouterLink v-else :to="`/employee/customers/${c.id}`" class="btn btn--ghost btn--xs">View</RouterLink>
               </div>
@@ -96,6 +98,7 @@ const error = ref(null)
 const page = ref(0)
 const totalElements = ref(0)
 const totalPages = ref(0)
+const closing = ref(null)
 
 function displayName(user) {
   return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || user.email
@@ -151,6 +154,31 @@ function handlePageChange(newPage) {
 function applyFilters() {
   page.value = 0
   fetchCustomers()
+}
+
+async function closeCustomerAccounts(customerId) {
+  closing.value = customerId
+  error.value = null
+
+  try {
+    const customer = await userService.getUserById(customerId)
+    const customerName = displayName(customer)
+
+    if (!confirm(`Close customer profile for ${customerName}?\n\nThis will set their status to CLOSED and prevent them from logging in.\n\nThis cannot be undone.`)) {
+      closing.value = null
+      return
+    }
+
+    await userService.closeUser(customerId)
+
+    // Refresh the list
+    await fetchCustomers()
+    alert(`Customer ${customerName} closed successfully`)
+  } catch (err) {
+    error.value = err.message || 'Failed to close customer'
+  } finally {
+    closing.value = null
+  }
 }
 
 onMounted(() => {

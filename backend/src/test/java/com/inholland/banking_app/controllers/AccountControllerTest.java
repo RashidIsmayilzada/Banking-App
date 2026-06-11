@@ -1,16 +1,17 @@
 package com.inholland.banking_app.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.inholland.banking_app.dtos.*;
+import com.inholland.banking_app.dtos.AccountListResponse;
+import com.inholland.banking_app.dtos.AccountResponse;
+import com.inholland.banking_app.dtos.AccountUpdateRequest;
+import com.inholland.banking_app.dtos.MoneyResponse;
 import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
-import com.inholland.banking_app.policies.AccountPolicy;
 import com.inholland.banking_app.security.JwtAuthenticationFilter;
 import com.inholland.banking_app.services.AccountService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
@@ -33,13 +34,22 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Web-layer slice with security switched off, so it verifies request/response
+ * wiring and exception-to-status mapping. Security and the role branching are
+ * covered against the real filter chain in AccountControllerFunctionalTest.
+ */
 @WebMvcTest(
         value = AccountController.class,
         excludeAutoConfiguration = {SecurityAutoConfiguration.class, SecurityFilterAutoConfiguration.class},
@@ -47,14 +57,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 )
 class AccountControllerTest {
 
+    private static final String IBAN = "NL91ABNA0417164300";
+
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
     private AccountService accountService;
-
-    @MockitoBean
-    private AccountPolicy accountPolicy;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -68,7 +77,7 @@ class AccountControllerTest {
         accountResponse = AccountResponse.builder()
                 .ownerId(1L)
                 .ownerUsername("customer")
-                .iban("NL91ABNA0417164300")
+                .iban(IBAN)
                 .accountType(AccountType.CHECKING)
                 .balance(MoneyResponse.eur(new BigDecimal("1000.00")))
                 .absoluteTransferLimit(MoneyResponse.eur(new BigDecimal("5000.00")))
@@ -77,49 +86,44 @@ class AccountControllerTest {
                 .createdAt(LocalDateTime.of(2025, 1, 15, 10, 0))
                 .build();
 
-        List<AccountResponse> accounts = List.of(accountResponse);
-        Page<AccountResponse> page = new PageImpl<>(accounts, PageRequest.of(0, 10), 1);
+        Page<AccountResponse> page = new PageImpl<>(List.of(accountResponse), PageRequest.of(0, 10), 1);
         listResponse = AccountListResponse.of(page);
 
-        customerAuth = new UsernamePasswordAuthenticationToken(
-                "customer", null, List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
-        employeeAuth = new UsernamePasswordAuthenticationToken(
-                "employee", null, List.of(new SimpleGrantedAuthority("ROLE_EMPLOYEE")));
+        customerAuth = authWith("customer", "ROLE_CUSTOMER");
+        employeeAuth = authWith("employee", "ROLE_EMPLOYEE");
     }
 
-    // --- GET /accounts ---
-
     @Test
-    @DisplayName("GET /accounts - should return 200 with account list")
-    void listAccounts_shouldReturn200_withAccountList() throws Exception {
+    void listAccounts_returnsOwnAccounts_whenCallerIsCustomer() throws Exception {
         when(accountService.listAccountsOwnedBy(anyString(), any())).thenReturn(listResponse);
 
         mockMvc.perform(get("/accounts").principal(customerAuth))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accounts").isArray())
-                .andExpect(jsonPath("$.accounts[0].iban").value("NL91ABNA0417164300"))
+                .andExpect(jsonPath("$.accounts[0].iban").value(IBAN))
                 .andExpect(jsonPath("$.totals.combinedBalance.amount").value(1000.00))
                 .andExpect(jsonPath("$.totals.combinedBalance.currency").value("EUR"));
+
+        // The role decides which service call is made: a customer must never list all accounts.
+        verify(accountService).listAccountsOwnedBy(eq("customer"), any());
+        verify(accountService, never()).listAccounts(any(), any());
     }
 
     @Test
-    @DisplayName("GET /accounts?userId=1 - should return 200 with filtered accounts")
-    void listAccounts_shouldReturn200_withUserIdFilter() throws Exception {
-        when(accountPolicy.isEmployee(employeeAuth)).thenReturn(true);
+    void listAccounts_filtersByUserId_whenCallerIsEmployee() throws Exception {
         when(accountService.listAccounts(eq(1L), any())).thenReturn(listResponse);
 
         mockMvc.perform(get("/accounts").param("userId", "1").principal(employeeAuth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accounts").isArray());
+
+        verify(accountService).listAccounts(eq(1L), any());
+        verify(accountService, never()).listAccountsOwnedBy(anyString(), any());
     }
 
     @Test
-    @DisplayName("GET /accounts - should return 200 with empty list when no accounts exist")
-    void listAccounts_shouldReturn200_withEmptyList() throws Exception {
+    void listAccounts_returnsEmptyEnvelope_whenCustomerHasNoAccounts() throws Exception {
         Page<AccountResponse> emptyPage = new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 10), 0);
-        AccountListResponse emptyResponse = AccountListResponse.of(emptyPage);
-
-        when(accountService.listAccountsOwnedBy(anyString(), any())).thenReturn(emptyResponse);
+        when(accountService.listAccountsOwnedBy(anyString(), any())).thenReturn(AccountListResponse.of(emptyPage));
 
         mockMvc.perform(get("/accounts").principal(customerAuth))
                 .andExpect(status().isOk())
@@ -127,93 +131,80 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.totals.combinedBalance.amount").value(0));
     }
 
-    // --- GET /accounts/{iban} ---
-
     @Test
-    @DisplayName("GET /accounts/{iban} - should return 200 with account details")
-    void getAccount_shouldReturn200_whenAccountExists() throws Exception {
-        when(accountService.getAccount("NL91ABNA0417164300")).thenReturn(accountResponse);
+    void getAccount_returnsAccountDetails_whenFound() throws Exception {
+        when(accountService.getAccount(IBAN)).thenReturn(accountResponse);
 
-        mockMvc.perform(get("/accounts/NL91ABNA0417164300"))
+        mockMvc.perform(get("/accounts/" + IBAN))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.ownerId").value(1))
                 .andExpect(jsonPath("$.ownerUsername").value("customer"))
-                .andExpect(jsonPath("$.iban").value("NL91ABNA0417164300"))
+                .andExpect(jsonPath("$.iban").value(IBAN))
                 .andExpect(jsonPath("$.balance.amount").value(1000.00))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test
-    @DisplayName("GET /accounts/{iban} - should return 404 when account not found")
-    void getAccount_shouldReturn404_whenAccountNotFound() throws Exception {
-        when(accountService.getAccount("NL00BANK0000000000")).thenThrow(new EntityNotFoundException("Account not found"));
+    void getAccount_returns404_whenAccountNotFound() throws Exception {
+        when(accountService.getAccount(IBAN)).thenThrow(new EntityNotFoundException("Account not found"));
 
-        mockMvc.perform(get("/accounts/NL00BANK0000000000"))
+        mockMvc.perform(get("/accounts/" + IBAN))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"))
                 .andExpect(jsonPath("$.message").value("Account not found"));
     }
 
-    // --- PATCH /accounts/{iban} ---
-
     @Test
-    @DisplayName("PATCH /accounts/{iban} - should return 200 when update is valid")
-    void updateAccount_shouldReturn200_whenRequestIsValid() throws Exception {
-        AccountUpdateRequest request = new AccountUpdateRequest();
-        request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
-        request.setDailyTransferLimit(new BigDecimal("3000.00"));
+    void updateAccount_returns200_whenRequestIsValid() throws Exception {
+        when(accountService.updateAccount(eq(IBAN), any(AccountUpdateRequest.class))).thenReturn(accountResponse);
 
-        when(accountService.updateAccount(eq("NL91ABNA0417164300"), any(AccountUpdateRequest.class))).thenReturn(accountResponse);
-
-        mockMvc.perform(patch("/accounts/NL91ABNA0417164300")
+        mockMvc.perform(patch("/accounts/" + IBAN)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(limitRequest("8000.00"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.iban").value("NL91ABNA0417164300"));
+                .andExpect(jsonPath("$.iban").value(IBAN));
     }
 
     @Test
-    @DisplayName("PATCH /accounts/{iban} - should return 404 when account not found")
-    void updateAccount_shouldReturn404_whenAccountNotFound() throws Exception {
-        AccountUpdateRequest request = new AccountUpdateRequest();
-        request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
-
-        when(accountService.updateAccount(eq("NL00BANK0000000000"), any(AccountUpdateRequest.class)))
+    void updateAccount_returns404_whenAccountNotFound() throws Exception {
+        when(accountService.updateAccount(eq(IBAN), any(AccountUpdateRequest.class)))
                 .thenThrow(new EntityNotFoundException("Account not found"));
 
-        mockMvc.perform(patch("/accounts/NL00BANK0000000000")
+        mockMvc.perform(patch("/accounts/" + IBAN)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(limitRequest("8000.00"))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 
     @Test
-    @DisplayName("PATCH /accounts/{iban} - should return 422 when limit is negative")
-    void updateAccount_shouldReturn422_whenLimitIsNegative() throws Exception {
-        AccountUpdateRequest request = new AccountUpdateRequest();
-        request.setAbsoluteTransferLimit(new BigDecimal("-1.00"));
-
-        mockMvc.perform(patch("/accounts/NL91ABNA0417164300")
+    void updateAccount_returns422_whenLimitIsNegative() throws Exception {
+        mockMvc.perform(patch("/accounts/" + IBAN)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(limitRequest("-1.00"))))
                 .andExpect(status().is(422))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
     @Test
-    @DisplayName("PATCH /accounts/{iban} - should return 409 when account is in a conflicting state (closed)")
-    void updateAccount_shouldReturn409_whenAccountStateConflict() throws Exception {
-        AccountUpdateRequest request = new AccountUpdateRequest();
-        request.setAbsoluteTransferLimit(new BigDecimal("8000.00"));
-
-        when(accountService.updateAccount(eq("NL91ABNA0417164300"), any(AccountUpdateRequest.class)))
+    void updateAccount_returns409_whenAccountIsClosed() throws Exception {
+        when(accountService.updateAccount(eq(IBAN), any(AccountUpdateRequest.class)))
                 .thenThrow(new AccountStateException("Cannot update a closed account"));
 
-        mockMvc.perform(patch("/accounts/NL91ABNA0417164300")
+        mockMvc.perform(patch("/accounts/" + IBAN)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(limitRequest("8000.00"))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ACCOUNT_STATE_CONFLICT"));
+    }
+
+    private Authentication authWith(String username, String role) {
+        return new UsernamePasswordAuthenticationToken(
+                username, null, List.of(new SimpleGrantedAuthority(role)));
+    }
+
+    private AccountUpdateRequest limitRequest(String absoluteLimit) {
+        AccountUpdateRequest request = new AccountUpdateRequest();
+        request.setAbsoluteTransferLimit(new BigDecimal(absoluteLimit));
+        return request;
     }
 }

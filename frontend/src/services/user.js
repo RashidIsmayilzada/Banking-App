@@ -74,3 +74,15 @@ export function approveUser(id, status) {
     body: JSON.stringify({ status })
   })
 }
+
+export function closeUser(id) {
+  return request(`/users/${id}/close`, {
+    method: 'PATCH'
+  })
+}
+
+export function reopenUser(id) {
+  return request(`/users/${id}/reopen`, {
+    method: 'PATCH'
+  })
+}

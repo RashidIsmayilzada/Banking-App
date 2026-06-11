@@ -1,6 +1,6 @@
 package com.inholland.banking_app.services;
 
-import com.inholland.banking_app.dtos.MoneyDto;
+import com.inholland.banking_app.dtos.MoneyResponse;
 import com.inholland.banking_app.dtos.TransactionFilterParams;
 import com.inholland.banking_app.dtos.TransactionPageDto;
 import com.inholland.banking_app.dtos.TransactionRequest;
@@ -585,13 +585,13 @@ class TransactionServiceTest {
     }
 
     private TransactionResultDto dummyTransferResult() {
-        MoneyDto eur = MoneyDto.builder().amount(0.0).currency("EUR").build();
+        MoneyResponse eur = MoneyResponse.eur(BigDecimal.ZERO);
         return TransactionResultDto.builder().sourceBalance(eur).destinationBalance(eur).build();
     }
 
     private TransactionResultDto dummySingleResult() {
         return TransactionResultDto.builder()
-                .sourceBalance(MoneyDto.builder().amount(0.0).currency("EUR").build())
+                .sourceBalance(MoneyResponse.eur(BigDecimal.ZERO))
                 .build();
     }
 }

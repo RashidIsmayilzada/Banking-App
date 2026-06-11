@@ -1,24 +1,29 @@
 package com.inholland.banking_app.repositories;
 
 import com.inholland.banking_app.models.Account;
+import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
+import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Integration tests for the custom searchCheckingByCustomerName query against H2.
+ * The derived finders (findByCustomerId/Username) are Spring Data generated and
+ * are exercised through the functional tests, so they are not unit-tested here.
+ */
 @DataJpaTest
 @TestPropertySource(properties = "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1")
 class AccountRepositoryTest {
@@ -29,84 +34,59 @@ class AccountRepositoryTest {
     @Autowired
     private UserRepository userRepository;
 
-    private User customer1;
-    private User customer2;
+    @Test
+    void searchCheckingByCustomerName_matchesActiveCheckingByFirstOrLastName_caseInsensitive() {
+        User alice = buildCustomerWithProfile("alice", "Alice", "Anderson", "100200300");
+        accountRepository.save(buildAccount(alice, "NL01INHO0000000001", AccountType.CHECKING, AccountStatus.ACTIVE));
 
-    @BeforeEach
-    void setUp() {
-        customer1 = new User();
-        customer1.setEmail("customer1@bank.com");
-        customer1.setUsername("customer1");
-        customer1.setPasswordHash("hashed");
-        customer1.setRole(Role.CUSTOMER);
-        customer1.setActive(true);
-        customer1.setCreatedAt(LocalDateTime.now());
-        customer1.setUpdatedAt(LocalDateTime.now());
-        customer1 = userRepository.save(customer1);
+        List<Account> byFirstName = accountRepository.searchCheckingByCustomerName("ALI");
+        List<Account> byLastName = accountRepository.searchCheckingByCustomerName("nderso");
 
-        customer2 = new User();
-        customer2.setEmail("customer2@bank.com");
-        customer2.setUsername("customer2");
-        customer2.setPasswordHash("hashed");
-        customer2.setRole(Role.CUSTOMER);
-        customer2.setActive(true);
-        customer2.setCreatedAt(LocalDateTime.now());
-        customer2.setUpdatedAt(LocalDateTime.now());
-        customer2 = userRepository.save(customer2);
-
-        accountRepository.save(buildAccount(customer1, "NL91ABNA0417164300"));
-        accountRepository.save(buildAccount(customer1, "NL91ABNA0417164301"));
-        accountRepository.save(buildAccount(customer2, "NL91ABNA0417164302"));
+        assertEquals(1, byFirstName.size());
+        assertEquals("NL01INHO0000000001", byFirstName.get(0).getIban());
+        assertEquals(1, byLastName.size());
     }
 
     @Test
-    @DisplayName("findByCustomerId() - should return only accounts belonging to the given customer")
-    void findByCustomerId_shouldReturnOnlyThatCustomersAccounts() {
-        Page<Account> result = accountRepository.findByCustomerId(customer1.getId(), PageRequest.of(0, 10));
+    void searchCheckingByCustomerName_excludesSavingsAndClosedAccounts() {
+        User alice = buildCustomerWithProfile("alice", "Alice", "Anderson", "100200300");
+        accountRepository.save(buildAccount(alice, "NL01INHO0000000001", AccountType.SAVINGS, AccountStatus.ACTIVE));
+        accountRepository.save(buildAccount(alice, "NL01INHO0000000002", AccountType.CHECKING, AccountStatus.CLOSED));
 
-        assertThat(result.getContent()).hasSize(2);
-        assertThat(result.getContent())
-                .allMatch(a -> a.getCustomer().getId().equals(customer1.getId()));
+        assertTrue(accountRepository.searchCheckingByCustomerName("alice").isEmpty());
     }
 
-    @Test
-    @DisplayName("findByCustomerId() - should return empty page when customer has no accounts")
-    void findByCustomerId_shouldReturnEmptyPage_whenNoAccounts() {
-        User customer3 = new User();
-        customer3.setEmail("customer3@bank.com");
-        customer3.setUsername("customer3");
-        customer3.setPasswordHash("hashed");
-        customer3.setRole(Role.CUSTOMER);
-        customer3.setActive(true);
-        customer3.setCreatedAt(LocalDateTime.now());
-        customer3.setUpdatedAt(LocalDateTime.now());
-        customer3 = userRepository.save(customer3);
+    private User buildCustomerWithProfile(String username, String firstName, String lastName, String bsn) {
+        User customer = new User();
+        customer.setEmail(username + "@bank.com");
+        customer.setUsername(username);
+        customer.setPasswordHash("hashed");
+        customer.setRole(Role.CUSTOMER);
+        customer.setActive(true);
+        customer.setCreatedAt(LocalDateTime.now());
+        customer.setUpdatedAt(LocalDateTime.now());
 
-        Page<Account> result = accountRepository.findByCustomerId(customer3.getId(), PageRequest.of(0, 10));
-
-        assertThat(result.getContent()).isEmpty();
-        assertThat(result.getTotalElements()).isZero();
+        CustomerProfile profile = new CustomerProfile();
+        profile.setUser(customer);
+        profile.setFirstName(firstName);
+        profile.setLastName(lastName);
+        profile.setBsn(bsn);
+        profile.setPhoneNumber("+31600000000");
+        profile.setStatus(CustomerStatus.APPROVED);
+        profile.setRegisteredAt(LocalDateTime.now());
+        customer.setCustomerProfile(profile);
+        return userRepository.save(customer);
     }
 
-    @Test
-    @DisplayName("findByCustomerUsername() - should return only accounts belonging to the given username")
-    void findByCustomerUsername_shouldReturnOnlyThatCustomersAccounts() {
-        Page<Account> result = accountRepository.findByCustomerUsername("customer1", PageRequest.of(0, 10));
-
-        assertThat(result.getContent()).hasSize(2);
-        assertThat(result.getContent())
-                .allMatch(a -> a.getCustomer().getUsername().equals("customer1"));
-    }
-
-    private Account buildAccount(User customer, String iban) {
+    private Account buildAccount(User customer, String iban, AccountType type, AccountStatus status) {
         Account account = new Account();
         account.setCustomer(customer);
         account.setIban(iban);
-        account.setAccountType(AccountType.CHECKING);
+        account.setAccountType(type);
         account.setBalance(new BigDecimal("1000.00"));
         account.setAbsoluteTransferLimit(new BigDecimal("5000.00"));
         account.setDailyTransferLimit(new BigDecimal("2000.00"));
-        account.setStatus(AccountStatus.ACTIVE);
+        account.setStatus(status);
         account.setCreatedAt(LocalDateTime.now());
         return account;
     }

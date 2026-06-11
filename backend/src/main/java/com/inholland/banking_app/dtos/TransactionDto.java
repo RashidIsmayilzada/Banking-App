@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 public class TransactionDto {
     private Long transactionId;
     private TransactionType transactionType;
-    private MoneyDto amount;
+    private MoneyResponse amount;
     private TransactionPartyDto fromAccount;
     private TransactionPartyDto toAccount;
     private Channel channel;

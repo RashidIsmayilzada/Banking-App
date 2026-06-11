@@ -7,6 +7,7 @@ import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.security.JwtAuthenticationFilter;
 import com.inholland.banking_app.services.AuthService;
 import com.inholland.banking_app.services.UserService;
@@ -196,6 +197,113 @@ class UserControllerTest {
                 mockMvc.perform(patch("/users/99/approval")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isNotFound())
+                                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        }
+
+        // --- PATCH /users/{id}/close ---
+
+        @Test
+        @DisplayName("PATCH /users/{id}/close - should return 200 with closed customer response")
+        void closeUser_shouldReturn200_whenCustomerClosedSuccessfully() throws Exception {
+                UserResponse closedResponse = UserResponse.builder()
+                                .id(1L)
+                                .email("john@example.com")
+                                .role(Role.CUSTOMER)
+                                .status(CustomerStatus.CLOSED)
+                                .active(true)
+                                .hasAccounts(false)
+                                .accountCount(0)
+                                .accounts(Collections.emptyList())
+                                .build();
+
+                when(userService.closeUser(1L)).thenReturn(closedResponse);
+
+                mockMvc.perform(patch("/users/1/close"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.id").value(1))
+                                .andExpect(jsonPath("$.status").value("CLOSED"));
+        }
+
+        @Test
+        @DisplayName("PATCH /users/{id}/close - should return 200 with inactive employee response")
+        void closeUser_shouldReturn200_whenEmployeeClosedSuccessfully() throws Exception {
+                UserResponse closedEmployee = UserResponse.builder()
+                                .id(2L)
+                                .email("emp@bank.com")
+                                .role(Role.EMPLOYEE)
+                                .active(false)
+                                .build();
+
+                when(userService.closeUser(2L)).thenReturn(closedEmployee);
+
+                mockMvc.perform(patch("/users/2/close"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.id").value(2))
+                                .andExpect(jsonPath("$.active").value(false));
+        }
+
+        @Test
+        @DisplayName("PATCH /users/{id}/close - should return 404 when user not found")
+        void closeUser_shouldReturn404_whenUserNotFound() throws Exception {
+                when(userService.closeUser(99L))
+                                .thenThrow(new EntityNotFoundException("User with id 99 not found"));
+
+                mockMvc.perform(patch("/users/99/close"))
+                                .andExpect(status().isNotFound())
+                                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        }
+
+        // --- PATCH /users/{id}/reopen ---
+
+        @Test
+        @DisplayName("PATCH /users/{id}/reopen - should return 200 with APPROVED customer and reopened accounts")
+        void reopenUser_shouldReturn200_whenCustomerReopenedSuccessfully() throws Exception {
+                UserResponse reopenedResponse = UserResponse.builder()
+                                .id(1L)
+                                .email("john@example.com")
+                                .role(Role.CUSTOMER)
+                                .status(CustomerStatus.APPROVED)
+                                .active(true)
+                                .hasAccounts(true)
+                                .accountCount(2)
+                                .accounts(Collections.emptyList())
+                                .build();
+
+                when(userService.reopenUser(1L)).thenReturn(reopenedResponse);
+
+                mockMvc.perform(patch("/users/1/reopen"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.id").value(1))
+                                .andExpect(jsonPath("$.status").value("APPROVED"))
+                                .andExpect(jsonPath("$.accountCount").value(2));
+        }
+
+        @Test
+        @DisplayName("PATCH /users/{id}/reopen - should return 200 with active employee response")
+        void reopenUser_shouldReturn200_whenEmployeeReopenedSuccessfully() throws Exception {
+                UserResponse activeEmployee = UserResponse.builder()
+                                .id(2L)
+                                .email("emp@bank.com")
+                                .role(Role.EMPLOYEE)
+                                .active(true)
+                                .build();
+
+                when(userService.reopenUser(2L)).thenReturn(activeEmployee);
+
+                mockMvc.perform(patch("/users/2/reopen"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.id").value(2))
+                                .andExpect(jsonPath("$.active").value(true));
+        }
+
+        @Test
+        @DisplayName("PATCH /users/{id}/reopen - should return 404 when user not found")
+        void reopenUser_shouldReturn404_whenUserNotFound() throws Exception {
+                when(userService.reopenUser(99L))
+                                .thenThrow(new EntityNotFoundException("User with id 99 not found"));
+
+                mockMvc.perform(patch("/users/99/reopen"))
                                 .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
         }

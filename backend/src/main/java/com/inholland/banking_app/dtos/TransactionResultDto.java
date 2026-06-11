@@ -11,6 +11,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TransactionResultDto {
     private TransactionDto transaction;
-    private MoneyDto sourceBalance;
-    private MoneyDto destinationBalance;
+    private MoneyResponse sourceBalance;
+    private MoneyResponse destinationBalance;
 }
