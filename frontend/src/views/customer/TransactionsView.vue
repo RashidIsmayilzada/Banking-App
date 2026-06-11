@@ -82,12 +82,12 @@ import CustomerShell from '@/components/layout/CustomerShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import AppPager from '@/components/shared/AppPager.vue'
-import * as userService from '@/services/user'
+import { useAuth } from '@/stores/auth'
 import { listTransactions } from '@/services/transaction.js'
 
+const { user: authUser } = useAuth()
 const filters = ref({ startDate: '', endDate: '', amountOp: '=', amount: '', iban: '' })
 const activeFilters = ref([])
-const { user: currentUser } = useAuth()
 const transactions = ref([])
 const loading = ref(false)
 const pageMeta = ref({ page: 0, size: 8, totalElements: 0, totalPages: 0 })
@@ -173,11 +173,9 @@ async function fetchTransactions() {
     if (filters.value.iban) params.iban = filters.value.iban.replace(/\s/g, '')
 
     const data = await listTransactions(params)
-    console.log('[DEBUG] Received transactions data:', data)
     pageMeta.value = data.page
 
-    const userId = currentUser.value?.id
-    console.log('[DEBUG] Current userId:', userId)
+    const userId = authUser.value?.userId
     transactions.value = (data.items || []).map(tx => {
       const isIncoming = tx.transactionType === 'DEPOSIT' ||
         (tx.transactionType === 'TRANSFER' && tx.toAccount?.userId === userId)
@@ -190,8 +188,7 @@ async function fetchTransactions() {
         amount: (isIncoming ? '+' : '-') + formatMoney(tx.amount?.amount),
       }
     })
-  } catch (err) {
-    console.error('[DEBUG] Failed to fetch transactions:', err)
+  } catch {
     transactions.value = []
   } finally {
     loading.value = false
@@ -203,7 +200,5 @@ function handlePageChange(newPage) {
   fetchTransactions()
 }
 
-onMounted(async () => {
-  await fetchTransactions()
-})
+onMounted(fetchTransactions)
 </script>

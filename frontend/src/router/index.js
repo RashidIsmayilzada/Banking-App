@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getAtmToken } from '@/services/atm.js'
 
 // Auth
 import LoginView         from '@/views/auth/LoginView.vue'
@@ -38,18 +39,18 @@ const routes = [
   { path: '/pending',  component: PendingView  },
 
   // ── Customer ───────────────────────────────────────
-  { path: '/customer/dashboard',      component: DashboardView      },
+  { path: '/customer/dashboard',      component: DashboardView,     meta: { requiresAuth: true, role: 'CUSTOMER' } },
   { path: '/customer/accounts',       redirect: '/customer/dashboard' },
-  { path: '/customer/accounts/:iban', component: AccountDetailView  },
-  { path: '/customer/transfer',       component: TransferView       },
-{ path: '/customer/transactions', component: TransactionsView  },
+  { path: '/customer/accounts/:iban', component: AccountDetailView, meta: { requiresAuth: true, role: 'CUSTOMER' } },
+  { path: '/customer/transfer',       component: TransferView,      meta: { requiresAuth: true, role: 'CUSTOMER' } },
+  { path: '/customer/transactions',   component: TransactionsView,  meta: { requiresAuth: true, role: 'CUSTOMER' } },
 
   // ── ATM ────────────────────────────────────────────
   { path: '/atm/login',    component: AtmLoginView    },
-  { path: '/atm/home',     component: AtmHomeView     },
-  { path: '/atm/deposit',  component: AtmDepositView  },
-  { path: '/atm/withdraw', component: AtmWithdrawView },
-  { path: '/atm/confirm',  component: AtmConfirmView  },
+  { path: '/atm/home',     component: AtmHomeView,     meta: { requiresAtmSession: true } },
+  { path: '/atm/deposit',  component: AtmDepositView,  meta: { requiresAtmSession: true } },
+  { path: '/atm/withdraw', component: AtmWithdrawView, meta: { requiresAtmSession: true } },
+  { path: '/atm/confirm',  component: AtmConfirmView,  meta: { requiresAtmSession: true } },
 
   // ── Employee ───────────────────────────────────────
   { path: '/employee/overview',      component: OverviewView,         meta: { requiresAuth: true, role: 'EMPLOYEE' } },
@@ -67,6 +68,19 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach((to) => {
+  if (to.meta.requiresAtmSession) {
+    if (!getAtmToken()) return '/atm/login'
+  }
+
+  if (to.meta.requiresAuth) {
+    const token = localStorage.getItem('auth_token')
+    const user  = JSON.parse(localStorage.getItem('auth_user') || 'null')
+    if (!token || !user) return '/login'
+    if (to.meta.role && user.role !== to.meta.role) return '/login'
+  }
 })
 
 export default router

@@ -61,11 +61,16 @@
             <div>Changes apply immediately. Customer will see new limits on next transfer attempt.</div>
           </div>
 
+          <div v-if="saveError" class="banner banner--danger">
+            <AppIcon name="info" :size="16" class="banner__icon" />
+            <div>{{ saveError }}</div>
+          </div>
+
           <div class="row">
             <button class="btn btn--ghost" @click="$router.back()" :disabled="saving">Cancel</button>
             <span class="spacer" />
-            <button class="btn btn--primary" @click="saveLimits" :disabled="saving">
-              {{ saving ? 'Saving...' : 'Save limits' }}
+            <button class="btn btn--primary" :disabled="saving" @click="saveLimits">
+              {{ saving ? 'Saving…' : 'Save limits' }}
             </button>
           </div>
         </div>
@@ -104,11 +109,13 @@ import EmployeeShell from '@/components/layout/EmployeeShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import * as userService from '@/services/user'
-import * as accountService from '@/services/accounts'
+import { updateAccount } from '@/services/accounts'
 
 const router = useRouter()
 const route = useRoute()
 const customer = ref(null)
+const saving = ref(false)
+const saveError = ref(null)
 const customerName = computed(() => customer.value ? [customer.value.firstName, customer.value.lastName].filter(Boolean).join(' ') || customer.value.username || customer.value.email : 'Customer')
 const account = computed(() => customer.value?.accounts?.find(item => item.accountType === 'CHECKING') || customer.value?.accounts?.[0] || null)
 
@@ -128,24 +135,19 @@ async function saveLimits() {
   try {
     const payload = {}
 
-    if (form.value.absoluteLimit && form.value.absoluteLimit !== String(account.value?.absoluteTransferLimit?.amount ?? '')) {
-      payload.absoluteTransferLimit = { amount: parseFloat(form.value.absoluteLimit), currency: 'EUR' }
-    }
-
-    if (form.value.dailyLimit && form.value.dailyLimit !== String(account.value?.dailyTransferLimit?.amount ?? '')) {
-      payload.dailyTransferLimit = { amount: parseFloat(form.value.dailyLimit), currency: 'EUR' }
-    }
-
-    if (Object.keys(payload).length === 0) {
-      error.value = 'No changes to save'
-      saving.value = false
-      return
-    }
-
-    await accountService.updateAccount(account.value.iban, payload)
-    router.push(`/employee/customers/${route.params.id}`)
+async function saveLimits() {
+  if (!account.value?.iban) return
+  saving.value = true
+  saveError.value = null
+  try {
+    await updateAccount(account.value.iban, {
+      absoluteTransferLimit: parseFloat(form.value.absoluteLimit),
+      dailyTransferLimit: parseFloat(form.value.dailyLimit),
+    })
+    router.push('/employee/customers')
   } catch (err) {
-    error.value = err.message || 'Failed to update limits'
+    saveError.value = err.message || 'Failed to save limits'
+  } finally {
     saving.value = false
   }
 }
