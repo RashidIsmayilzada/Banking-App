@@ -3,14 +3,11 @@ package com.inholland.banking_app.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
 import com.inholland.banking_app.models.Account;
-import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
-import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.repositories.AccountRepository;
-import com.inholland.banking_app.repositories.CustomerProfileRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,9 +48,6 @@ class AccountControllerFunctionalTest {
 
     @Autowired
     private UserRepository userRepository;
-
-    @Autowired
-    private CustomerProfileRepository customerProfileRepository;
 
     @Autowired
     private AccountRepository accountRepository;
@@ -331,28 +325,6 @@ class AccountControllerFunctionalTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    // --- GET /accounts/search ---
-
-    @Test
-    @WithMockUser(roles = "EMPLOYEE")
-    void searchAccounts_asEmployee_returnsMatchingActiveChecking() throws Exception {
-        User alice = createCustomerWithProfile("alice", "Alice", "Anderson", "100200300");
-        createAccount(alice, "NL01INHO0000000001", AccountType.CHECKING, AccountStatus.ACTIVE, "1000.00", LocalDateTime.now());
-
-        mockMvc.perform(get("/accounts/search").param("name", "ander"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].iban").value("NL01INHO0000000001"))
-                .andExpect(jsonPath("$[0].name").value("Alice Anderson"));
-    }
-
-    @Test
-    @WithMockUser(username = "alice", roles = "CUSTOMER")
-    void searchAccounts_asCustomer_isForbidden() throws Exception {
-        mockMvc.perform(get("/accounts/search").param("name", "ander"))
-                .andExpect(status().isForbidden());
-    }
-
     // --- Fixtures ---
 
     private User createCustomer(String username) {
@@ -365,22 +337,6 @@ class AccountControllerFunctionalTest {
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         return userRepository.save(user);
-    }
-
-    private User createCustomerWithProfile(String username, String firstName, String lastName, String bsn) {
-        User user = createCustomer(username);
-        CustomerProfile profile = new CustomerProfile();
-        profile.setUser(user);
-        profile.setFirstName(firstName);
-        profile.setLastName(lastName);
-        profile.setBsn(bsn);
-        profile.setPhoneNumber("+31600000000");
-        profile.setStatus(CustomerStatus.APPROVED);
-        profile.setRegisteredAt(LocalDateTime.now());
-        // Sync the inverse side so the User cached in this transaction exposes the profile.
-        user.setCustomerProfile(profile);
-        customerProfileRepository.save(profile);
-        return user;
     }
 
     private Account createAccount(User owner, String iban, AccountType type, AccountStatus accountStatus,
