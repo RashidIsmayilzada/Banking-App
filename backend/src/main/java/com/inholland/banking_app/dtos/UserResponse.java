@@ -47,6 +47,9 @@ public class UserResponse {
             allowableValues = {"PENDING_APPROVAL", "APPROVED", "REJECTED", "CLOSED"})
     private CustomerStatus status;
 
+    @Schema(description = "Whether the user account is active (not blocked)", example = "true")
+    private Boolean active;
+
     @Schema(description = "Whether the user has at least one bank account", example = "true")
     private Boolean hasAccounts;
 
