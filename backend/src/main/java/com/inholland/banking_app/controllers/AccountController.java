@@ -2,7 +2,6 @@ package com.inholland.banking_app.controllers;
 
 import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
-import com.inholland.banking_app.dtos.AccountSearchResult;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.services.AccountService;
@@ -22,8 +21,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RequiredArgsConstructor
 @RestController
@@ -59,14 +56,6 @@ public class AccountController {
             @PathVariable String iban,
             @Valid @RequestBody AccountUpdateRequest request) {
         return ResponseEntity.ok(accountService.updateAccount(iban, request));
-    }
-
-    // Searches accounts by customer name. Created for the transaction feature
-    // (employee transfers/deposits need to look an account up by name).
-    @GetMapping("/search")
-    @PreAuthorize("hasRole('EMPLOYEE')")
-    public ResponseEntity<List<AccountSearchResult>> searchAccounts(@RequestParam String name) {
-        return ResponseEntity.ok(accountService.searchByCustomerName(name));
     }
 
     // Authorization scoping is a web-layer concern; the role is already carried

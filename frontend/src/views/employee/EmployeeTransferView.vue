@@ -137,7 +137,7 @@ import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import AppAvatar from '@/components/shared/AppAvatar.vue'
 import { createTransaction, listTransactions } from '@/services/transaction'
-import { apiFetch } from '@/services/api.js'
+import { searchCustomers } from '@/services/user.js'
 
 const router = useRouter()
 const activeTab = ref('Transfer')
@@ -164,7 +164,13 @@ function resetForms() {
 }
 
 async function searchAccounts(name) {
-  return apiFetch(`/accounts/search?name=${encodeURIComponent(name.trim())}`)
+  const page = await searchCustomers(name.trim())
+  return (page.content ?? [])
+    .map(u => {
+      const checking = (u.accounts ?? []).find(a => a.accountType === 'CHECKING' && a.status === 'ACTIVE')
+      return checking ? { iban: checking.iban, name: `${u.firstName} ${u.lastName}` } : null
+    })
+    .filter(Boolean)
 }
 
 async function searchFrom() {
