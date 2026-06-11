@@ -17,6 +17,10 @@ public class ApproveCustomerRequest {
             allowableValues = {"APPROVED", "REJECTED", "CLOSED"})
     private CustomerStatus status;
 
+    @Schema(description = "Optional absolute (minimum balance) transfer limit for the checking account. Defaults to 0.00 if omitted.",
+            example = "-500.00")
+    private BigDecimal checkingAbsoluteLimit;
+
     @Schema(description = "Optional custom daily transfer limit for the checking account. Defaults to 1000.00 if omitted.",
             example = "500.00")
     private BigDecimal checkingDailyLimit;

@@ -92,6 +92,25 @@ public class UserController {
                                 .ok(userService.getUserById(id));
         }
 
+        @Operation(summary = "Delete a user",
+                   description = "Deletes a user via a soft close: the customer profile is set to CLOSED and their accounts are closed (employees are deactivated). Requires EMPLOYEE role.",
+                   security = @SecurityRequirement(name = "bearerAuth"))
+        @ApiResponses({
+                @ApiResponse(responseCode = "204", description = "User deleted (closed)"),
+                @ApiResponse(responseCode = "403", description = "Access denied — EMPLOYEE role required",
+                        content = @Content(schema = @Schema())),
+                @ApiResponse(responseCode = "404", description = "User not found",
+                        content = @Content(schema = @Schema()))
+        })
+        @DeleteMapping("/{id}")
+        @PreAuthorize("hasRole('EMPLOYEE')")
+        public ResponseEntity<Void> deleteUser(
+                        @Parameter(description = "ID of the user to delete", example = "1")
+                        @PathVariable Long id) {
+                userService.deleteUser(id);
+                return ResponseEntity.noContent().build();
+        }
+
         @Operation(summary = "Approve or reject a customer",
                    description = "Sets the customer approval status (APPROVED / REJECTED) and optionally configures daily transfer limits. Requires EMPLOYEE role.",
                    security = @SecurityRequirement(name = "bearerAuth"))

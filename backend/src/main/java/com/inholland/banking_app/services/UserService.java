@@ -5,12 +5,8 @@ import com.inholland.banking_app.dtos.UserFilterRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.mappers.UserResponseMapper;
 import com.inholland.banking_app.models.*;
-import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.CustomerStatus;
-import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.Role;
-import com.inholland.banking_app.models.factory.AccountFactory;
-import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.TransactionRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import com.inholland.banking_app.specifications.UserSpecification;
@@ -35,7 +31,7 @@ import static com.inholland.banking_app.models.enums.CustomerStatus.APPROVED;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final AccountRepository accountRepository;
+    private final AccountService accountService;
     private final UserResponseMapper userResponseMapper;
     private final TransactionRepository transactionRepository;
 
@@ -60,15 +56,23 @@ public class UserService {
             throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
         }
 
-        CustomerStatus previousStatus = customerProfile.getStatus();
-        customerProfile.setStatus(approveCustomerRequest.getStatus());
+        applyStatusTransition(user, customerProfile, approveCustomerRequest.getStatus(),
+                approveCustomerRequest.getCheckingAbsoluteLimit(),
+                approveCustomerRequest.getCheckingDailyLimit(), approveCustomerRequest.getSavingsDailyLimit());
+    }
 
-        if (customerProfile.getStatus() == APPROVED && previousStatus != APPROVED) {
+    // Applies an approval status change and its side effects: activating the customer
+    // and creating their default accounts the first time they become APPROVED.
+    private void applyStatusTransition(User user, CustomerProfile customerProfile, CustomerStatus newStatus,
+                                       BigDecimal checkingAbsoluteLimit, BigDecimal checkingDailyLimit,
+                                       BigDecimal savingsDailyLimit) {
+        CustomerStatus previousStatus = customerProfile.getStatus();
+        customerProfile.setStatus(newStatus);
+
+        if (newStatus == APPROVED && previousStatus != APPROVED) {
             user.setActive(true);
-            boolean hasNoAccounts = accountRepository.findByCustomerId(user.getId(), Pageable.unpaged()).isEmpty();
-            if (hasNoAccounts) {
-                createDefaultAccounts(user, approveCustomerRequest.getCheckingDailyLimit(),
-                        approveCustomerRequest.getSavingsDailyLimit());
+            if (accountService.hasNoAccounts(user)) {
+                accountService.createDefaultAccounts(user, checkingAbsoluteLimit, checkingDailyLimit, savingsDailyLimit);
             }
         }
     }
@@ -79,36 +83,6 @@ public class UserService {
 
         return transactionRepository
                 .sumOutgoingAmountByAccountIbanAndDate(iban, startOfDay, endOfDay);
-    }
-
-    private void createDefaultAccounts(User user, BigDecimal checkingDailyLimit, BigDecimal savingsDailyLimit) {
-        createAccount(user, AccountType.CHECKING, checkingDailyLimit);
-        createAccount(user, AccountType.SAVINGS, savingsDailyLimit);
-    }
-
-    private void createAccount(User user, AccountType accountType, BigDecimal customDailyLimit) {
-        String iban = generateIban(user.getId(), accountType);
-        Account account = accountType == AccountType.CHECKING
-                ? AccountFactory.createCheckingAccount(user, iban)
-                : AccountFactory.createSavingsAccount(user, iban);
-
-        if (customDailyLimit != null) {
-            account.setDailyTransferLimit(customDailyLimit);
-        }
-
-        user.getAccounts().add(account);
-    }
-
-    private String generateIban(Long userId, AccountType accountType) {
-        long accountNumber = userId * 10 + (accountType == AccountType.CHECKING ? 1 : 2);
-        String iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
-
-        while (accountRepository.existsByIban(iban)) {
-            accountNumber++;
-            iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
-        }
-
-        return iban;
     }
 
     @Transactional
@@ -124,12 +98,14 @@ public class UserService {
                 throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
             }
             customerProfile.setStatus(CustomerStatus.CLOSED);
-            for (Account account : user.getAccounts()) {
-                account.setStatus(AccountStatus.CLOSED);
-                account.setClosedAt(java.time.LocalDateTime.now());
-            }
+            accountService.closeAllAccounts(user);
         }
         return userResponseMapper.toUserResponse(user);
+    }
+
+    @Transactional
+    public void deleteUser(Long userId) {
+        closeUser(userId);
     }
 
     @Transactional
@@ -145,10 +121,7 @@ public class UserService {
                 throw new EntityNotFoundException("Customer profile not found for user: " + user.getUsername());
             }
             customerProfile.setStatus(CustomerStatus.APPROVED);
-            for (Account account : user.getAccounts()) {
-                account.setStatus(AccountStatus.ACTIVE);
-                account.setClosedAt(null);
-            }
+            accountService.reopenAllAccounts(user);
         }
         return userResponseMapper.toUserResponse(user);
     }

@@ -68,10 +68,10 @@ export async function getPendingApprovalCount() {
   return response.totalElements ?? 0
 }
 
-export function approveUser(id, status) {
+export function approveUser(id, status, limits = {}) {
   return request(`/users/${id}/approval`, {
     method: 'PATCH',
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status, ...limits })
   })
 }
 
