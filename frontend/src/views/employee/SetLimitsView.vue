@@ -11,8 +11,6 @@
       <span class="iban" style="color:var(--ink)">{{ account?.iban || '—' }}</span>
     </p>
 
-    <div v-if="error" class="banner banner--danger" style="margin-bottom:20px">{{ error }}</div>
-
     <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;align-items:flex-start">
       <div class="card" style="padding:28px">
         <div class="col" style="gap:20px">
@@ -120,20 +118,6 @@ const customerName = computed(() => customer.value ? [customer.value.firstName, 
 const account = computed(() => customer.value?.accounts?.find(item => item.accountType === 'CHECKING') || customer.value?.accounts?.[0] || null)
 
 const form = ref({ absoluteLimit: '', dailyLimit: '', reason: '' })
-const saving = ref(false)
-const error = ref(null)
-
-async function saveLimits() {
-  if (!account.value?.iban) {
-    error.value = 'No account found for this customer'
-    return
-  }
-
-  saving.value = true
-  error.value = null
-
-  try {
-    const payload = {}
 
 async function saveLimits() {
   if (!account.value?.iban) return
