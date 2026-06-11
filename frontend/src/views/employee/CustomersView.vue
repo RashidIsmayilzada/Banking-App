@@ -5,8 +5,8 @@
       <span class="spacer" />
       <div class="row" style="gap:8px;position:relative">
         <AppIcon name="search" :size="14" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--ink-faint)" />
-        <input class="input" placeholder="Search name, email, IBAN…" style="width:320px;padding-left:38px" v-model="search" @input="fetchCustomers" />
-        <select class="select" style="width:160px" v-model="statusFilter" @change="fetchCustomers">
+        <input class="input" placeholder="Search name, email, IBAN…" style="width:320px;padding-left:38px" v-model="search" @input="applyFilters" />
+        <select class="select" style="width:160px" v-model="statusFilter" @change="applyFilters">
           <option value="">All statuses</option>
           <option value="APPROVED">Active</option>
           <option value="PENDING_APPROVAL">Pending</option>
@@ -59,7 +59,9 @@
                 >Approve →</RouterLink>
                 <template v-else-if="c.status === 'active'">
                   <RouterLink :to="`/employee/customers/${c.id}`" class="btn btn--ghost btn--xs">View</RouterLink>
-                  <button class="btn btn--ghost-danger btn--xs">Close</button>
+                  <button class="btn btn--ghost-danger btn--xs" @click="closeCustomerAccounts(c.id)" :disabled="closing === c.id">
+                    {{ closing === c.id ? 'Closing...' : 'Close' }}
+                  </button>
                 </template>
                 <RouterLink v-else :to="`/employee/customers/${c.id}`" class="btn btn--ghost btn--xs">View</RouterLink>
               </div>
@@ -96,6 +98,7 @@ const error = ref(null)
 const page = ref(0)
 const totalElements = ref(0)
 const totalPages = ref(0)
+const closing = ref(null)
 
 function displayName(user) {
   return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || user.email
@@ -146,6 +149,36 @@ async function fetchCustomers() {
 function handlePageChange(newPage) {
   page.value = newPage - 1
   fetchCustomers()
+}
+
+function applyFilters() {
+  page.value = 0
+  fetchCustomers()
+}
+
+async function closeCustomerAccounts(customerId) {
+  closing.value = customerId
+  error.value = null
+
+  try {
+    const customer = await userService.getUserById(customerId)
+    const customerName = displayName(customer)
+
+    if (!confirm(`Close customer profile for ${customerName}?\n\nThis will set their status to CLOSED and prevent them from logging in.\n\nThis cannot be undone.`)) {
+      closing.value = null
+      return
+    }
+
+    await userService.closeUser(customerId)
+
+    // Refresh the list
+    await fetchCustomers()
+    alert(`Customer ${customerName} closed successfully`)
+  } catch (err) {
+    error.value = err.message || 'Failed to close customer'
+  } finally {
+    closing.value = null
+  }
 }
 
 onMounted(() => {

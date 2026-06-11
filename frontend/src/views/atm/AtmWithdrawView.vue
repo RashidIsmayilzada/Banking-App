@@ -8,31 +8,21 @@
       <span class="badge badge--dark">Withdraw</span>
     </div>
 
-    <!-- TODO: Fetch balance from session account via GET /api/accounts -->
     <div class="t-label">Available</div>
-    <div class="t-h2" style="margin:4px 0 24px">€6 218,40</div>
+    <div class="t-h2" style="margin:4px 0 24px">{{ formatEur(account?.balance?.amount) }}</div>
 
     <label class="field__label">Amount</label>
     <div class="input input--xl" style="margin-top:6px">{{ selectedAmount ? `€${selectedAmount}` : 'Select an amount' }}</div>
 
     <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:14px;margin-bottom:18px">
-      <button
-        v-for="n in presets"
-        :key="n"
-        :class="['amount-chip', selectedAmount === n ? 'amount-chip--active' : '']"
-        @click="selectedAmount = n"
-      >€{{ n }}</button>
+      <button v-for="n in presets" :key="n" :class="['amount-chip', selectedAmount === n ? 'amount-chip--active' : '']" @click="selectedAmount = n">€{{ n }}</button>
     </div>
 
-    <div class="banner banner--warn" style="margin-bottom:20px">
-      <AppIcon name="info" :size="16" class="banner__icon" />
-      <div>Daily limit <strong>€2 500</strong> · used <strong>€100</strong> today.</div>
-    </div>
+    <p v-if="error" style="margin:0 0 12px;padding:10px 14px;background:var(--red-soft,#fef2f2);color:var(--red,#dc2626);border-radius:8px;font-size:13px">{{ error }}</p>
 
     <div class="col" style="gap:8px;margin-top:auto">
-      <!-- TODO: POST /atm/transactions/withdrawals with accountId and amount -->
-      <button class="btn btn--primary btn--xl btn--block" :disabled="!selectedAmount" @click="confirm">
-        Confirm withdrawal
+      <button class="btn btn--primary btn--xl btn--block" :disabled="!selectedAmount || loading" @click="confirm">
+        {{ loading ? 'Processing…' : 'Confirm withdrawal' }}
       </button>
       <RouterLink to="/atm/home" class="btn btn--ghost btn--block">Cancel</RouterLink>
     </div>
@@ -44,13 +34,41 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AtmShell from '@/components/layout/AtmShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
+import { getAtmAccount, setAtmAccount, setAtmLastTx, atmCreateTransaction, getAtmUser } from '@/services/atm.js'
 
 const router = useRouter()
+if (!getAtmUser()) router.push('/atm/login')
+
+const account = ref(getAtmAccount())
 const presets = [20, 50, 100, 200, 500]
 const selectedAmount = ref(null)
+const loading = ref(false)
+const error = ref('')
 
-// TODO: POST /atm/transactions/withdrawals → navigate to /atm/confirm on success
-function confirm() {
-  router.push('/atm/confirm')
+function formatEur(amount) {
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(amount || 0))
+}
+
+async function confirm() {
+  error.value = ''
+  loading.value = true
+  try {
+    const result = await atmCreateTransaction({
+      type: 'WITHDRAWAL',
+      iban: account.value.iban,
+      amount: selectedAmount.value,
+      channel: 'ATM',
+      description: 'ATM withdrawal',
+    })
+    setAtmLastTx({ ...result, mode: 'withdrawal', displayAmount: selectedAmount.value })
+    if (result.sourceBalance) {
+      setAtmAccount({ ...account.value, balance: result.sourceBalance })
+    }
+    router.push('/atm/confirm')
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    loading.value = false
+  }
 }
 </script>

@@ -28,9 +28,9 @@
 import AppIcon from './AppIcon.vue'
 
 defineProps({
-  user:      { type: String, default: 'Jane Doe' },
+  user:      { type: String, default: 'User' },
   role:      { type: String, default: 'Customer' },
-  initials:  { type: String, default: 'JD' },
+  initials:  { type: String, default: 'U' },
   avatarTone:{ type: String, default: 'avatar--blue' },
 })
 defineEmits(['sign-out'])

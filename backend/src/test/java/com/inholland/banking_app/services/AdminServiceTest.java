@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,7 +80,7 @@ class AdminServiceTest {
         employeeProfile.setEnabled(true);
 
         account = new Account();
-        account.setId(10L);
+        account.setIban("NL01INHO0000000010");
         account.setBalance(new BigDecimal("1000.00"));
         account.setStatus(AccountStatus.ACTIVE);
     }
@@ -210,24 +210,24 @@ class AdminServiceTest {
     @Test
     @DisplayName("Get Account by ID")
     void getAccount() {
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL01INHO0000000010")).thenReturn(Optional.of(account));
         when(accountMapper.toResponse(account)).thenReturn(AccountResponse.builder().build());
 
-        assertNotNull(adminService.getAccount(10L));
+        assertNotNull(adminService.getAccount("NL01INHO0000000010"));
     }
 
     @Test
     @DisplayName("Freeze Account - Success")
     void freezeAccount_Success() {
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL01INHO0000000010")).thenReturn(Optional.of(account));
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
         when(accountMapper.toResponse(account)).thenReturn(AccountResponse.builder().build());
 
-        adminService.freezeAccount(10L);
+        adminService.freezeAccount("NL01INHO0000000010");
 
         assertTrue(account.isFrozen());
         verify(accountRepository, times(1)).save(account);
-        verify(auditService, times(1)).record(any(), eq(AuditAction.ACCOUNT_FROZEN), anyString(), anyLong(), anyString());
+        verify(auditService, times(1)).record(any(), eq(AuditAction.ACCOUNT_FROZEN), anyString(), isNull(), anyString());
     }
 
     @Test
@@ -235,9 +235,9 @@ class AdminServiceTest {
     @DisplayName("Freeze Account - Throws if already frozen")
     void freezeAccount_AlreadyFrozen() {
         account.setStatus(AccountStatus.FROZEN);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL01INHO0000000010")).thenReturn(Optional.of(account));
 
-        assertThrows(AccountStateException.class, () -> adminService.freezeAccount(10L));
+        assertThrows(AccountStateException.class, () -> adminService.freezeAccount("NL01INHO0000000010"));
     }
 
     @Test
@@ -245,11 +245,11 @@ class AdminServiceTest {
     void unfreezeAccount_Success() {
 
         account.setStatus(AccountStatus.FROZEN);
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL01INHO0000000010")).thenReturn(Optional.of(account));
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
         when(accountMapper.toResponse(account)).thenReturn(AccountResponse.builder().build());
 
-        adminService.unfreezeAccount(10L);
+        adminService.unfreezeAccount("NL01INHO0000000010");
 
         assertFalse(account.isFrozen());
         verify(accountRepository, times(1)).save(account);
@@ -258,15 +258,15 @@ class AdminServiceTest {
     @Test
     @DisplayName("Close Account - Success")
     void closeAccount_Success() {
-        when(accountRepository.findById(10L)).thenReturn(Optional.of(account));
+        when(accountRepository.findById("NL01INHO0000000010")).thenReturn(Optional.of(account));
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
         when(accountMapper.toResponse(account)).thenReturn(AccountResponse.builder().build());
 
-        adminService.closeAccount(10L);
+        adminService.closeAccount("NL01INHO0000000010");
 
         assertTrue(account.isClosed());
         verify(accountRepository, times(1)).save(account);
-        verify(auditService, times(1)).record(any(), eq(AuditAction.ACCOUNT_CLOSED), anyString(), anyLong(), anyString());
+        verify(auditService, times(1)).record(any(), eq(AuditAction.ACCOUNT_CLOSED), anyString(), isNull(), anyString());
     }
 
 
@@ -275,7 +275,7 @@ class AdminServiceTest {
     @DisplayName("Reverse Transaction - Transfer Success")
     void reverseTransaction_Success() {
         Account toAccount = new Account();
-        toAccount.setId(20L);
+        toAccount.setIban("NL01INHO0000000020");
         toAccount.setBalance(new BigDecimal("500.00"));
         toAccount.setStatus(AccountStatus.ACTIVE);
 

@@ -182,17 +182,17 @@ public class AdminService {
                 .collect(Collectors.toList());
     }
 
-    public AccountResponse getAccount(Long id) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found with ID: " + id));
+    public AccountResponse getAccount(String iban) {
+        Account account = accountRepository.findById(iban)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
 
         return accountMapper.toResponse(account);
     }
 
     @Transactional
-    public AccountResponse freezeAccount(Long id) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found with ID: " + id));
+    public AccountResponse freezeAccount(String iban) {
+        Account account = accountRepository.findById(iban)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
 
         if (account.isClosed()) {
             throw new AccountStateException("Cannot freeze a closed account");
@@ -204,16 +204,15 @@ public class AdminService {
         account.markFrozen();
         accountRepository.save(account);
 
-        // Record Audit Log
-        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_FROZEN, "ACCOUNT", account.getId(), "Froze account");
+        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_FROZEN, "ACCOUNT", null, "Froze account: " + iban);
 
         return accountMapper.toResponse(account);
     }
 
     @Transactional
-    public AccountResponse unfreezeAccount(Long id) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found with ID: " + id));
+    public AccountResponse unfreezeAccount(String iban) {
+        Account account = accountRepository.findById(iban)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
 
         if (!account.isFrozen()) {
             throw new AccountStateException("Account is not frozen");
@@ -222,16 +221,15 @@ public class AdminService {
         account.unfreeze();
         accountRepository.save(account);
 
-        // Record Audit Log
-        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_UNFROZEN, "ACCOUNT", account.getId(), "Unfroze account");
+        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_UNFROZEN, "ACCOUNT", null, "Unfroze account: " + iban);
 
         return accountMapper.toResponse(account);
     }
 
     @Transactional
-    public AccountResponse closeAccount(Long id) {
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found with ID: " + id));
+    public AccountResponse closeAccount(String iban) {
+        Account account = accountRepository.findById(iban)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
 
         if (account.isClosed()) {
             throw new AccountStateException("Account is already closed");
@@ -240,8 +238,7 @@ public class AdminService {
         account.markClosed();
         accountRepository.save(account);
 
-        // Record Audit Log
-        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_CLOSED, "ACCOUNT", account.getId(), "Closed account");
+        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_CLOSED, "ACCOUNT", null, "Closed account: " + iban);
 
         return accountMapper.toResponse(account);
     }

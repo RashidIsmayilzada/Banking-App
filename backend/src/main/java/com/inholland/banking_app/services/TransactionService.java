@@ -20,6 +20,7 @@ import com.inholland.banking_app.repositories.TransactionRepository;
 import com.inholland.banking_app.specifications.TransactionSpecification;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +35,7 @@ import java.time.LocalDateTime;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
@@ -43,15 +45,21 @@ public class TransactionService {
     private final TransactionMapper transactionMapper;
     private final TransactionPolicy transactionPolicy;
 
+    @Transactional(readOnly = true)
     public TransactionPageDto listTransactions(TransactionFilterParams params, String username) {
         // Restricts results to the caller's own transactions if they are a customer, then returns a filtered page
         User currentUser = resolveUser(username);
+        log.info("[DEBUG_LOG] listTransactions for user: {}, role: {}", username, currentUser.getRole());
+        
         restrictToOwnerIfCustomer(params, currentUser);
+        log.info("[DEBUG_LOG] Applied userId filter: {}", params.getUserId());
 
         Pageable pageable = buildPageable(params);
         Specification<Transaction> spec = TransactionSpecification.fromParams(params);
 
         Page<Transaction> page = transactionRepository.findAll(spec, pageable);
+        log.info("[DEBUG_LOG] Found {} transactions", page.getTotalElements());
+        
         return transactionMapper.toPageDto(page);
     }
 
@@ -71,14 +79,15 @@ public class TransactionService {
         // Validates transfer fields, resolves both accounts, moves funds, and persists the transaction
         transactionPolicy.validateTransferFields(request);
 
-        Account from = resolveSourceAccount(request.getFromAccountId(), currentUser);
-        Account to = resolveDestinationAccount(request, currentUser);
+        Account from = resolveSourceAccount(request.getFromIban(), currentUser);
+        Account to = resolveDestinationByIban(request.getToIban());
+        transactionPolicy.validateActiveAccount(to, "Destination account is not active");
         BigDecimal amount = BigDecimal.valueOf(request.getAmount());
 
         applyDebit(from, amount);
         credit(to, amount);
 
-        Transaction tx = TransactionFactory.createTransfer(from, to, amount, currentUser, determineChannel(currentUser), request.getDescription());
+        Transaction tx = TransactionFactory.createTransfer(from, to, amount, currentUser, determineChannel(request, currentUser), request.getDescription());
         transactionRepository.save(tx);
 
         return transactionMapper.toTransferResult(tx, from, to);
@@ -86,14 +95,15 @@ public class TransactionService {
 
     private TransactionResultDto executeDeposit(TransactionRequest request, User currentUser) {
         // Validates the account, credits the balance, and persists the deposit transaction
-        transactionPolicy.requireAccountId(request, "DEPOSIT");
+        transactionPolicy.requireIban(request, "DEPOSIT");
 
-        Account account = resolveActiveAccount(request.getAccountId());
+        Account account = resolveActiveAccount(request.getIban());
+        transactionPolicy.validateAccountOwnership(account, currentUser, "You can only deposit to your own accounts");
         BigDecimal amount = BigDecimal.valueOf(request.getAmount());
 
         applyCredit(account, amount);
 
-        Transaction tx = TransactionFactory.createDeposit(account, amount, currentUser, request.getDescription());
+        Transaction tx = TransactionFactory.createDeposit(account, amount, currentUser, determineChannel(request, currentUser), request.getDescription());
         transactionRepository.save(tx);
 
         return transactionMapper.toSingleAccountResult(tx, account);
@@ -101,15 +111,15 @@ public class TransactionService {
 
     private TransactionResultDto executeWithdrawal(TransactionRequest request, User currentUser) {
         // Validates the account and ownership, debits the balance, and persists the withdrawal transaction
-        transactionPolicy.requireAccountId(request, "WITHDRAWAL");
+        transactionPolicy.requireIban(request, "WITHDRAWAL");
 
-        Account account = resolveActiveAccount(request.getAccountId());
+        Account account = resolveActiveAccount(request.getIban());
         transactionPolicy.validateAccountOwnership(account, currentUser, "You can only withdraw from your own accounts");
         BigDecimal amount = BigDecimal.valueOf(request.getAmount());
 
         applyDebit(account, amount);
 
-        Transaction tx = TransactionFactory.createWithdrawal(account, amount, currentUser, request.getDescription());
+        Transaction tx = TransactionFactory.createWithdrawal(account, amount, currentUser, determineChannel(request, currentUser), request.getDescription());
         transactionRepository.save(tx);
 
         return transactionMapper.toSingleAccountResult(tx, account);
@@ -117,30 +127,13 @@ public class TransactionService {
 
     // account resolution methods throw EntityNotFoundException if the specified account doesn't exist,
 
-    private Account resolveSourceAccount(Long id, User currentUser) {
+    private Account resolveSourceAccount(String iban, User currentUser) {
         // Finds the source account, verifying ownership and that it is an active checking account
-        Account account = accountRepository.findById(id)
+        Account account = accountRepository.findById(iban)
                 .orElseThrow(() -> new EntityNotFoundException("Source account not found"));
         transactionPolicy.validateAccountOwnership(account, currentUser, "You can only transfer from your own accounts");
         transactionPolicy.validateActiveAccount(account, "Source account is not active");
         transactionPolicy.validateCheckingAccount(account);
-        return account;
-    }
-
-    private Account resolveDestinationAccount(TransactionRequest request, User currentUser) {
-        // Resolves the destination account by ID or IBAN and verifies it is active
-        Account account = request.getToAccountId() != null
-                ? resolveDestinationById(request.getToAccountId(), currentUser)
-                : resolveDestinationByIban(request.getToIban());
-        transactionPolicy.validateActiveAccount(account, "Destination account is not active");
-        return account;
-    }
-
-    private Account resolveDestinationById(Long id, User currentUser) {
-        // Finds the destination account by ID; customers may only use this for their own accounts
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Destination account not found"));
-        transactionPolicy.validateAccountOwnership(account, currentUser, "Use toIban to transfer to another customer's account");
         return account;
     }
 
@@ -151,9 +144,9 @@ public class TransactionService {
                         "Destination account not found for IBAN: " + iban));
     }
 
-    private Account resolveActiveAccount(Long id) {
-        // Finds an account by ID and verifies it is active
-        Account account = accountRepository.findById(id)
+    private Account resolveActiveAccount(String iban) {
+        // Finds an account by IBAN and verifies it is active
+        Account account = accountRepository.findById(iban)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
         transactionPolicy.validateActiveAccount(account, "Account is not active");
         return account;
@@ -170,11 +163,7 @@ public class TransactionService {
     }
 
     private void applyCredit(Account account, BigDecimal amount) {
-        // Runs all pre-credit checks then credits the account balance and records daily usage
-        transactionPolicy.checkBalance(account, amount);
-        transactionPolicy.checkDailyLimit(account, amount);
         credit(account, amount);
-        updateDailyUsage(account, amount);
     }
 
     private void debit(Account account, BigDecimal amount) {
@@ -193,7 +182,7 @@ public class TransactionService {
         // Creates or updates today's daily transfer usage record for the account
         LocalDate today = LocalDate.now();
         DailyTransferUsage usage = dailyTransferUsageRepository
-                .findByAccountIdAndUsageDate(account.getId(), today)
+                .findByAccountIbanAndUsageDate(account.getIban(), today)
                 .orElseGet(() -> DailyTransferUsageFactory.create(account, today));
         usage.setTotalOutgoingAmount(usage.getTotalOutgoingAmount().add(amount));
         usage.setUpdatedAt(LocalDateTime.now());
@@ -212,11 +201,12 @@ public class TransactionService {
     private Pageable buildPageable(TransactionFilterParams params) {
         // Converts filter params into a Spring Pageable with the requested page, size, and sort order
         Sort sort = parseSort(params.getSort());
-        return PageRequest.of(params.getPage(), params.getSize(), sort);
+        int size = params.getSize() > 0 ? params.getSize() : 20;
+        return PageRequest.of(params.getPage(), size, sort);
     }
 
-    private Channel determineChannel(User currentUser) {
-        // Returns EMPLOYEE channel for staff, WEB channel for customers
+    private Channel determineChannel(TransactionRequest request, User currentUser) {
+        if (request.getChannel() != null) return request.getChannel();
         return currentUser.getRole() == Role.EMPLOYEE ? Channel.EMPLOYEE : Channel.WEB;
     }
 

@@ -1,98 +1,49 @@
 openapi: 3.1.0
 info:
   title: Banking App API
-  version: 1.0.0
-  summary: Multi-file OpenAPI documentation aligned to the code-generation user stories.
+  version: 2.0.0
+  summary: Role-neutral, resource-based OpenAPI specification.
   description: |
-    This API contract is derived from:
-    - the workbook `2526_code_generation_user_stories.xlsx`
-    - the current Spring Boot domain model in this repository
+    All endpoints are role-neutral: the URL never encodes who is calling.
+    The JWT role determines access scope and what data is returned or allowed.
 
-    The user stories require:
-    - complete Swagger/OpenAPI documentation
-    - JWT-secured routes
-    - customer registration and approval
-    - customer and employee transfers
-    - transaction history, filtering, and pagination
-    - ATM login, deposit, and withdrawal flows
+    Consolidated from 22 endpoints to 12:
+    - One registration endpoint (POST /users, role in body)
+    - One transaction endpoint for reads and one for writes
+    - ATM sessions handled via POST /auth/login with channel=ATM
+    - Account limits and closure via a single PATCH /accounts/{iban}
 servers:
   - url: http://localhost:8080/api
     description: Local Docker or local backend runtime
 tags:
   - name: Authentication
   - name: Users
-  - name: Customer Accounts
-  - name: Customer Transfers
-  - name: Customer Transactions
-  - name: Employee Customers
-  - name: Employee Transactions
-  - name: ATM
+  - name: Accounts
+  - name: Transactions
 paths:
-  /auth/register/customer:
-    $ref: ./paths/auth.yaml#/registerCustomer
   /auth/login:
     $ref: ./paths/auth.yaml#/login
   /auth/logout:
     $ref: ./paths/auth.yaml#/logout
-  /auth/me:
-    $ref: ./paths/auth.yaml#/me
   /users:
-    $ref: ./paths/user.yaml#/users
+    $ref: ./paths/users.yaml#/users
   /users/{id}:
-    $ref: ./paths/user.yaml#/userById
-  /users/{id}/approval:
-    $ref: ./paths/user.yaml#/userApproval
-  /customers/me/profile:
-    $ref: ./paths/customer.yaml#/getMyProfile
-  /customers/me/accounts:
-    $ref: ./paths/customer.yaml#/listMyAccounts
-  /customers/me/accounts/{accountId}:
-    $ref: ./paths/customer.yaml#/getMyAccount
-  /customers/iban-search:
-    $ref: ./paths/customer.yaml#/searchCustomerIban
-  /customers/me/transfers/internal:
-    $ref: ./paths/customer.yaml#/createInternalTransfer
-  /customers/me/transfers/external:
-    $ref: ./paths/customer.yaml#/createExternalTransfer
-  /customers/me/transactions:
-    $ref: ./paths/customer.yaml#/listMyTransactions
-  /employees/customers:
-    $ref: ./paths/employee.yaml#/listCustomers
-  /employees/customers/{customerUserId}/transactions:
-    $ref: ./paths/employee.yaml#/listCustomerTransactions
-  /employees/customers/{customerUserId}/approval:
-    $ref: ./paths/employee.yaml#/approveCustomer
-  /employees/accounts/{accountId}/limits:
-    $ref: ./paths/employee.yaml#/updateAccountLimits
-  /employees/accounts/{accountId}/close:
-    $ref: ./paths/employee.yaml#/closeAccount
-  /employees/transfers:
-    $ref: ./paths/employee.yaml#/createEmployeeTransfer
-  /employees/transactions:
-    $ref: ./paths/employee.yaml#/listAllTransactions
+    $ref: ./paths/users.yaml#/userById
+  /accounts:
+    $ref: ./paths/accounts.yaml#/accounts
+  /accounts/{iban}:
+    $ref: ./paths/accounts.yaml#/accountById
   /transactions:
     $ref: ./paths/transactions.yaml#/transactions
-  /atm/sessions:
-    $ref: ./paths/atm.yaml#/startAtmSession
-  /atm/sessions/{sessionId}:
-    $ref: ./paths/atm.yaml#/endAtmSession
-  /atm/transactions/deposits:
-    $ref: ./paths/atm.yaml#/createAtmDeposit
-  /atm/transactions/withdrawals:
-    $ref: ./paths/atm.yaml#/createAtmWithdrawal
 components:
   securitySchemes:
     bearerAuth:
       $ref: ./components/schemas/common.yaml#/bearerAuth
-    atmSessionAuth:
-      $ref: ./components/schemas/common.yaml#/atmSessionAuth
   parameters:
-    AccountId:
-      $ref: ./components/schemas/common.yaml#/AccountId
-    CustomerUserId:
-      $ref: ./components/schemas/common.yaml#/CustomerUserId
-    SessionId:
-      $ref: ./components/schemas/common.yaml#/SessionId
+    AccountIban:
+      $ref: ./components/schemas/common.yaml#/AccountIban
+    UserId:
+      $ref: ./components/schemas/common.yaml#/UserId
     Page:
       $ref: ./components/schemas/common.yaml#/Page
     Size:
@@ -133,77 +84,49 @@ components:
       $ref: ./components/schemas/common.yaml#/PageMetadata
     Role:
       $ref: ./components/schemas/common.yaml#/Role
-    CustomerStatus:
-      $ref: ./components/schemas/common.yaml#/CustomerStatus
-    ApprovalDecision:
-      $ref: ./components/schemas/common.yaml#/ApprovalDecision
+    UserStatus:
+      $ref: ./components/schemas/common.yaml#/UserStatus
+    AccountStatus:
+      $ref: ./components/schemas/common.yaml#/AccountStatus
     AccountType:
       $ref: ./components/schemas/common.yaml#/AccountType
     Channel:
       $ref: ./components/schemas/common.yaml#/Channel
     TransactionType:
       $ref: ./components/schemas/common.yaml#/TransactionType
-    AuthContext:
-      $ref: ./components/schemas/auth.yaml#/AuthContext
     LoginRequest:
       $ref: ./components/schemas/auth.yaml#/LoginRequest
     LoginResponse:
       $ref: ./components/schemas/auth.yaml#/LoginResponse
     LogoutResponse:
       $ref: ./components/schemas/auth.yaml#/LogoutResponse
-    CustomerRegistrationRequest:
-      $ref: ./components/schemas/auth.yaml#/CustomerRegistrationRequest
-    CustomerRegistrationResponse:
-      $ref: ./components/schemas/auth.yaml#/CustomerRegistrationResponse
-    CustomerProfile:
-      $ref: ./components/schemas/customer.yaml#/CustomerProfile
-    CustomerAccount:
-      $ref: ./components/schemas/customer.yaml#/CustomerAccount
-    CustomerAccountListResponse:
-      $ref: ./components/schemas/customer.yaml#/CustomerAccountListResponse
+    AuthContext:
+      $ref: ./components/schemas/auth.yaml#/AuthContext
+    UserCreateRequest:
+      $ref: ./components/schemas/users.yaml#/UserCreateRequest
+    UserUpdateRequest:
+      $ref: ./components/schemas/users.yaml#/UserUpdateRequest
+    UserResponse:
+      $ref: ./components/schemas/users.yaml#/UserResponse
+    UserPage:
+      $ref: ./components/schemas/users.yaml#/UserPage
+    Account:
+      $ref: ./components/schemas/accounts.yaml#/Account
     AccountTotals:
-      $ref: ./components/schemas/customer.yaml#/AccountTotals
-    InternalTransferRequest:
-      $ref: ./components/schemas/customer.yaml#/InternalTransferRequest
-    ExternalTransferRequest:
-      $ref: ./components/schemas/customer.yaml#/ExternalTransferRequest
-    IbanLookupResponse:
-      $ref: ./components/schemas/customer.yaml#/IbanLookupResponse
-    Transaction:
-      $ref: ./components/schemas/transactions.yaml#/Transaction
-    TransactionParty:
-      $ref: ./components/schemas/transactions.yaml#/TransactionParty
+      $ref: ./components/schemas/accounts.yaml#/AccountTotals
+    AccountListResponse:
+      $ref: ./components/schemas/accounts.yaml#/AccountListResponse
+    AccountUpdateRequest:
+      $ref: ./components/schemas/accounts.yaml#/AccountUpdateRequest
     Money:
       $ref: ./components/schemas/transactions.yaml#/Money
-    CustomerTransactionPage:
-      $ref: ./components/schemas/transactions.yaml#/CustomerTransactionPage
-    EmployeeTransactionPage:
-      $ref: ./components/schemas/transactions.yaml#/EmployeeTransactionPage
-    TransferResult:
-      $ref: ./components/schemas/transactions.yaml#/TransferResult
-    TransactionRequest:
-      $ref: ./components/schemas/transactions.yaml#/TransactionRequest
+    TransactionParty:
+      $ref: ./components/schemas/transactions.yaml#/TransactionParty
+    Transaction:
+      $ref: ./components/schemas/transactions.yaml#/Transaction
     TransactionPage:
       $ref: ./components/schemas/transactions.yaml#/TransactionPage
-    EmployeeCustomerPage:
-      $ref: ./components/schemas/employee.yaml#/EmployeeCustomerPage
-    EmployeeCustomerSummary:
-      $ref: ./components/schemas/employee.yaml#/EmployeeCustomerSummary
-    CustomerApprovalRequest:
-      $ref: ./components/schemas/employee.yaml#/CustomerApprovalRequest
-    CustomerApprovalResponse:
-      $ref: ./components/schemas/employee.yaml#/CustomerApprovalResponse
-    AccountLimitUpdateRequest:
-      $ref: ./components/schemas/employee.yaml#/AccountLimitUpdateRequest
-    AccountClosureRequest:
-      $ref: ./components/schemas/employee.yaml#/AccountClosureRequest
-    EmployeeTransferRequest:
-      $ref: ./components/schemas/employee.yaml#/EmployeeTransferRequest
-    AtmSessionStartRequest:
-      $ref: ./components/schemas/atm.yaml#/AtmSessionStartRequest
-    AtmSessionResponse:
-      $ref: ./components/schemas/atm.yaml#/AtmSessionResponse
-    AtmDepositRequest:
-      $ref: ./components/schemas/atm.yaml#/AtmDepositRequest
-    AtmWithdrawalRequest:
-      $ref: ./components/schemas/atm.yaml#/AtmWithdrawalRequest
+    TransactionRequest:
+      $ref: ./components/schemas/transactions.yaml#/TransactionRequest
+    TransactionResult:
+      $ref: ./components/schemas/transactions.yaml#/TransactionResult

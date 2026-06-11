@@ -1,6 +1,6 @@
 package com.inholland.banking_app.mappers;
 
-import com.inholland.banking_app.dtos.MoneyDto;
+import com.inholland.banking_app.dtos.MoneyResponse;
 import com.inholland.banking_app.dtos.PageMetadataDto;
 import com.inholland.banking_app.dtos.TransactionDto;
 import com.inholland.banking_app.dtos.TransactionPageDto;
@@ -9,7 +9,6 @@ import com.inholland.banking_app.dtos.TransactionResultDto;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.Transaction;
 
-import java.math.BigDecimal;
 import com.inholland.banking_app.repositories.CustomerProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,10 +24,7 @@ public class TransactionMapper {
         return TransactionDto.builder()
                 .transactionId(transaction.getId())
                 .transactionType(transaction.getTransactionType())
-                .amount(MoneyDto.builder()
-                        .amount(transaction.getAmount().doubleValue())
-                        .currency(transaction.getCurrency())
-                        .build())
+                .amount(new MoneyResponse(transaction.getAmount(), transaction.getCurrency()))
                 .fromAccount(toPartyDto(transaction.getFromAccount()))
                 .toAccount(toPartyDto(transaction.getToAccount()))
                 .channel(transaction.getChannel())
@@ -53,22 +49,15 @@ public class TransactionMapper {
     public TransactionResultDto toTransferResult(Transaction tx, Account from, Account to) {
         return TransactionResultDto.builder()
                 .transaction(toDto(tx))
-                .sourceBalance(toMoneyDto(from.getBalance()))
-                .destinationBalance(toMoneyDto(to.getBalance()))
+                .sourceBalance(MoneyResponse.eur(from.getBalance()))
+                .destinationBalance(MoneyResponse.eur(to.getBalance()))
                 .build();
     }
 
     public TransactionResultDto toSingleAccountResult(Transaction tx, Account account) {
         return TransactionResultDto.builder()
                 .transaction(toDto(tx))
-                .sourceBalance(toMoneyDto(account.getBalance()))
-                .build();
-    }
-
-    private MoneyDto toMoneyDto(BigDecimal amount) {
-        return MoneyDto.builder()
-                .amount(amount.doubleValue())
-                .currency("EUR")
+                .sourceBalance(MoneyResponse.eur(account.getBalance()))
                 .build();
     }
 
@@ -78,7 +67,6 @@ public class TransactionMapper {
                 .map(p -> p.getFirstName() + " " + p.getLastName())
                 .orElse(account.getCustomer().getUsername());
         return TransactionPartyDto.builder()
-                .accountId(account.getId())
                 .iban(account.getIban())
                 .name(name)
                 .userId(account.getCustomer().getId())

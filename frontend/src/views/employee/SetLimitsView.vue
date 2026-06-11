@@ -23,7 +23,7 @@
             />
             <div class="row" style="margin-top:8px;font-size:13px">
               <span class="muted">Current</span>
-              <span style="font-weight:500;margin-left:6px">{{ formatMoney(account?.absoluteTransferLimit) }}</span>
+              <span style="font-weight:500;margin-left:6px">{{ formatMoney(account?.absoluteTransferLimit?.amount) }}</span>
               <span class="muted" style="margin:0 8px">→</span>
               <span style="font-weight:500">{{ form.absoluteLimit || '—' }}</span>
               <span class="badge" style="margin-left:8px">No change</span>
@@ -59,11 +59,17 @@
             <div>Changes apply immediately. Customer will see new limits on next transfer attempt.</div>
           </div>
 
+          <div v-if="saveError" class="banner banner--danger">
+            <AppIcon name="info" :size="16" class="banner__icon" />
+            <div>{{ saveError }}</div>
+          </div>
+
           <div class="row">
-            <button class="btn btn--ghost" @click="$router.back()">Cancel</button>
+            <button class="btn btn--ghost" @click="$router.back()" :disabled="saving">Cancel</button>
             <span class="spacer" />
-            <!-- TODO: PATCH /employees/accounts/{accountId}/limits with absoluteTransferLimit, dailyTransferLimit -->
-            <button class="btn btn--primary" @click="saveLimits">Save limits</button>
+            <button class="btn btn--primary" :disabled="saving" @click="saveLimits">
+              {{ saving ? 'Saving…' : 'Save limits' }}
+            </button>
           </div>
         </div>
       </div>
@@ -101,16 +107,34 @@ import EmployeeShell from '@/components/layout/EmployeeShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppField from '@/components/shared/AppField.vue'
 import * as userService from '@/services/user'
+import { updateAccount } from '@/services/accounts'
 
 const router = useRouter()
 const route = useRoute()
 const customer = ref(null)
+const saving = ref(false)
+const saveError = ref(null)
 const customerName = computed(() => customer.value ? [customer.value.firstName, customer.value.lastName].filter(Boolean).join(' ') || customer.value.username || customer.value.email : 'Customer')
 const account = computed(() => customer.value?.accounts?.find(item => item.accountType === 'CHECKING') || customer.value?.accounts?.[0] || null)
 
 const form = ref({ absoluteLimit: '', dailyLimit: '', reason: '' })
 
-function saveLimits() { router.push('/employee/customers') }
+async function saveLimits() {
+  if (!account.value?.iban) return
+  saving.value = true
+  saveError.value = null
+  try {
+    await updateAccount(account.value.iban, {
+      absoluteTransferLimit: parseFloat(form.value.absoluteLimit),
+      dailyTransferLimit: parseFloat(form.value.dailyLimit),
+    })
+    router.push('/employee/customers')
+  } catch (err) {
+    saveError.value = err.message || 'Failed to save limits'
+  } finally {
+    saving.value = false
+  }
+}
 
 const history = ref([])
 
@@ -121,7 +145,7 @@ function formatMoney(value) {
 onMounted(async () => {
   if (!route.params.id) return
   customer.value = await userService.getUserById(route.params.id)
-  form.value.absoluteLimit = formatMoney(account.value?.absoluteTransferLimit)
-  form.value.dailyLimit = formatMoney(account.value?.dailyTransferLimit)
+  form.value.absoluteLimit = String(account.value?.absoluteTransferLimit?.amount ?? '')
+  form.value.dailyLimit = String(account.value?.dailyTransferLimit?.amount ?? '')
 })
 </script>

@@ -4,14 +4,13 @@ bearerAuth:
   bearerFormat: JWT
   description: JWT access token used for all authenticated requests.
 
-AccountId:
-  name: accountId
+AccountIban:
+  name: iban
   in: path
   required: true
   schema:
-    type: integer
-    format: int64
-    minimum: 1
+    type: string
+    pattern: '^NL[0-9]{2}INHO0[0-9]{9}$'
 UserId:
   name: id
   in: path
@@ -177,6 +176,12 @@ PageMetadata:
 Role:
   type: string
   enum: [CUSTOMER, EMPLOYEE]
+CustomerStatus:
+  type: string
+  enum: [PENDING_APPROVAL, APPROVED, REJECTED, CLOSED]
+ApprovalDecision:
+  type: string
+  enum: [APPROVED, REJECTED]
 UserStatus:
   type: string
   enum: [PENDING_APPROVAL, APPROVED, REJECTED, CLOSED]

@@ -78,7 +78,6 @@ class AdminControllerTest {
         employeeResponse.setActive(true);
 
         accountResponse = AccountResponse.builder()
-                .accountId(10L)
                 .iban("NL01INHO0000000010")
                 .balance(MoneyResponse.eur(new BigDecimal("1000.00")))
                 .status(AccountStatus.ACTIVE)
@@ -189,48 +188,48 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("GET /admin/accounts/{id} - should return 200")
+    @DisplayName("GET /admin/accounts/{iban} - should return 200")
     void getAccount() throws Exception {
-        when(adminService.getAccount(10L)).thenReturn(accountResponse);
+        when(adminService.getAccount("NL01INHO0000000010")).thenReturn(accountResponse);
 
-        mockMvc.perform(get("/admin/accounts/10"))
+        mockMvc.perform(get("/admin/accounts/NL01INHO0000000010"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountId").value(10));
+                .andExpect(jsonPath("$.iban").value("NL01INHO0000000010"));
     }
 
     @Test
-    @DisplayName("PATCH /admin/accounts/{id}/freeze - should return 200")
+    @DisplayName("PATCH /admin/accounts/{iban}/freeze - should return 200")
     void freezeAccount() throws Exception {
-        when(adminService.freezeAccount(10L)).thenReturn(accountResponse);
+        when(adminService.freezeAccount("NL01INHO0000000010")).thenReturn(accountResponse);
 
-        mockMvc.perform(patch("/admin/accounts/10/freeze"))
+        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/freeze"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("PATCH /admin/accounts/{id}/freeze - already frozen should return 409")
+    @DisplayName("PATCH /admin/accounts/{iban}/freeze - already frozen should return 409")
     void freezeAccount_conflict() throws Exception {
-        when(adminService.freezeAccount(10L)).thenThrow(new AccountStateException("Already frozen"));
+        when(adminService.freezeAccount("NL01INHO0000000010")).thenThrow(new AccountStateException("Already frozen"));
 
-        mockMvc.perform(patch("/admin/accounts/10/freeze"))
+        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/freeze"))
                 .andExpect(status().isConflict());
     }
 
     @Test
-    @DisplayName("PATCH /admin/accounts/{id}/unfreeze - should return 200")
+    @DisplayName("PATCH /admin/accounts/{iban}/unfreeze - should return 200")
     void unfreezeAccount() throws Exception {
-        when(adminService.unfreezeAccount(10L)).thenReturn(accountResponse);
+        when(adminService.unfreezeAccount("NL01INHO0000000010")).thenReturn(accountResponse);
 
-        mockMvc.perform(patch("/admin/accounts/10/unfreeze"))
+        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/unfreeze"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("PATCH /admin/accounts/{id}/close - should return 200")
+    @DisplayName("PATCH /admin/accounts/{iban}/close - should return 200")
     void closeAccount() throws Exception {
-        when(adminService.closeAccount(10L)).thenReturn(accountResponse);
+        when(adminService.closeAccount("NL01INHO0000000010")).thenReturn(accountResponse);
 
-        mockMvc.perform(patch("/admin/accounts/10/close"))
+        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/close"))
                 .andExpect(status().isOk());
     }
 

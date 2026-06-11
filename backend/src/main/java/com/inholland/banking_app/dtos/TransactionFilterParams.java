@@ -27,7 +27,6 @@ public class TransactionFilterParams {
     private Double amountMax;
     private String iban;
     private Long userId;
-    private Long accountId;
     private Channel channel;
     private Double amountEquals;
 }

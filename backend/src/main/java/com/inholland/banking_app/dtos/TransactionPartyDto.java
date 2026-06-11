@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TransactionPartyDto {
-    private Long accountId;
     private String iban;
     private String name;
     private Long userId;

@@ -13,7 +13,7 @@
           Sign in to manage your accounts, transfers, and cards.
         </p>
         <div class="col" style="gap:16px">
-          <AppField label="Email" v-model="form.email" placeholder="jane.doe@example.com" />
+          <AppField label="Email" v-model="form.email" placeholder="name@example.com" />
           <AppField label="Password" v-model="form.password" type="password" placeholder="••••••••" />
           <div class="row" style="justify-content:space-between;margin-top:4px">
             <label :class="['checkbox', keepSigned ? 'checkbox--checked' : '']" @click="keepSigned = !keepSigned">
@@ -65,7 +65,7 @@
         <div style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.85">InHolland · Premium</div>
         <div style="font-family:var(--font-mono);font-size:17px;margin-top:60px;letter-spacing:0.15em">•••• •••• •••• 4892</div>
         <div class="row" style="margin-top:8px;font-size:11px;opacity:0.9">
-          <span>JANE DOE</span><span class="spacer" /><span>04/29</span>
+          <span>CARD HOLDER</span><span class="spacer" /><span>04/29</span>
         </div>
       </div>
     </div>

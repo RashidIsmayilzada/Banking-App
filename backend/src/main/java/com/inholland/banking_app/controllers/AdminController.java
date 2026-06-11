@@ -82,28 +82,28 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllAccounts());
     }
 
-    @Operation(summary = "Get Account by ID", description = "Retrieves the details, balances, and status of a specific bank account.")
-    @GetMapping("/accounts/{id}")
-    public ResponseEntity<AccountResponse> getAccount(@PathVariable Long id) {
-        return ResponseEntity.ok(adminService.getAccount(id));
+    @Operation(summary = "Get Account by IBAN", description = "Retrieves the details, balances, and status of a specific bank account.")
+    @GetMapping("/accounts/{iban}")
+    public ResponseEntity<AccountResponse> getAccount(@PathVariable String iban) {
+        return ResponseEntity.ok(adminService.getAccount(iban));
     }
 
     @Operation(summary = "Freeze Account", description = "Instantly freezes a bank account, blocking all outgoing withdrawals or transfers. Used for fraud containment.")
-    @PatchMapping("/accounts/{id}/freeze")
-    public ResponseEntity<AccountResponse> freezeAccount(@PathVariable Long id) {
-        return ResponseEntity.ok(adminService.freezeAccount(id));
+    @PatchMapping("/accounts/{iban}/freeze")
+    public ResponseEntity<AccountResponse> freezeAccount(@PathVariable String iban) {
+        return ResponseEntity.ok(adminService.freezeAccount(iban));
     }
 
     @Operation(summary = "Unfreeze Account", description = "Removes a freeze from a bank account, restoring normal transaction capabilities.")
-    @PatchMapping("/accounts/{id}/unfreeze")
-    public ResponseEntity<AccountResponse> unfreezeAccount(@PathVariable Long id) {
-        return ResponseEntity.ok(adminService.unfreezeAccount(id));
+    @PatchMapping("/accounts/{iban}/unfreeze")
+    public ResponseEntity<AccountResponse> unfreezeAccount(@PathVariable String iban) {
+        return ResponseEntity.ok(adminService.unfreezeAccount(iban));
     }
 
     @Operation(summary = "Close Account", description = "Permanently closes a bank account. No further transactions can be processed on a closed account.")
-    @PatchMapping("/accounts/{id}/close")
-    public ResponseEntity<AccountResponse> closeAccount(@PathVariable Long id) {
-        return ResponseEntity.ok(adminService.closeAccount(id));
+    @PatchMapping("/accounts/{iban}/close")
+    public ResponseEntity<AccountResponse> closeAccount(@PathVariable String iban) {
+        return ResponseEntity.ok(adminService.closeAccount(iban));
     }
 
     @Operation(summary = "Reverse Transaction", description = "Reverses a previously completed transaction. Automatically creates a compensating reversal record to restore balances.")

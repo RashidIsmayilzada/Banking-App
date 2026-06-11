@@ -32,6 +32,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class TransactionPolicyTest {
 
+    private static final String IBAN = "NL91INHO0417164001";
+    private static final String TO_IBAN = "NL91INHO0417164300";
+
     @Mock private DailyTransferUsageRepository dailyTransferUsageRepository;
     @InjectMocks private TransactionPolicy transactionPolicy;
 
@@ -49,75 +52,66 @@ class TransactionPolicyTest {
     // --- validateTransferFields ---
 
     @Test
-    @DisplayName("validateTransferFields() - should throw when fromAccountId is null")
-    void validateTransferFields_shouldThrow_whenFromAccountIdIsNull() {
-        TransactionRequest request = transferRequest(null, 2L, null, 100.0);
+    @DisplayName("validateTransferFields() - should throw when fromIban is null")
+    void validateTransferFields_shouldThrow_whenFromIbanIsNull() {
+        TransactionRequest request = transferRequest(null, TO_IBAN, 100.0);
 
         assertThatThrownBy(() -> transactionPolicy.validateTransferFields(request))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("fromAccountId");
+                .hasMessageContaining("fromIban");
     }
 
     @Test
-    @DisplayName("validateTransferFields() - should throw when both toAccountId and toIban are null")
-    void validateTransferFields_shouldThrow_whenBothDestinationFieldsAreNull() {
-        TransactionRequest request = transferRequest(1L, null, null, 100.0);
+    @DisplayName("validateTransferFields() - should throw when toIban is null")
+    void validateTransferFields_shouldThrow_whenToIbanIsNull() {
+        TransactionRequest request = transferRequest(IBAN, null, 100.0);
 
         assertThatThrownBy(() -> transactionPolicy.validateTransferFields(request))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("toAccountId or toIban");
+                .hasMessageContaining("toIban");
     }
 
     @Test
-    @DisplayName("validateTransferFields() - should pass when fromAccountId and toAccountId are set")
-    void validateTransferFields_shouldPass_whenFromAndToAccountIdSet() {
-        TransactionRequest request = transferRequest(1L, 2L, null, 100.0);
+    @DisplayName("validateTransferFields() - should pass when fromIban and toIban are set")
+    void validateTransferFields_shouldPass_whenFromIbanAndToIbanSet() {
+        TransactionRequest request = transferRequest(IBAN, TO_IBAN, 100.0);
 
         assertThatCode(() -> transactionPolicy.validateTransferFields(request))
                 .doesNotThrowAnyException();
     }
 
-    @Test
-    @DisplayName("validateTransferFields() - should pass when fromAccountId and toIban are set")
-    void validateTransferFields_shouldPass_whenFromAccountIdAndToIbanSet() {
-        TransactionRequest request = transferRequest(1L, null, "NL91INHO0417164300", 100.0);
-
-        assertThatCode(() -> transactionPolicy.validateTransferFields(request))
-                .doesNotThrowAnyException();
-    }
-
-    // --- requireAccountId ---
+    // --- requireIban ---
 
     @Test
-    @DisplayName("requireAccountId() - should throw when accountId is null")
-    void requireAccountId_shouldThrow_whenAccountIdIsNull() {
+    @DisplayName("requireIban() - should throw when iban is null")
+    void requireIban_shouldThrow_whenIbanIsNull() {
         TransactionRequest request = new TransactionRequest();
-        request.setAccountId(null);
+        request.setIban(null);
 
-        assertThatThrownBy(() -> transactionPolicy.requireAccountId(request, "DEPOSIT"))
+        assertThatThrownBy(() -> transactionPolicy.requireIban(request, "DEPOSIT"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("accountId")
+                .hasMessageContaining("iban")
                 .hasMessageContaining("DEPOSIT");
     }
 
     @Test
-    @DisplayName("requireAccountId() - should include the operation type in the message")
-    void requireAccountId_shouldIncludeType_inExceptionMessage() {
+    @DisplayName("requireIban() - should include the operation type in the message")
+    void requireIban_shouldIncludeType_inExceptionMessage() {
         TransactionRequest request = new TransactionRequest();
-        request.setAccountId(null);
+        request.setIban(null);
 
-        assertThatThrownBy(() -> transactionPolicy.requireAccountId(request, "WITHDRAWAL"))
+        assertThatThrownBy(() -> transactionPolicy.requireIban(request, "WITHDRAWAL"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("WITHDRAWAL");
     }
 
     @Test
-    @DisplayName("requireAccountId() - should pass when accountId is set")
-    void requireAccountId_shouldPass_whenAccountIdIsSet() {
+    @DisplayName("requireIban() - should pass when iban is set")
+    void requireIban_shouldPass_whenIbanIsSet() {
         TransactionRequest request = new TransactionRequest();
-        request.setAccountId(1L);
+        request.setIban(IBAN);
 
-        assertThatCode(() -> transactionPolicy.requireAccountId(request, "WITHDRAWAL"))
+        assertThatCode(() -> transactionPolicy.requireIban(request, "WITHDRAWAL"))
                 .doesNotThrowAnyException();
     }
 
@@ -126,7 +120,7 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("validateActiveAccount() - should throw with provided message when account is inactive")
     void validateActiveAccount_shouldThrowWithProvidedMessage_whenAccountIsInactive() {
-        Account account = makeAccount(1L, customer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), false);
 
         assertThatThrownBy(() -> transactionPolicy.validateActiveAccount(account, "Source account is not active"))
@@ -137,7 +131,7 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("validateActiveAccount() - should pass when account is active")
     void validateActiveAccount_shouldPass_whenAccountIsActive() {
-        Account account = makeAccount(1L, customer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
 
         assertThatCode(() -> transactionPolicy.validateActiveAccount(account, "Account is not active"))
@@ -149,7 +143,7 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("validateCheckingAccount() - should throw when account type is SAVINGS")
     void validateCheckingAccount_shouldThrow_whenAccountIsSavings() {
-        Account account = makeAccount(1L, customer, AccountType.SAVINGS,
+        Account account = makeAccount(IBAN, customer, AccountType.SAVINGS,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
 
         assertThatThrownBy(() -> transactionPolicy.validateCheckingAccount(account))
@@ -160,7 +154,7 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("validateCheckingAccount() - should pass when account type is CHECKING")
     void validateCheckingAccount_shouldPass_whenAccountIsChecking() {
-        Account account = makeAccount(1L, customer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
 
         assertThatCode(() -> transactionPolicy.validateCheckingAccount(account))
@@ -172,7 +166,7 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("validateAccountOwnership() - should throw ForbiddenException when customer accesses another customer's account")
     void validateAccountOwnership_shouldThrowForbidden_whenCustomerAccessesForeignAccount() {
-        Account account = makeAccount(1L, otherCustomer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, otherCustomer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
 
         assertThatThrownBy(() -> transactionPolicy.validateAccountOwnership(account, customer, "Access denied"))
@@ -183,7 +177,7 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("validateAccountOwnership() - should pass when customer accesses their own account")
     void validateAccountOwnership_shouldPass_whenCustomerAccessesOwnAccount() {
-        Account account = makeAccount(1L, customer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
 
         assertThatCode(() -> transactionPolicy.validateAccountOwnership(account, customer, "Access denied"))
@@ -193,7 +187,7 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("validateAccountOwnership() - should pass when employee accesses any customer's account")
     void validateAccountOwnership_shouldPass_whenEmployeeAccessesAnyAccount() {
-        Account account = makeAccount(1L, otherCustomer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, otherCustomer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
 
         assertThatCode(() -> transactionPolicy.validateAccountOwnership(account, employee, "Access denied"))
@@ -206,7 +200,7 @@ class TransactionPolicyTest {
     @DisplayName("checkBalance() - should throw when balance minus amount falls below absolute transfer limit")
     void checkBalance_shouldThrow_whenBalanceIsInsufficient() {
         // balance(100) - amount(150) = -50, below absoluteTransferLimit(0)
-        Account account = makeAccount(1L, customer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
 
         assertThatThrownBy(() -> transactionPolicy.checkBalance(account, new BigDecimal("150.00")))
@@ -218,7 +212,7 @@ class TransactionPolicyTest {
     @DisplayName("checkBalance() - should pass when balance minus amount exactly equals absolute transfer limit")
     void checkBalance_shouldPass_whenBalanceEqualsAbsoluteLimit() {
         // balance(100) - amount(100) = 0 == absoluteTransferLimit(0)
-        Account account = makeAccount(1L, customer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
 
         assertThatCode(() -> transactionPolicy.checkBalance(account, new BigDecimal("100.00")))
@@ -228,7 +222,7 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("checkBalance() - should pass when balance is well above the amount")
     void checkBalance_shouldPass_whenBalanceIsSufficient() {
-        Account account = makeAccount(1L, customer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("1000.00"), true);
 
         assertThatCode(() -> transactionPolicy.checkBalance(account, new BigDecimal("200.00")))
@@ -240,12 +234,12 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("checkDailyLimit() - should throw when used plus requested amount exceeds daily limit")
     void checkDailyLimit_shouldThrow_whenLimitIsExceeded() {
-        Account account = makeAccount(1L, customer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("300.00"), true);
 
         DailyTransferUsage existing = new DailyTransferUsage();
         existing.setTotalOutgoingAmount(new BigDecimal("200.00"));
-        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any(LocalDate.class)))
+        when(dailyTransferUsageRepository.findByAccountIbanAndUsageDate(eq(account.getIban()), any(LocalDate.class)))
                 .thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> transactionPolicy.checkDailyLimit(account, new BigDecimal("200.00")))
@@ -256,12 +250,12 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("checkDailyLimit() - should pass when used plus requested amount exactly equals daily limit")
     void checkDailyLimit_shouldPass_whenAmountEqualsRemainingLimit() {
-        Account account = makeAccount(1L, customer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("300.00"), true);
 
         DailyTransferUsage existing = new DailyTransferUsage();
         existing.setTotalOutgoingAmount(new BigDecimal("100.00"));
-        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any(LocalDate.class)))
+        when(dailyTransferUsageRepository.findByAccountIbanAndUsageDate(eq(account.getIban()), any(LocalDate.class)))
                 .thenReturn(Optional.of(existing));
 
         assertThatCode(() -> transactionPolicy.checkDailyLimit(account, new BigDecimal("200.00")))
@@ -271,10 +265,10 @@ class TransactionPolicyTest {
     @Test
     @DisplayName("checkDailyLimit() - should pass when no daily usage record exists yet")
     void checkDailyLimit_shouldPass_whenNoUsageRecordExists() {
-        Account account = makeAccount(1L, customer, AccountType.CHECKING,
+        Account account = makeAccount(IBAN, customer, AccountType.CHECKING,
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("300.00"), true);
 
-        when(dailyTransferUsageRepository.findByAccountIdAndUsageDate(eq(account.getId()), any(LocalDate.class)))
+        when(dailyTransferUsageRepository.findByAccountIbanAndUsageDate(eq(account.getIban()), any(LocalDate.class)))
                 .thenReturn(Optional.empty());
 
         assertThatCode(() -> transactionPolicy.checkDailyLimit(account, new BigDecimal("200.00")))
@@ -296,12 +290,11 @@ class TransactionPolicyTest {
         return user;
     }
 
-    private Account makeAccount(Long id, User owner, AccountType type, BigDecimal balance,
+    private Account makeAccount(String iban, User owner, AccountType type, BigDecimal balance,
                                  BigDecimal absLimit, BigDecimal dailyLimit, boolean active) {
         Account account = new Account();
-        account.setId(id);
+        account.setIban(iban);
         account.setCustomer(owner);
-        account.setIban("NL91INHO0417164" + String.format("%03d", id));
         account.setAccountType(type);
         account.setBalance(balance);
         account.setAbsoluteTransferLimit(absLimit);
@@ -311,11 +304,10 @@ class TransactionPolicyTest {
         return account;
     }
 
-    private TransactionRequest transferRequest(Long fromId, Long toId, String toIban, double amount) {
+    private TransactionRequest transferRequest(String fromIban, String toIban, double amount) {
         TransactionRequest r = new TransactionRequest();
         r.setType(TransactionType.TRANSFER);
-        r.setFromAccountId(fromId);
-        r.setToAccountId(toId);
+        r.setFromIban(fromIban);
         r.setToIban(toIban);
         r.setAmount(amount);
         r.setDescription("Test transfer");

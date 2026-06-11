@@ -16,16 +16,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     @Query("""
         SELECT coalesce(sum(t.amount), 0)
         FROM Transaction t\s
-        WHERE t.fromAccount.id = :accountId
+        WHERE t.fromAccount.iban = :iban
             AND t.transactionType = com.inholland.banking_app.models.enums.TransactionType.TRANSFER
             AND t.createdAt >= :startOfDay
             AND t.createdAt < :endOfDay
        \s
    \s""")
-    BigDecimal sumOutgoingAmountByAccountIdAndDate(
-            @Param("accountId") Long accountId,
-            @Param("startOfDay") LocalDate startOfDay,
-            @Param("endOfDay") LocalDate endOfDay
+    BigDecimal sumOutgoingAmountByAccountIbanAndDate(
+            @Param("iban") String iban,
+            @Param("startOfDay") java.time.LocalDateTime startOfDay,
+            @Param("endOfDay") java.time.LocalDateTime endOfDay
 
     );
 

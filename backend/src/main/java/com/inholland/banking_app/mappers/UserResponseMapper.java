@@ -1,10 +1,10 @@
 package com.inholland.banking_app.mappers;
 
 import com.inholland.banking_app.dtos.UserResponse;
-import com.inholland.banking_app.dtos.CustomerResponse;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.EmployeeProfile;
 import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.models.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -19,14 +19,16 @@ public class UserResponseMapper {
             return null;
         }
 
-        CustomerProfile customerProfile = user.getCustomerProfile();
-        if (customerProfile != null) {
-            return toCustomerResponse(user, customerProfile);
-        }
-
-        EmployeeProfile employeeProfile = user.getEmployeeProfile();
-        if (employeeProfile != null) {
-            return toEmployeeResponse(user, employeeProfile);
+        if (user.getRole() == Role.EMPLOYEE) {
+            EmployeeProfile employeeProfile = user.getEmployeeProfile();
+            if (employeeProfile != null) {
+                return toEmployeeResponse(user, employeeProfile);
+            }
+        } else {
+            CustomerProfile customerProfile = user.getCustomerProfile();
+            if (customerProfile != null) {
+                return toCustomerResponse(user, customerProfile);
+            }
         }
 
         return UserResponse.builder()
@@ -49,6 +51,7 @@ public class UserResponseMapper {
                 .phoneNumber(profile.getPhoneNumber())
                 .bsn(profile.getBsn())
                 .role(user.getRole())
+                .active(user.isActive())
                 .status(profile.getStatus())
                 .hasAccounts(accountCount > 0)
                 .accountCount(accountCount)
@@ -67,6 +70,7 @@ public class UserResponseMapper {
                 .email(user.getEmail())
                 .username(user.getUsername())
                 .role(user.getRole())
+                .active(user.isActive())
                 .registeredAt(profile.getCreatedAt())
                 .build();
     }

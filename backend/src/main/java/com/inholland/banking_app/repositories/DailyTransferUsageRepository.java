@@ -8,5 +8,5 @@ import java.util.Optional;
 
 public interface DailyTransferUsageRepository extends JpaRepository<DailyTransferUsage, Long> {
 
-    Optional<DailyTransferUsage> findByAccountIdAndUsageDate(Long accountId, LocalDate usageDate);
+    Optional<DailyTransferUsage> findByAccountIbanAndUsageDate(String iban, LocalDate usageDate);
 }

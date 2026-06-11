@@ -8,7 +8,18 @@
       <RouterLink :to="`/employee/limits/${customer?.id || ''}`" class="btn btn--secondary btn--sm">
         <AppIcon name="shield" :size="14" /> Set transfer limits
       </RouterLink>
-      <button class="btn btn--ghost-danger btn--sm">Close customer</button>
+      <button
+        v-if="customer?.status === 'CLOSED'"
+        class="btn btn--ghost btn--sm"
+        @click="reopenCustomer"
+        :disabled="closing"
+      >{{ closing ? 'Reopening...' : 'Reopen customer' }}</button>
+      <button
+        v-else
+        class="btn btn--ghost-danger btn--sm"
+        @click="closeCustomer"
+        :disabled="closing"
+      >{{ closing ? 'Closing...' : 'Close customer' }}</button>
     </div>
 
     <div v-if="loading" style="padding: 40px; text-align: center;">Loading customer details...</div>
@@ -50,10 +61,10 @@
           </div>
           <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
             <template v-if="customer.accounts && customer.accounts.length > 0">
-              <div 
-                v-for="acc in customer.accounts" 
+              <div
+                v-for="acc in customer.accounts"
                 :key="acc.iban"
-                class="card card--flat" 
+                class="card card--flat"
                 :style="{ padding:'14px', background: acc.accountType === 'SAVINGS' ? 'var(--teal-tint)' : undefined }"
               >
                 <div class="row">
@@ -62,8 +73,17 @@
                   </span>
                   <span class="iban">{{ acc.iban }}</span>
                   <span class="spacer" />
-                  <span style="font-weight:500">{{ formatMoney(acc.balance) }}</span>
+                  <span style="font-weight:500">{{ formatMoney(acc.balance?.amount) }}</span>
                 </div>
+                <div v-if="acc.status === 'CLOSED'" style="margin-top:8px;display:flex;align-items:center;gap:8px">
+                  <span class="badge badge--danger">CLOSED</span>
+                  <button class="btn btn--ghost btn--sm" style="flex:1" @click="openAccount(acc.iban)" :disabled="closing">
+                    Open account
+                  </button>
+                </div>
+                <button v-else class="btn btn--ghost-danger btn--sm" style="margin-top:8px;width:100%" @click="closeAccount(acc.iban)" :disabled="closing">
+                  Close account
+                </button>
               </div>
             </template>
             <div v-else class="muted" style="padding: 10px; text-align: center; font-size: 13px;">No accounts yet.</div>
@@ -73,12 +93,12 @@
             <div class="row" style="font-size:13px">
               <span class="muted">Daily transfer limit</span>
               <span class="spacer" />
-              <span style="font-weight:500">{{ formatMoney(primaryAccount?.dailyTransferLimit) }}</span>
+              <span style="font-weight:500">{{ formatMoney(primaryAccount?.dailyTransferLimit?.amount) }}</span>
             </div>
             <div class="row" style="font-size:13px">
               <span class="muted">Absolute limit</span>
               <span class="spacer" />
-              <span style="font-weight:500">{{ formatMoney(primaryAccount?.absoluteTransferLimit) }}</span>
+              <span style="font-weight:500">{{ formatMoney(primaryAccount?.absoluteTransferLimit?.amount) }}</span>
             </div>
           </div>
         </div>
@@ -131,21 +151,24 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import EmployeeShell from '@/components/layout/EmployeeShell.vue'
 import AppIcon from '@/components/shared/AppIcon.vue'
 import AppAvatar from '@/components/shared/AppAvatar.vue'
 import AppStatus from '@/components/shared/AppStatus.vue'
 import AppPager from '@/components/shared/AppPager.vue'
 import * as userService from '@/services/user'
+import * as accountService from '@/services/accounts'
 
 const route = useRoute()
+const router = useRouter()
 const customer = ref(null)
 const loading = ref(false)
 const error = ref(null)
 const transactions = ref([])
 const transactionsLoading = ref(false)
 const transactionPage = ref({ page: 0, size: 5, totalElements: 0, totalPages: 0 })
+const closing = ref(false)
 
 const customerName = computed(() => customer.value ? displayName(customer.value) : '')
 const primaryAccount = computed(() => customer.value?.accounts?.find(a => a.accountType === 'CHECKING') || customer.value?.accounts?.[0] || null)
@@ -230,6 +253,68 @@ async function fetchTransactions() {
 function handleTransactionPage(newPage) {
   transactionPage.value = { ...transactionPage.value, page: newPage - 1 }
   fetchTransactions()
+}
+
+async function closeAccount(iban) {
+  if (!confirm(`Are you sure you want to close account ${iban}? This action cannot be undone.`)) {
+    return
+  }
+
+  closing.value = true
+  error.value = null
+
+  try {
+    await accountService.updateAccount(iban, { status: 'CLOSED' })
+    await fetchCustomer()
+    alert('Account closed successfully')
+  } catch (err) {
+    error.value = err.message || 'Failed to close account'
+  } finally {
+    closing.value = false
+  }
+}
+
+async function openAccount(iban) {
+  if (!confirm(`Reactivate account ${iban}?`)) return
+
+  closing.value = true
+  error.value = null
+  try {
+    await accountService.updateAccount(iban, { status: 'ACTIVE' })
+    await fetchCustomer()
+  } catch (err) {
+    error.value = err.message || 'Failed to reactivate account'
+  } finally {
+    closing.value = false
+  }
+}
+
+async function closeCustomer() {
+  if (!confirm(`Close this customer profile? Their status will be set to CLOSED and all accounts will be closed.`)) return
+  closing.value = true
+  error.value = null
+  try {
+    await userService.closeUser(customer.value.id)
+    await fetchCustomer()
+  } catch (err) {
+    error.value = err.message || 'Failed to close customer'
+  } finally {
+    closing.value = false
+  }
+}
+
+async function reopenCustomer() {
+  if (!confirm(`Reopen this customer profile? Their status will be set to APPROVED and all accounts will be reopened.`)) return
+  closing.value = true
+  error.value = null
+  try {
+    await userService.reopenUser(customer.value.id)
+    await fetchCustomer()
+  } catch (err) {
+    error.value = err.message || 'Failed to reopen customer'
+  } finally {
+    closing.value = false
+  }
 }
 
 onMounted(() => {
