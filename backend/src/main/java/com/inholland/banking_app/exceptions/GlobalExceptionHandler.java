@@ -2,6 +2,7 @@ package com.inholland.banking_app.exceptions;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -78,6 +79,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException exception) {
         log.warn("Access denied: {}", exception.getMessage());
         return buildResponse(HttpStatus.FORBIDDEN, "ACCESS_DENIED", exception.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException exception) {
+        log.warn("Data integrity violation: {}", exception.getMostSpecificCause().getMessage());
+        return buildResponse(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION", "A database constraint was violated: " + exception.getMostSpecificCause().getMessage());
     }
 
     @ExceptionHandler(Exception.class)
