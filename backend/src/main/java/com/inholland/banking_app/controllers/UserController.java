@@ -116,41 +116,41 @@ public class UserController {
                                 .ok(userService.getUserById(id));
         }
 
-        @Operation(summary = "Block a user",
-                   description = "Sets the user's active flag to false, preventing login. Requires EMPLOYEE role.",
+        @Operation(summary = "Close a user",
+                   description = "For customers: sets profile CLOSED and closes all accounts. For employees: sets active=false. Requires EMPLOYEE role.",
                    security = @SecurityRequirement(name = "bearerAuth"))
         @ApiResponses({
-                @ApiResponse(responseCode = "200", description = "User blocked; updated user returned",
+                @ApiResponse(responseCode = "200", description = "User closed; updated user returned",
                         content = @Content(schema = @Schema(implementation = UserResponse.class))),
                 @ApiResponse(responseCode = "403", description = "Access denied — EMPLOYEE role required",
                         content = @Content(schema = @Schema())),
                 @ApiResponse(responseCode = "404", description = "User not found",
                         content = @Content(schema = @Schema()))
         })
-        @PatchMapping("/{id}/block")
+        @PatchMapping("/{id}/close")
         @PreAuthorize("hasRole('EMPLOYEE')")
-        public ResponseEntity<UserResponse> blockUser(
-                        @Parameter(description = "ID of the user to block", example = "1")
+        public ResponseEntity<UserResponse> closeUser(
+                        @Parameter(description = "ID of the user to close", example = "1")
                         @PathVariable Long id) {
-                return ResponseEntity.ok(userService.blockUser(id));
+                return ResponseEntity.ok(userService.closeUser(id));
         }
 
-        @Operation(summary = "Close a customer account",
-                   description = "Sets the customer's status to CLOSED. Requires EMPLOYEE role.",
+        @Operation(summary = "Reopen a user",
+                   description = "For customers: sets profile APPROVED and reopens all accounts. For employees: sets active=true. Requires EMPLOYEE role.",
                    security = @SecurityRequirement(name = "bearerAuth"))
         @ApiResponses({
-                @ApiResponse(responseCode = "200", description = "Customer closed; updated user returned",
+                @ApiResponse(responseCode = "200", description = "User reopened; updated user returned",
                         content = @Content(schema = @Schema(implementation = UserResponse.class))),
                 @ApiResponse(responseCode = "403", description = "Access denied — EMPLOYEE role required",
                         content = @Content(schema = @Schema())),
-                @ApiResponse(responseCode = "404", description = "User not found or not a customer",
+                @ApiResponse(responseCode = "404", description = "User not found",
                         content = @Content(schema = @Schema()))
         })
-        @PatchMapping("/{id}/close")
+        @PatchMapping("/{id}/reopen")
         @PreAuthorize("hasRole('EMPLOYEE')")
-        public ResponseEntity<UserResponse> closeCustomer(
-                        @Parameter(description = "ID of the customer to close", example = "1")
+        public ResponseEntity<UserResponse> reopenUser(
+                        @Parameter(description = "ID of the user to reopen", example = "1")
                         @PathVariable Long id) {
-                return ResponseEntity.ok(userService.closeCustomer(id));
+                return ResponseEntity.ok(userService.reopenUser(id));
         }
 }

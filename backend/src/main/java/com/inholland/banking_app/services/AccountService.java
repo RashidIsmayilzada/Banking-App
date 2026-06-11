@@ -67,6 +67,9 @@ public class AccountService {
             accountPolicy.assertCanClose(account);
             account.setStatus(AccountStatus.CLOSED);
             account.setClosedAt(LocalDateTime.now());
+        } else if (AccountStatus.ACTIVE.equals(request.getStatus())) {
+            account.setStatus(AccountStatus.ACTIVE);
+            account.setClosedAt(null);
         }
         accountRepository.save(account);
         return accountMapper.toResponse(account);

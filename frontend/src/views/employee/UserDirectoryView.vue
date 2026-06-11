@@ -74,6 +74,20 @@
                 :to="`/employee/customers/${user.id}`"
                 class="btn btn--ghost btn--xs"
               >View</RouterLink>
+              <div v-else-if="user.role === 'EMPLOYEE'" style="display:flex;gap:6px;justify-content:flex-end">
+                <button
+                  v-if="user.active !== false"
+                  class="btn btn--ghost-danger btn--xs"
+                  :disabled="actionLoading === user.id"
+                  @click="handleCloseUser(user.id)"
+                >Close</button>
+                <button
+                  v-else
+                  class="btn btn--ghost btn--xs"
+                  :disabled="actionLoading === user.id"
+                  @click="handleReopenUser(user.id)"
+                >Reopen</button>
+              </div>
               <span v-else class="muted">-</span>
             </td>
           </tr>
@@ -112,6 +126,7 @@ const statusFilter = ref('')
 const users = ref([])
 const loading = ref(false)
 const error = ref(null)
+const actionLoading = ref(null)
 const page = ref(0)
 const totalElements = ref(0)
 const totalPages = ref(0)
@@ -163,7 +178,10 @@ async function fetchUsers() {
       role: user.role,
       email: user.email,
       ibans: accountSummary(user),
-      status: statusKind(user.status),
+      active: user.active,
+      status: user.role === 'EMPLOYEE'
+        ? (user.active === false ? 'closed' : null)
+        : statusKind(user.status),
       joined: formatDate(user.registeredAt),
     }))
     totalElements.value = response.totalElements ?? users.value.length
@@ -183,6 +201,34 @@ function handlePageChange(newPage) {
 function applyFilters() {
   page.value = 0
   fetchUsers()
+}
+
+async function handleCloseUser(id) {
+  if (!confirm('Close this employee? They will no longer be able to log in.')) return
+  actionLoading.value = id
+  error.value = null
+  try {
+    await userService.closeUser(id)
+    await fetchUsers()
+  } catch (err) {
+    error.value = err.message || 'Failed to close user'
+  } finally {
+    actionLoading.value = null
+  }
+}
+
+async function handleReopenUser(id) {
+  if (!confirm('Reopen this employee? They will be able to log in again.')) return
+  actionLoading.value = id
+  error.value = null
+  try {
+    await userService.reopenUser(id)
+    await fetchUsers()
+  } catch (err) {
+    error.value = err.message || 'Failed to reopen user'
+  } finally {
+    actionLoading.value = null
+  }
 }
 
 watch(() => props.fixedRole, () => {

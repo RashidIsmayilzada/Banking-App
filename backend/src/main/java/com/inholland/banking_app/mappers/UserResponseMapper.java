@@ -51,6 +51,7 @@ public class UserResponseMapper {
                 .phoneNumber(profile.getPhoneNumber())
                 .bsn(profile.getBsn())
                 .role(user.getRole())
+                .active(user.isActive())
                 .status(profile.getStatus())
                 .hasAccounts(accountCount > 0)
                 .accountCount(accountCount)
@@ -69,6 +70,7 @@ public class UserResponseMapper {
                 .email(user.getEmail())
                 .username(user.getUsername())
                 .role(user.getRole())
+                .active(user.isActive())
                 .registeredAt(profile.getCreatedAt())
                 .build();
     }
