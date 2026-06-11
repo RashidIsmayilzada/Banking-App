@@ -55,9 +55,9 @@ class AdminServiceTest {
     void setUp() {
 
         Authentication authentication = mock(Authentication.class);
-        when(authentication.getName()).thenReturn("admin");
+        lenient().when(authentication.getName()).thenReturn("admin");
         SecurityContext securityContext = mock(SecurityContext.class);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
+        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
         SecurityContextHolder.setContext(securityContext);
 
 
