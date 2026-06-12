@@ -1,4 +1,4 @@
-const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
+const BASE = '/api'
 
 export async function apiFetch(path, options = {}) {
     const token = localStorage.getItem('auth_token')
