@@ -7,7 +7,6 @@ import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
-import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.security.JwtAuthenticationFilter;
 import com.inholland.banking_app.services.AuthService;
 import com.inholland.banking_app.services.UserService;

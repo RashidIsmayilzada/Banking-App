@@ -321,30 +321,6 @@ class UserServiceTest {
                 .hasMessageContaining("Customer profile not found");
     }
 
-    // --- deleteUser ---
-
-    @Test
-    @DisplayName("deleteUser() - should soft close the user (delegates to closeUser)")
-    void deleteUser_shouldSoftCloseCustomer() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
-        when(userResponseMapper.toUserResponse(customerUser)).thenReturn(userResponse);
-
-        userService.deleteUser(1L);
-
-        assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.CLOSED);
-        verify(accountService).closeAllAccounts(customerUser);
-    }
-
-    @Test
-    @DisplayName("deleteUser() - should throw EntityNotFoundException when user not found")
-    void deleteUser_shouldThrow_whenUserNotFound() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> userService.deleteUser(99L))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("User with id 99 not found");
-    }
-
     // --- reopenUser ---
 
     @Test

@@ -95,28 +95,6 @@ userById:
         $ref: ../components/schemas/common.yaml#/Forbidden
       '404':
         $ref: ../components/schemas/common.yaml#/NotFound
-  delete:
-    tags: [Users]
-    summary: Delete a user (soft close). Employees only.
-    description: >
-      Implemented as a soft close: the customer profile is set to CLOSED and all
-      of their accounts are closed (employees are deactivated). The user record is
-      retained for audit.
-    operationId: deleteUser
-    security:
-      - bearerAuth: []
-    parameters:
-      - $ref: ../components/schemas/common.yaml#/UserId
-    responses:
-      '204':
-        description: User deleted.
-      '401':
-        $ref: ../components/schemas/common.yaml#/Unauthorized
-      '403':
-        $ref: ../components/schemas/common.yaml#/Forbidden
-      '404':
-        $ref: ../components/schemas/common.yaml#/NotFound
-
 userApproval:
   patch:
     tags: [Users]
