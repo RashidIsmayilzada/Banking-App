@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
@@ -6,7 +6,13 @@ COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
 COPY . .
+RUN npm run build
 
-EXPOSE 5173
+FROM nginx:alpine
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf.template
+
+EXPOSE 80
+
+CMD ["/bin/sh", "-c", "envsubst '${BACKEND_URL}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
