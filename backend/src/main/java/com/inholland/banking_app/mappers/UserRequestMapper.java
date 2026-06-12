@@ -47,7 +47,7 @@ public class UserRequestMapper {
         EmployeeProfile employeeProfile = new EmployeeProfile();
         employeeProfile.setFirstName(request.getFirstName());
         employeeProfile.setLastName(request.getLastName());
-        employeeProfile.setEmployeeNumber(request.getBsn());
+        employeeProfile.setEmployeeNumber(request.getEmployeeNumber());
 
         return employeeProfile;
     }

@@ -40,13 +40,6 @@ export function getUserById(id) {
   return request(`/users/${id}`)
 }
 
-export function getCurrentUser() {
-  const authUser = JSON.parse(localStorage.getItem('auth_user') || 'null')
-  const id = authUser?.userId || authUser?.id
-  if (!id) return Promise.reject(new Error('No authenticated user found'))
-  return getUserById(id)
-}
-
 export function searchCustomers(search, params = {}) {
   return getAllUsers({
     role: 'CUSTOMER',

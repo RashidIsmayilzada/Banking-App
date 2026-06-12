@@ -61,7 +61,7 @@ public class UserService {
                 approveCustomerRequest.getCheckingDailyLimit(), approveCustomerRequest.getSavingsDailyLimit());
     }
 
-    // Applies an approval status change and its side effects: activating the customer
+    // Applies an approval status change activating the customer
     // and creating their default accounts the first time they become APPROVED.
     private void applyStatusTransition(User user, CustomerProfile customerProfile, CustomerStatus newStatus,
                                        BigDecimal checkingAbsoluteLimit, BigDecimal checkingDailyLimit,
@@ -89,7 +89,7 @@ public class UserService {
     public UserResponse closeUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User with id " + userId + " not found"));
-        if (user.getRole() == Role.EMPLOYEE) {
+        if (user.getRole() == Role.EMPLOYEE ) {
             user.setActive(false);
             userRepository.save(user);
         } else {
@@ -103,10 +103,6 @@ public class UserService {
         return userResponseMapper.toUserResponse(user);
     }
 
-    @Transactional
-    public void deleteUser(Long userId) {
-        closeUser(userId);
-    }
 
     @Transactional
     public UserResponse reopenUser(Long userId) {
