@@ -1,4 +1,4 @@
-const BASE = '/api'
+const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
 const ATM_TOKEN_KEY = 'atm_token'
 const ATM_USER_KEY  = 'atm_user'
 const ATM_TX_KEY    = 'atm_last_tx'
