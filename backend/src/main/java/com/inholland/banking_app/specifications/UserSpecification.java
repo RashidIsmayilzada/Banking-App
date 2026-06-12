@@ -30,7 +30,8 @@ public class UserSpecification {
     }
 
     private static Specification<User> hasActive(Boolean active) {
-        return (root, query, cb) -> active == null ? null : cb.equal(root.get("active"), active);
+        return (root, query, cb)
+                -> active == null ? null : cb.equal(root.get("active"), active);
     }
 
     private static Specification<User> hasAccount(Boolean hasAccount) {

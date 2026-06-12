@@ -12,11 +12,6 @@ import java.math.BigDecimal;
 @Schema(description = "Request body for approving or rejecting a customer")
 public class ApproveCustomerRequest {
 
-    @Schema(description = "New approval status for the customer",
-            example = "APPROVED",
-            allowableValues = {"APPROVED", "REJECTED", "CLOSED"})
-    private CustomerStatus status;
-
     @Schema(description = "Optional absolute (minimum balance) transfer limit for the checking account. Defaults to 0.00 if omitted.",
             example = "-500.00")
     private BigDecimal checkingAbsoluteLimit;
