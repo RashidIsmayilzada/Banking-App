@@ -34,6 +34,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -188,6 +190,112 @@ class AccountServiceTest {
 
         assertThrows(AccountStateException.class, () -> accountService.updateAccount(IBAN, request));
         verify(accountRepository, never()).save(any());
+    }
+
+    // --- account lifecycle (moved from UserService) ---
+
+    @Test
+    void createDefaultAccounts_createsCheckingAndSavings_withFactoryDefaults_whenNoLimitsGiven() {
+        User customer = customerWithId(1L);
+        when(accountRepository.existsByIban(anyString())).thenReturn(false);
+
+        accountService.createDefaultAccounts(customer, null, null, null);
+
+        assertThat(customer.getAccounts())
+                .extracting(Account::getAccountType)
+                .containsExactlyInAnyOrder(AccountType.CHECKING, AccountType.SAVINGS);
+        assertThat(customer.getAccounts()).allMatch(a -> a.getStatus() == AccountStatus.ACTIVE);
+        assertThat(accountOfType(customer, AccountType.CHECKING).getDailyTransferLimit()).isEqualByComparingTo("1000.00");
+        assertThat(accountOfType(customer, AccountType.SAVINGS).getDailyTransferLimit()).isEqualByComparingTo("5000.00");
+    }
+
+    @Test
+    void createDefaultAccounts_appliesCustomLimitsToChecking() {
+        User customer = customerWithId(1L);
+        when(accountRepository.existsByIban(anyString())).thenReturn(false);
+
+        accountService.createDefaultAccounts(customer,
+                new BigDecimal("-500.00"), new BigDecimal("500.00"), new BigDecimal("3000.00"));
+
+        Account checking = accountOfType(customer, AccountType.CHECKING);
+        assertThat(checking.getAbsoluteTransferLimit()).isEqualByComparingTo("-500.00");
+        assertThat(checking.getDailyTransferLimit()).isEqualByComparingTo("500.00");
+        assertThat(accountOfType(customer, AccountType.SAVINGS).getDailyTransferLimit()).isEqualByComparingTo("3000.00");
+    }
+
+    @Test
+    void createDefaultAccounts_skipsTakenIban_whenGeneratedIbanAlreadyExists() {
+        User customer = customerWithId(1L);
+        // The first generated checking IBAN is taken; the next one is free.
+        when(accountRepository.existsByIban(anyString())).thenReturn(true, false);
+
+        accountService.createDefaultAccounts(customer, null, null, null);
+
+        assertThat(accountOfType(customer, AccountType.CHECKING).getIban()).isEqualTo("NL10INHO0000000012");
+    }
+
+    @Test
+    void hasNoAccounts_returnsTrue_whenCustomerHasNone() {
+        User customer = customerWithId(1L);
+        when(accountRepository.findByCustomerId(eq(1L), any(Pageable.class))).thenReturn(Page.empty());
+
+        assertThat(accountService.hasNoAccounts(customer)).isTrue();
+    }
+
+    @Test
+    void hasNoAccounts_returnsFalse_whenCustomerHasAccounts() {
+        User customer = customerWithId(1L);
+        when(accountRepository.findByCustomerId(eq(1L), any(Pageable.class))).thenReturn(oneAccountPage());
+
+        assertThat(accountService.hasNoAccounts(customer)).isFalse();
+    }
+
+    @Test
+    void closeAllAccounts_closesEveryAccountAndStampsClosedAt() {
+        User customer = new User();
+        Account checking = activeAccount("NL10INHO0000000011");
+        Account savings = activeAccount("NL20INHO0000000012");
+        customer.getAccounts().add(checking);
+        customer.getAccounts().add(savings);
+
+        accountService.closeAllAccounts(customer);
+
+        assertThat(customer.getAccounts()).allMatch(a -> a.getStatus() == AccountStatus.CLOSED);
+        assertThat(checking.getClosedAt()).isNotNull();
+        assertThat(savings.getClosedAt()).isNotNull();
+    }
+
+    @Test
+    void reopenAllAccounts_reactivatesEveryAccountAndClearsClosedAt() {
+        User customer = new User();
+        Account closed = activeAccount("NL10INHO0000000011");
+        closed.setStatus(AccountStatus.CLOSED);
+        closed.setClosedAt(LocalDateTime.now());
+        customer.getAccounts().add(closed);
+
+        accountService.reopenAllAccounts(customer);
+
+        assertThat(closed.getStatus()).isEqualTo(AccountStatus.ACTIVE);
+        assertThat(closed.getClosedAt()).isNull();
+    }
+
+    private User customerWithId(Long id) {
+        User customer = new User();
+        customer.setId(id);
+        return customer;
+    }
+
+    private Account accountOfType(User customer, AccountType type) {
+        return customer.getAccounts().stream()
+                .filter(a -> a.getAccountType() == type)
+                .findFirst().orElseThrow();
+    }
+
+    private Account activeAccount(String iban) {
+        Account a = new Account();
+        a.setIban(iban);
+        a.setStatus(AccountStatus.ACTIVE);
+        return a;
     }
 
     private Page<Account> oneAccountPage() {

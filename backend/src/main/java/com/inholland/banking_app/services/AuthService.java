@@ -55,9 +55,9 @@ public class AuthService {
     }
     
     public UserResponse register(UserRequest request) {
-        if (request.getRole() == null) {
-            request.setRole(Role.CUSTOMER);
-        }
+        // Public registration is always a customer. Never trust a client-supplied role
+        // here — employees are provisioned only through the admin-only AdminService.
+        request.setRole(Role.CUSTOMER);
         userPolicy.assertRegistrationRequest(request);
         request.setPassword(passwordEncoder.encode(request.getPassword()));
         request.setEmail(normalizeEmail(request.getEmail()));

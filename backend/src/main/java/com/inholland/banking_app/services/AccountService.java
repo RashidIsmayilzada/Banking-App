@@ -6,7 +6,10 @@ import com.inholland.banking_app.dtos.AccountUpdateRequest;
 import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.mappers.AccountMapper;
 import com.inholland.banking_app.models.Account;
+import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
+import com.inholland.banking_app.models.enums.AccountType;
+import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.repositories.AccountRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @RequiredArgsConstructor
@@ -91,5 +95,62 @@ public class AccountService {
         if (account.getStatus() == AccountStatus.CLOSED) {
             throw new AccountStateException("Account is already closed");
         }
+    }
+
+    // ==================== Amazing code ====================
+
+    // Creates the default CHECKING + SAVINGS accounts for a newly approved customer.
+    public void createDefaultAccounts(User user, BigDecimal checkingAbsoluteLimit,
+                                      BigDecimal checkingDailyLimit, BigDecimal savingsDailyLimit) {
+        createAccount(user, AccountType.CHECKING, checkingAbsoluteLimit, checkingDailyLimit);
+        createAccount(user, AccountType.SAVINGS, null, savingsDailyLimit);
+    }
+
+    // True when the user has no accounts yet (used to keep approval idempotent).
+    public boolean hasNoAccounts(User user) {
+        return accountRepository.findByCustomerId(user.getId(), Pageable.unpaged()).isEmpty();
+    }
+
+    private void applyLimits(Account account, BigDecimal absolute, BigDecimal daily) {
+        if (absolute != null) account.setAbsoluteTransferLimit(absolute);
+        if (daily != null) account.setDailyTransferLimit(daily);
+    }
+
+    public void closeAllAccounts(User user) {
+        for (Account account : user.getAccounts()) {
+            account.setStatus(AccountStatus.CLOSED);
+            account.setClosedAt(LocalDateTime.now());
+        }
+    }
+
+    public void reopenAllAccounts(User user) {
+        for (Account account : user.getAccounts()) {
+            account.setStatus(AccountStatus.ACTIVE);
+            account.setClosedAt(null);
+        }
+    }
+
+    private void createAccount(User user, AccountType accountType,
+                               BigDecimal customAbsoluteLimit, BigDecimal customDailyLimit) {
+        String iban = generateIban(user.getId(), accountType);
+        Account account = accountType == AccountType.CHECKING
+                ? AccountFactory.createCheckingAccount(user, iban)
+                : AccountFactory.createSavingsAccount(user, iban);
+
+        applyLimits(account, customAbsoluteLimit, customDailyLimit);
+
+        user.getAccounts().add(account);
+    }
+
+    private String generateIban(Long userId, AccountType accountType) {
+        long accountNumber = userId * 10 + (accountType == AccountType.CHECKING ? 1 : 2);
+        String iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
+
+        while (accountRepository.existsByIban(iban)) {
+            accountNumber++;
+            iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
+        }
+
+        return iban;
     }
 }

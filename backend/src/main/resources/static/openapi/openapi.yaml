@@ -29,6 +29,12 @@ paths:
     $ref: ./paths/users.yaml#/users
   /users/{id}:
     $ref: ./paths/users.yaml#/userById
+  /users/{id}/approval:
+    $ref: ./paths/users.yaml#/userApproval
+  /users/{id}/close:
+    $ref: ./paths/users.yaml#/userClose
+  /users/{id}/reopen:
+    $ref: ./paths/users.yaml#/userReopen
   /accounts:
     $ref: ./paths/accounts.yaml#/accounts
   /accounts/{iban}:
@@ -104,8 +110,8 @@ components:
       $ref: ./components/schemas/auth.yaml#/AuthContext
     UserCreateRequest:
       $ref: ./components/schemas/users.yaml#/UserCreateRequest
-    UserUpdateRequest:
-      $ref: ./components/schemas/users.yaml#/UserUpdateRequest
+    UserApprovalRequest:
+      $ref: ./components/schemas/users.yaml#/UserApprovalRequest
     UserResponse:
       $ref: ./components/schemas/users.yaml#/UserResponse
     UserPage:

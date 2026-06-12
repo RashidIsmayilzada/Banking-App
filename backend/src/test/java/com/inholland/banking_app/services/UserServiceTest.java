@@ -4,21 +4,17 @@ import com.inholland.banking_app.dtos.ApproveCustomerRequest;
 import com.inholland.banking_app.dtos.UserFilterRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.mappers.UserResponseMapper;
-import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.CustomerProfile;
 import com.inholland.banking_app.models.User;
-import com.inholland.banking_app.models.enums.AccountStatus;
-import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
-import com.inholland.banking_app.repositories.AccountRepository;
+import com.inholland.banking_app.repositories.TransactionRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,9 +40,12 @@ import static org.mockito.Mockito.*;
 class UserServiceTest {
 
     @Mock private UserRepository userRepository;
-    @Mock private AccountRepository accountRepository;
+    @Mock private AccountService accountService;
+    @Mock private TransactionRepository transactionRepository;
     @Mock private UserResponseMapper userResponseMapper;
 
+    // UserService is tested in isolation: every collaborator (including AccountService)
+    // is a mock, so a failure here can only be a bug in UserService itself.
     @InjectMocks private UserService userService;
 
     private User customerUser;
@@ -154,22 +153,24 @@ class UserServiceTest {
     // --- approveCustomer ---
 
     @Test
-    @DisplayName("approveCustomer() - should set status to APPROVED and create two default accounts")
+    @DisplayName("approveCustomer() - should set status APPROVED, activate user and delegate account creation")
     void approveCustomer_shouldApproveAndCreateAccounts_whenStatusIsApproved() {
         ApproveCustomerRequest request = new ApproveCustomerRequest();
         request.setStatus(CustomerStatus.APPROVED);
+        customerUser.setActive(false); // a pending customer is inactive until approved
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
-        when(accountRepository.existsByIban(anyString())).thenReturn(false);
+        when(accountService.hasNoAccounts(customerUser)).thenReturn(true);
 
         userService.approveCustomer(request, 1L);
 
         assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.APPROVED);
-        verify(accountRepository, times(2)).save(any(Account.class));
+        assertThat(customerUser.isActive()).isTrue();
+        verify(accountService).createDefaultAccounts(customerUser, null, null, null);
     }
 
     @Test
-    @DisplayName("approveCustomer() - should set status to REJECTED without creating accounts")
+    @DisplayName("approveCustomer() - should set status REJECTED without creating accounts")
     void approveCustomer_shouldReject_withoutCreatingAccounts() {
         ApproveCustomerRequest request = new ApproveCustomerRequest();
         request.setStatus(CustomerStatus.REJECTED);
@@ -179,7 +180,7 @@ class UserServiceTest {
         userService.approveCustomer(request, 1L);
 
         assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.REJECTED);
-        verify(accountRepository, never()).save(any());
+        verify(accountService, never()).createDefaultAccounts(any(), any(), any(), any());
     }
 
     @Test
@@ -209,6 +210,38 @@ class UserServiceTest {
                 .hasMessageContaining("Customer profile not found");
     }
 
+    @Test
+    @DisplayName("approveCustomer() - should pass the provided absolute + daily limits to account creation")
+    void approveCustomer_shouldApplyCustomLimits_whenLimitsProvided() {
+        ApproveCustomerRequest request = new ApproveCustomerRequest();
+        request.setStatus(CustomerStatus.APPROVED);
+        request.setCheckingAbsoluteLimit(new BigDecimal("-500.00"));
+        request.setCheckingDailyLimit(new BigDecimal("500.00"));
+        request.setSavingsDailyLimit(new BigDecimal("3000.00"));
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
+        when(accountService.hasNoAccounts(customerUser)).thenReturn(true);
+
+        userService.approveCustomer(request, 1L);
+
+        verify(accountService).createDefaultAccounts(customerUser,
+                new BigDecimal("-500.00"), new BigDecimal("500.00"), new BigDecimal("3000.00"));
+    }
+
+    @Test
+    @DisplayName("approveCustomer() - should not create accounts when customer is already approved")
+    void approveCustomer_shouldNotCreateAccounts_whenAlreadyApproved() {
+        ApproveCustomerRequest request = new ApproveCustomerRequest();
+        request.setStatus(CustomerStatus.APPROVED);
+
+        customerProfile.setStatus(CustomerStatus.APPROVED);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
+
+        userService.approveCustomer(request, 1L);
+
+        verify(accountService, never()).createDefaultAccounts(any(), any(), any(), any());
+    }
+
     // --- getByUsername ---
 
     @Test
@@ -232,70 +265,22 @@ class UserServiceTest {
                 .hasMessageContaining("User not found: unknown");
     }
 
-    @Test
-    @DisplayName("approveCustomer() - should apply custom daily limits to accounts when provided")
-    void approveCustomer_shouldApplyCustomLimits_whenLimitsProvided() {
-        ApproveCustomerRequest request = new ApproveCustomerRequest();
-        request.setStatus(CustomerStatus.APPROVED);
-        request.setCheckingDailyLimit(new BigDecimal("500.00"));
-        request.setSavingsDailyLimit(new BigDecimal("3000.00"));
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
-        when(accountRepository.existsByIban(anyString())).thenReturn(false);
-
-        ArgumentCaptor<Account> captor = ArgumentCaptor.forClass(Account.class);
-        userService.approveCustomer(request, 1L);
-        verify(accountRepository, times(2)).save(captor.capture());
-
-        List<Account> saved = captor.getAllValues();
-        Account checking = saved.stream()
-                .filter(a -> a.getAccountType() == AccountType.CHECKING)
-                .findFirst().orElseThrow();
-        Account savings = saved.stream()
-                .filter(a -> a.getAccountType() == AccountType.SAVINGS)
-                .findFirst().orElseThrow();
-
-        assertThat(checking.getDailyTransferLimit()).isEqualByComparingTo("500.00");
-        assertThat(savings.getDailyTransferLimit()).isEqualByComparingTo("3000.00");
-    }
-
-    @Test
-    @DisplayName("approveCustomer() - should not create accounts when customer is already approved")
-    void approveCustomer_shouldNotCreateAccounts_whenAlreadyApproved() {
-        ApproveCustomerRequest request = new ApproveCustomerRequest();
-        request.setStatus(CustomerStatus.APPROVED);
-
-        customerProfile.setStatus(CustomerStatus.APPROVED);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
-
-        userService.approveCustomer(request, 1L);
-
-        verify(accountRepository, never()).save(any());
-    }
-
     // --- closeUser ---
 
     @Test
-    @DisplayName("closeUser() - should set profile CLOSED and close all accounts for a customer")
+    @DisplayName("closeUser() - should set profile CLOSED and delegate account closing for a customer")
     void closeUser_shouldCloseProfileAndAccounts_whenCustomer() {
-        Account account = new Account();
-        account.setIban("NL10INHO0000000011");
-        account.setStatus(AccountStatus.ACTIVE);
-        account.setClosedAt(null);
-        customerUser.getAccounts().add(account);
-
         when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
         when(userResponseMapper.toUserResponse(customerUser)).thenReturn(userResponse);
 
         userService.closeUser(1L);
 
         assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.CLOSED);
-        assertThat(account.getStatus()).isEqualTo(AccountStatus.CLOSED);
-        assertThat(account.getClosedAt()).isNotNull();
+        verify(accountService).closeAllAccounts(customerUser);
     }
 
     @Test
-    @DisplayName("closeUser() - should set active=false for an employee")
+    @DisplayName("closeUser() - should set active=false for an employee and not touch accounts")
     void closeUser_shouldSetInactive_whenEmployee() {
         User employeeUser = new User();
         employeeUser.setId(2L);
@@ -312,6 +297,7 @@ class UserServiceTest {
 
         assertThat(employeeUser.isActive()).isFalse();
         verify(userRepository).save(employeeUser);
+        verify(accountService, never()).closeAllAccounts(any());
     }
 
     @Test
@@ -335,34 +321,11 @@ class UserServiceTest {
                 .hasMessageContaining("Customer profile not found");
     }
 
-    @Test
-    @DisplayName("closeUser() - should leave accounts already CLOSED unchanged")
-    void closeUser_shouldCloseAlreadyClosedAccounts_withoutError() {
-        Account account = new Account();
-        account.setIban("NL10INHO0000000011");
-        account.setStatus(AccountStatus.CLOSED);
-        account.setClosedAt(LocalDateTime.now().minusDays(1));
-        customerUser.getAccounts().add(account);
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
-        when(userResponseMapper.toUserResponse(customerUser)).thenReturn(userResponse);
-
-        userService.closeUser(1L);
-
-        assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.CLOSED);
-        assertThat(account.getStatus()).isEqualTo(AccountStatus.CLOSED);
-    }
-
     // --- reopenUser ---
 
     @Test
-    @DisplayName("reopenUser() - should set profile APPROVED and reopen all accounts for a customer")
+    @DisplayName("reopenUser() - should set profile APPROVED and delegate account reopening for a customer")
     void reopenUser_shouldApproveProfileAndReopenAccounts_whenCustomer() {
-        Account account = new Account();
-        account.setIban("NL10INHO0000000011");
-        account.setStatus(AccountStatus.CLOSED);
-        account.setClosedAt(LocalDateTime.now().minusDays(1));
-        customerUser.getAccounts().add(account);
         customerProfile.setStatus(CustomerStatus.CLOSED);
 
         UserResponse reopenedResponse = UserResponse.builder()
@@ -374,12 +337,11 @@ class UserServiceTest {
         userService.reopenUser(1L);
 
         assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.APPROVED);
-        assertThat(account.getStatus()).isEqualTo(AccountStatus.ACTIVE);
-        assertThat(account.getClosedAt()).isNull();
+        verify(accountService).reopenAllAccounts(customerUser);
     }
 
     @Test
-    @DisplayName("reopenUser() - should set active=true for an employee")
+    @DisplayName("reopenUser() - should set active=true for an employee and not touch accounts")
     void reopenUser_shouldSetActive_whenEmployee() {
         User employeeUser = new User();
         employeeUser.setId(2L);
@@ -396,6 +358,7 @@ class UserServiceTest {
 
         assertThat(employeeUser.isActive()).isTrue();
         verify(userRepository).save(employeeUser);
+        verify(accountService, never()).reopenAllAccounts(any());
     }
 
     @Test
@@ -418,5 +381,4 @@ class UserServiceTest {
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Customer profile not found");
     }
-
 }
