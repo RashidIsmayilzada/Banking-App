@@ -8,11 +8,10 @@ RUN npm ci --legacy-peer-deps
 COPY . .
 RUN npm run build
 
-FROM nginx:alpine
+FROM node:20-alpine
 
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+RUN npm install -g serve
 
-EXPOSE 8080
+COPY --from=build /app/dist /app/dist
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["serve", "-s", "/app/dist"]
