@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.math.BigDecimal;
 import java.util.function.Consumer;
 
 import org.springframework.stereotype.Service;
@@ -41,15 +42,12 @@ public class UserService {
     @Transactional
     public void approveCustomer(ApproveCustomerRequest approveCustomerRequest, Long userId) {
         User user = findUserOrThrow(userId);
-        getCustomerProfileOrThrow(user);
+        CustomerProfile customerProfile = getCustomerProfileOrThrow(user);
 
-        user.setActive(true);
-        if (accountService.hasNoAccounts(user)) {
-            accountService.createDefaultAccounts(user,
-                    approveCustomerRequest.getCheckingAbsoluteLimit(),
-                    approveCustomerRequest.getCheckingDailyLimit(),
-                    approveCustomerRequest.getSavingsDailyLimit());
-        }
+        applyStatusTransition(user, customerProfile, approveCustomerRequest.getStatus(),
+                approveCustomerRequest.getCheckingAbsoluteLimit(),
+                approveCustomerRequest.getCheckingDailyLimit(),
+                approveCustomerRequest.getSavingsDailyLimit());
     }
 
     @Transactional
@@ -71,6 +69,22 @@ public class UserService {
 
     ///  Private Helper /////
 
+
+    // Applies an approval status change activating the customer
+    // and creating their default accounts the first time they become APPROVED.
+    private void applyStatusTransition(User user, CustomerProfile customerProfile, CustomerStatus newStatus,
+                                       BigDecimal checkingAbsoluteLimit, BigDecimal checkingDailyLimit,
+                                       BigDecimal savingsDailyLimit) {
+        CustomerStatus previousStatus = customerProfile.getStatus();
+        customerProfile.setStatus(newStatus);
+
+        if (newStatus == CustomerStatus.APPROVED && previousStatus != CustomerStatus.APPROVED) {
+            user.setActive(true);
+            if (accountService.hasNoAccounts(user)) {
+                accountService.createDefaultAccounts(user, checkingAbsoluteLimit, checkingDailyLimit, savingsDailyLimit);
+            }
+        }
+    }
 
     private UserResponse setUserState(Long userId, boolean active, CustomerStatus status, Consumer<User> accountAction) {
         User user = findUserOrThrow(userId);
