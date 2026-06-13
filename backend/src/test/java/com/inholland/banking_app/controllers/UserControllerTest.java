@@ -160,7 +160,6 @@ class UserControllerTest {
         @DisplayName("PATCH /users/{id}/approval - should return 200 with updated user when approval succeeds")
         void approveUser_shouldReturn200_whenApprovalSucceeds() throws Exception {
                 ApproveCustomerRequest request = new ApproveCustomerRequest();
-                request.setStatus(CustomerStatus.APPROVED);
 
                 UserResponse approvedResponse = UserResponse.builder()
                                 .id(1L)
@@ -188,7 +187,6 @@ class UserControllerTest {
         @DisplayName("PATCH /users/{id}/approval - should return 404 when user not found")
         void approveUser_shouldReturn404_whenUserNotFound() throws Exception {
                 ApproveCustomerRequest request = new ApproveCustomerRequest();
-                request.setStatus(CustomerStatus.APPROVED);
 
                 doThrow(new EntityNotFoundException("user with id: 99 not found"))
                                 .when(userService).approveCustomer(any(ApproveCustomerRequest.class), eq(99L));

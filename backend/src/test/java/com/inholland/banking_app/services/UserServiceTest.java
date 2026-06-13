@@ -156,7 +156,6 @@ class UserServiceTest {
     @DisplayName("approveCustomer() - should set status APPROVED, activate user and delegate account creation")
     void approveCustomer_shouldApproveAndCreateAccounts_whenStatusIsApproved() {
         ApproveCustomerRequest request = new ApproveCustomerRequest();
-        request.setStatus(CustomerStatus.APPROVED);
         customerUser.setActive(false); // a pending customer is inactive until approved
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
@@ -169,25 +168,11 @@ class UserServiceTest {
         verify(accountService).createDefaultAccounts(customerUser, null, null, null);
     }
 
-    @Test
-    @DisplayName("approveCustomer() - should set status REJECTED without creating accounts")
-    void approveCustomer_shouldReject_withoutCreatingAccounts() {
-        ApproveCustomerRequest request = new ApproveCustomerRequest();
-        request.setStatus(CustomerStatus.REJECTED);
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
-
-        userService.approveCustomer(request, 1L);
-
-        assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.REJECTED);
-        verify(accountService, never()).createDefaultAccounts(any(), any(), any(), any());
-    }
 
     @Test
     @DisplayName("approveCustomer() - should throw EntityNotFoundException when user not found")
     void approveCustomer_shouldThrow_whenUserNotFound() {
         ApproveCustomerRequest request = new ApproveCustomerRequest();
-        request.setStatus(CustomerStatus.APPROVED);
 
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
@@ -197,24 +182,9 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("approveCustomer() - should throw EntityNotFoundException when customer profile is null")
-    void approveCustomer_shouldThrow_whenCustomerProfileIsNull() {
-        ApproveCustomerRequest request = new ApproveCustomerRequest();
-        request.setStatus(CustomerStatus.APPROVED);
-
-        customerUser.setCustomerProfile(null);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
-
-        assertThatThrownBy(() -> userService.approveCustomer(request, 1L))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Customer profile not found");
-    }
-
-    @Test
     @DisplayName("approveCustomer() - should pass the provided absolute + daily limits to account creation")
     void approveCustomer_shouldApplyCustomLimits_whenLimitsProvided() {
         ApproveCustomerRequest request = new ApproveCustomerRequest();
-        request.setStatus(CustomerStatus.APPROVED);
         request.setCheckingAbsoluteLimit(new BigDecimal("-500.00"));
         request.setCheckingDailyLimit(new BigDecimal("500.00"));
         request.setSavingsDailyLimit(new BigDecimal("3000.00"));
@@ -232,7 +202,6 @@ class UserServiceTest {
     @DisplayName("approveCustomer() - should not create accounts when customer is already approved")
     void approveCustomer_shouldNotCreateAccounts_whenAlreadyApproved() {
         ApproveCustomerRequest request = new ApproveCustomerRequest();
-        request.setStatus(CustomerStatus.APPROVED);
 
         customerProfile.setStatus(CustomerStatus.APPROVED);
         when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));

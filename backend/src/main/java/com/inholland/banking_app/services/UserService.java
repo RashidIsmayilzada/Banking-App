@@ -42,9 +42,7 @@ public class UserService {
     @Transactional
     public void approveCustomer(ApproveCustomerRequest approveCustomerRequest, Long userId) {
         User user = findUserOrThrow(userId);
-        CustomerProfile customerProfile = getCustomerProfileOrThrow(user);
-
-        applyStatusTransition(user, customerProfile, approveCustomerRequest.getStatus(),
+        setApprove(user,
                 approveCustomerRequest.getCheckingAbsoluteLimit(),
                 approveCustomerRequest.getCheckingDailyLimit(),
                 approveCustomerRequest.getSavingsDailyLimit());
@@ -66,24 +64,17 @@ public class UserService {
     }
 
 
-
     ///  Private Helper /////
 
 
-    // Applies an approval status change activating the customer
-    // and creating their default accounts the first time they become APPROVED.
-    private void applyStatusTransition(User user, CustomerProfile customerProfile, CustomerStatus newStatus,
-                                       BigDecimal checkingAbsoluteLimit, BigDecimal checkingDailyLimit,
+    private void setApprove(User user, BigDecimal checkingAbsoluteLimit,
+                                       BigDecimal checkingDailyLimit,
                                        BigDecimal savingsDailyLimit) {
-        CustomerStatus previousStatus = customerProfile.getStatus();
-        customerProfile.setStatus(newStatus);
-
-        if (newStatus == CustomerStatus.APPROVED && previousStatus != CustomerStatus.APPROVED) {
+            getCustomerProfileOrThrow(user).setStatus(CustomerStatus.APPROVED);
             user.setActive(true);
             if (accountService.hasNoAccounts(user)) {
                 accountService.createDefaultAccounts(user, checkingAbsoluteLimit, checkingDailyLimit, savingsDailyLimit);
             }
-        }
     }
 
     private UserResponse setUserState(Long userId, boolean active, CustomerStatus status, Consumer<User> accountAction) {

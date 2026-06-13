@@ -45,7 +45,7 @@ public class UserController {
         })
         @GetMapping
         @PreAuthorize("hasRole('EMPLOYEE')")
-        public ResponseEntity<@NonNull Page<@NonNull UserResponse>> getAllUsers(
+        public ResponseEntity<@NonNull Page<@NonNull UserResponse>> getAllUsers( // Get all users
                         @ParameterObject @PageableDefault(size = 10, page = 0) Pageable pageable,
                         @ModelAttribute UserFilterRequest userFilterRequest) {
                 return ResponseEntity
@@ -65,7 +65,7 @@ public class UserController {
         })
         @GetMapping("/{id}")
         @PreAuthorize("hasRole('EMPLOYEE')")
-        public ResponseEntity<UserResponse> getUser(
+        public ResponseEntity<UserResponse> getUser( // Get user by ID
                         @Parameter(description = "ID of the user to retrieve", example = "1")
                         @PathVariable Long id) {
                 return ResponseEntity
@@ -87,7 +87,7 @@ public class UserController {
         })
         @PatchMapping("/{id}/approval")
         @PreAuthorize("hasRole('EMPLOYEE')")
-        public ResponseEntity<UserResponse> approveUser(
+        public ResponseEntity<UserResponse> approveUser(    // Approve CUSTOMER
                         @Parameter(description = "ID of the customer to approve or reject", example = "1")
                         @PathVariable Long id,
                         @RequestBody ApproveCustomerRequest approveCustomer) {
@@ -109,7 +109,7 @@ public class UserController {
         })
         @PatchMapping("/{id}/close")
         @PreAuthorize("hasRole('EMPLOYEE')")
-        public ResponseEntity<UserResponse> closeUser(
+        public ResponseEntity<UserResponse> closeUser(           // Close user
                         @Parameter(description = "ID of the user to close", example = "1")
                         @PathVariable Long id) {
                 return ResponseEntity.ok(userService.closeUser(id));
