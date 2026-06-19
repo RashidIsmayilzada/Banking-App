@@ -7,6 +7,7 @@ import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -40,6 +41,8 @@ public class UserResponseMapper {
                 .build();
     }
 
+    // binding User + CustomerProfile and account together
+
     private UserResponse toCustomerResponse(User user, CustomerProfile profile) {
         int accountCount = user.getAccounts() == null ? 0 : user.getAccounts().size();
         return UserResponse.builder()
@@ -56,7 +59,7 @@ public class UserResponseMapper {
                 .hasAccounts(accountCount > 0)
                 .accountCount(accountCount)
                 .accounts(user.getAccounts() == null
-                    ? java.util.List.of()
+                    ? List.of()
                     : user.getAccounts().stream().map(accountMapper::toResponse).toList())
                 .registeredAt(profile.getRegisteredAt())
                 .build();

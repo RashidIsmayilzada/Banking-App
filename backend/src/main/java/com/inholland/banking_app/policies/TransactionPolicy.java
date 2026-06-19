@@ -1,6 +1,7 @@
 package com.inholland.banking_app.policies;
 
 import com.inholland.banking_app.dtos.TransactionRequest;
+import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.exceptions.ForbiddenException;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.DailyTransferUsage;
@@ -68,6 +69,12 @@ public class TransactionPolicy {
                 .orElse(BigDecimal.ZERO);
         if (usedToday.add(amount).compareTo(account.getDailyTransferLimit()) > 0) {
             throw new IllegalArgumentException("Daily transfer limit exceeded");
+        }
+    }
+
+    public void validateNotFrozen(Account account) {
+        if (account.isFrozen()) {
+            throw new AccountStateException("Account is frozen");
         }
     }
 }

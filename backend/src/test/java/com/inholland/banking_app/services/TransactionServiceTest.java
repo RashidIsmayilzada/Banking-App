@@ -74,7 +74,7 @@ class TransactionServiceTest {
         otherCustomer = makeUser(3L, Role.CUSTOMER);
     }
 
-    // --- listTransactions ---
+    // List Transactions
 
     @Test
     @DisplayName("listTransactions() - should not override userId for EMPLOYEE")
@@ -120,7 +120,7 @@ class TransactionServiceTest {
                 .hasMessageContaining("ghost");
     }
 
-    // --- TRANSFER happy path ---
+    // Transfer goes through multiple validation steps
 
     @Test
     @DisplayName("createTransaction() TRANSFER - should debit source, credit destination, and save transaction")
@@ -149,7 +149,8 @@ class TransactionServiceTest {
         verify(transactionRepository).save(any(Transaction.class));
     }
 
-    // --- TRANSFER validation failures ---
+    // Validation failures
+    // Each validation step should throw the appropriate exception and prevent any repository calls if it fails
 
     @Test
     @DisplayName("createTransaction() TRANSFER - should propagate IllegalArgumentException from policy when fromIban is null")
@@ -324,7 +325,7 @@ class TransactionServiceTest {
                 .hasMessageContaining("Destination account is not active");
     }
 
-    // --- TRANSFER channel ---
+    // Transfer Channel
 
     @Test
     @DisplayName("createTransaction() TRANSFER - employee channel is EMPLOYEE, customer channel is WEB")
@@ -353,7 +354,7 @@ class TransactionServiceTest {
         verify(transactionRepository).save(any(Transaction.class));
     }
 
-    // --- DEPOSIT happy path ---
+    // Deposit test for successful transaction
 
     @Test
     @DisplayName("createTransaction() DEPOSIT - should credit account and save transaction")
@@ -376,7 +377,7 @@ class TransactionServiceTest {
         verify(transactionRepository).save(any(Transaction.class));
     }
 
-    // --- DEPOSIT validation failures ---
+    // Deposit validation failures
 
     @Test
     @DisplayName("createTransaction() DEPOSIT - should propagate IllegalArgumentException from policy when iban is null")
@@ -437,7 +438,7 @@ class TransactionServiceTest {
                 .hasMessageContaining("Daily transfer limit");
     }
 
-    // --- WITHDRAWAL happy path ---
+    // Withdrawal succeeds
 
     @Test
     @DisplayName("createTransaction() WITHDRAWAL - should debit account and save transaction")
@@ -461,7 +462,7 @@ class TransactionServiceTest {
         verify(transactionRepository).save(any(Transaction.class));
     }
 
-    // --- WITHDRAWAL validation failures ---
+    // Withdrawal validation failures
 
     @Test
     @DisplayName("createTransaction() WITHDRAWAL - should propagate IllegalArgumentException from policy when iban is null")
@@ -527,7 +528,7 @@ class TransactionServiceTest {
                 .hasMessageContaining("Daily transfer limit");
     }
 
-    // --- helpers ---
+    // Helpers
 
     private User makeUser(Long id, Role role) {
         User user = new User();

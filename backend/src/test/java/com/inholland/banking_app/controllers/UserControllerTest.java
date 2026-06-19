@@ -7,7 +7,6 @@ import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
 import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
-import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.security.JwtAuthenticationFilter;
 import com.inholland.banking_app.services.AuthService;
 import com.inholland.banking_app.services.UserService;
@@ -161,7 +160,6 @@ class UserControllerTest {
         @DisplayName("PATCH /users/{id}/approval - should return 200 with updated user when approval succeeds")
         void approveUser_shouldReturn200_whenApprovalSucceeds() throws Exception {
                 ApproveCustomerRequest request = new ApproveCustomerRequest();
-                request.setStatus(CustomerStatus.APPROVED);
 
                 UserResponse approvedResponse = UserResponse.builder()
                                 .id(1L)
@@ -189,7 +187,6 @@ class UserControllerTest {
         @DisplayName("PATCH /users/{id}/approval - should return 404 when user not found")
         void approveUser_shouldReturn404_whenUserNotFound() throws Exception {
                 ApproveCustomerRequest request = new ApproveCustomerRequest();
-                request.setStatus(CustomerStatus.APPROVED);
 
                 doThrow(new EntityNotFoundException("user with id: 99 not found"))
                                 .when(userService).approveCustomer(any(ApproveCustomerRequest.class), eq(99L));

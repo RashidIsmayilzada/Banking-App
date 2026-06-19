@@ -63,4 +63,12 @@ public class Transaction {
 
     @Column(nullable = false, length = 255)
     private String description;
+
+    @ManyToOne
+    @JoinColumn(name = "reverses_transaction_id")
+    private Transaction reversesTransaction;
+
+    @Column(name = "reversed")
+    private boolean isReversed = false;
+
 }

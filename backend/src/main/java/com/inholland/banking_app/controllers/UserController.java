@@ -2,9 +2,7 @@ package com.inholland.banking_app.controllers;
 
 import com.inholland.banking_app.dtos.ApproveCustomerRequest;
 import com.inholland.banking_app.dtos.UserFilterRequest;
-import com.inholland.banking_app.dtos.UserRequest;
 import com.inholland.banking_app.dtos.UserResponse;
-import com.inholland.banking_app.services.AuthService;
 import com.inholland.banking_app.services.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,24 +33,6 @@ import org.springdoc.core.annotations.ParameterObject;
 public class UserController {
 
         private final UserService userService;
-        private final AuthService authService;
-
-        @Operation(summary = "Register a new customer",
-                   description = "Creates a new customer account. No authentication required.")
-        @ApiResponses({
-                @ApiResponse(responseCode = "201", description = "User registered successfully",
-                        content = @Content(schema = @Schema(implementation = UserResponse.class))),
-                @ApiResponse(responseCode = "400", description = "Validation error — missing or invalid fields",
-                        content = @Content(schema = @Schema())),
-                @ApiResponse(responseCode = "409", description = "Email or username already in use",
-                        content = @Content(schema = @Schema()))
-        })
-        @PostMapping
-        public ResponseEntity<UserResponse> register(@RequestBody UserRequest request) {
-                UserResponse response = authService.register(request);
-                log.info("User registered: {} (role={})", response.getEmail(), response.getRole());
-                return ResponseEntity.status(201).body(response);
-        }
 
         @Operation(summary = "Get all users (paginated)",
                    description = "Returns a paginated, filterable list of all users. Requires EMPLOYEE role.",
@@ -65,7 +45,7 @@ public class UserController {
         })
         @GetMapping
         @PreAuthorize("hasRole('EMPLOYEE')")
-        public ResponseEntity<@NonNull Page<@NonNull UserResponse>> getAllUsers(
+        public ResponseEntity<@NonNull Page<@NonNull UserResponse>> getAllUsers( // Get all users
                         @ParameterObject @PageableDefault(size = 10, page = 0) Pageable pageable,
                         @ModelAttribute UserFilterRequest userFilterRequest) {
                 return ResponseEntity
@@ -85,7 +65,7 @@ public class UserController {
         })
         @GetMapping("/{id}")
         @PreAuthorize("hasRole('EMPLOYEE')")
-        public ResponseEntity<UserResponse> getUser(
+        public ResponseEntity<UserResponse> getUser( // Get user by ID
                         @Parameter(description = "ID of the user to retrieve", example = "1")
                         @PathVariable Long id) {
                 return ResponseEntity
@@ -107,7 +87,7 @@ public class UserController {
         })
         @PatchMapping("/{id}/approval")
         @PreAuthorize("hasRole('EMPLOYEE')")
-        public ResponseEntity<UserResponse> approveUser(
+        public ResponseEntity<UserResponse> approveUser(    // Approve CUSTOMER
                         @Parameter(description = "ID of the customer to approve or reject", example = "1")
                         @PathVariable Long id,
                         @RequestBody ApproveCustomerRequest approveCustomer) {
@@ -129,7 +109,7 @@ public class UserController {
         })
         @PatchMapping("/{id}/close")
         @PreAuthorize("hasRole('EMPLOYEE')")
-        public ResponseEntity<UserResponse> closeUser(
+        public ResponseEntity<UserResponse> closeUser(           // Close user
                         @Parameter(description = "ID of the user to close", example = "1")
                         @PathVariable Long id) {
                 return ResponseEntity.ok(userService.closeUser(id));

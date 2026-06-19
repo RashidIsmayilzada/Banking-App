@@ -1,0 +1,15 @@
+package com.inholland.banking_app.models.enums;
+
+public enum AuditAction {
+    EMPLOYEE_CREATED,
+    EMPLOYEE_UPDATED,
+    EMPLOYEE_ENABLED,
+    EMPLOYEE_DISABLED,
+    EMPLOYEE_DELETED,
+    ACCOUNT_FROZEN,
+    ACCOUNT_UNFROZEN,
+    ACCOUNT_CLOSED,
+    TRANSACTION_REVERSED,
+    USER_ACTIVATED,
+    USER_DEACTIVATED
+}

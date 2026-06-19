@@ -49,7 +49,7 @@ class TransactionPolicyTest {
         employee = makeUser(3L, Role.EMPLOYEE);
     }
 
-    // --- validateTransferFields ---
+    // Validate Transfer Fields
 
     @Test
     @DisplayName("validateTransferFields() - should throw when fromIban is null")
@@ -80,7 +80,7 @@ class TransactionPolicyTest {
                 .doesNotThrowAnyException();
     }
 
-    // --- requireIban ---
+    // require IBAN
 
     @Test
     @DisplayName("requireIban() - should throw when iban is null")
@@ -115,7 +115,7 @@ class TransactionPolicyTest {
                 .doesNotThrowAnyException();
     }
 
-    // --- validateActiveAccount ---
+    // Validate Active Accounts
 
     @Test
     @DisplayName("validateActiveAccount() - should throw with provided message when account is inactive")
@@ -138,7 +138,7 @@ class TransactionPolicyTest {
                 .doesNotThrowAnyException();
     }
 
-    // --- validateCheckingAccount ---
+    // Validate Checking Account
 
     @Test
     @DisplayName("validateCheckingAccount() - should throw when account type is SAVINGS")
@@ -161,7 +161,7 @@ class TransactionPolicyTest {
                 .doesNotThrowAnyException();
     }
 
-    // --- validateAccountOwnership ---
+    // Validate Account Ownership
 
     @Test
     @DisplayName("validateAccountOwnership() - should throw ForbiddenException when customer accesses another customer's account")
@@ -194,7 +194,7 @@ class TransactionPolicyTest {
                 .doesNotThrowAnyException();
     }
 
-    // --- checkBalance ---
+    // Check Balance
 
     @Test
     @DisplayName("checkBalance() - should throw when balance minus amount falls below absolute transfer limit")
@@ -229,7 +229,7 @@ class TransactionPolicyTest {
                 .doesNotThrowAnyException();
     }
 
-    // --- checkDailyLimit ---
+    // Check Daily Limit
 
     @Test
     @DisplayName("checkDailyLimit() - should throw when used plus requested amount exceeds daily limit")
@@ -275,7 +275,7 @@ class TransactionPolicyTest {
                 .doesNotThrowAnyException();
     }
 
-    // --- helpers ---
+    // Helpers
 
     private User makeUser(Long id, Role role) {
         User user = new User();
