@@ -15,12 +15,18 @@ public class AccountMapper {
         // Personal details live on the profile; guard it so the mapper still works
         // for owners that have no customer profile.
         CustomerProfile profile = owner.getCustomerProfile();
+        String firstName = null;
+        String lastName = null;
+        if (profile != null) {
+            firstName = profile.getFirstName();
+            lastName = profile.getLastName();
+        }
 
         return AccountResponse.builder()
                 .ownerId(owner.getId())
                 .ownerUsername(owner.getUsername())
-                .ownerFirstName(profile != null ? profile.getFirstName() : null)
-                .ownerLastName(profile != null ? profile.getLastName() : null)
+                .ownerFirstName(firstName)
+                .ownerLastName(lastName)
                 .ownerEmail(owner.getEmail())
                 .iban(account.getIban())
                 .accountType(account.getAccountType())

@@ -28,9 +28,12 @@ public class AccountService {
 
     // Lists all accounts, or just one customer's when customerId is given.
     public AccountListResponse listAccounts(Long customerId, Pageable pageable) {
-        Page<Account> accounts = (customerId != null)
-                ? accountRepository.findByCustomerId(customerId, pageable)
-                : accountRepository.findAll(pageable);
+        Page<Account> accounts;
+        if (customerId != null) {
+            accounts = accountRepository.findByCustomerId(customerId, pageable);
+        } else {
+            accounts = accountRepository.findAll(pageable);
+        }
         return AccountListResponse.of(accounts.map(accountMapper::toResponse));
     }
 
@@ -53,20 +56,20 @@ public class AccountService {
     public AccountResponse updateAccount(String iban, AccountUpdateRequest request) {
         Account account = findAccountOrThrow(iban);
 
-        assertCanUpdateLimits(account);
+        // A closed account is frozen: its limits and status can no longer change.
+        if (account.getStatus() == AccountStatus.CLOSED) {
+            throw new AccountStateException("Cannot update a closed account");
+        }
+
         if (request.getAbsoluteTransferLimit() != null) {
             account.setAbsoluteTransferLimit(request.getAbsoluteTransferLimit());
         }
         if (request.getDailyTransferLimit() != null) {
             account.setDailyTransferLimit(request.getDailyTransferLimit());
         }
-        if (AccountStatus.CLOSED.equals(request.getStatus())) {
-            assertCanClose(account);
+        if (request.getStatus() == AccountStatus.CLOSED) {
             account.setStatus(AccountStatus.CLOSED);
             account.setClosedAt(LocalDateTime.now());
-        } else if (AccountStatus.ACTIVE.equals(request.getStatus())) {
-            account.setStatus(AccountStatus.ACTIVE);
-            account.setClosedAt(null);
         }
         accountRepository.save(account);
         return accountMapper.toResponse(account);
@@ -77,19 +80,5 @@ public class AccountService {
     private Account findAccountOrThrow(String iban) {
         return accountRepository.findById(iban)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
-    }
-
-    // A closed account is frozen: its transfer limits can no longer be changed.
-    private void assertCanUpdateLimits(Account account) {
-        if (account.getStatus() == AccountStatus.CLOSED) {
-            throw new AccountStateException("Cannot update a closed account");
-        }
-    }
-
-    // An account can only be closed once.
-    private void assertCanClose(Account account) {
-        if (account.getStatus() == AccountStatus.CLOSED) {
-            throw new AccountStateException("Account is already closed");
-        }
     }
 }
