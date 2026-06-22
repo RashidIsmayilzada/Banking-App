@@ -2,12 +2,9 @@ package com.inholland.banking_app.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inholland.banking_app.dtos.*;
-import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.exceptions.DuplicateResourceException;
-import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.security.JwtAuthenticationFilter;
 import com.inholland.banking_app.services.AdminService;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,9 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-//import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-
-
 
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
@@ -29,9 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -46,7 +38,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 )
 class AdminControllerTest {
 
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -56,7 +47,6 @@ class AdminControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private EmployeeResponse employeeResponse;
-    private AccountResponse accountResponse;
     private EmployeeCreateRequest validEmployeeRequest;
 
     @BeforeEach
@@ -76,12 +66,6 @@ class AdminControllerTest {
         employeeResponse.setEmail("test@bank.com");
         employeeResponse.setEmployeeNumber("EMP001");
         employeeResponse.setActive(true);
-
-        accountResponse = AccountResponse.builder()
-                .iban("NL01INHO0000000010")
-                .balance(MoneyResponse.eur(new BigDecimal("1000.00")))
-                .status(AccountStatus.ACTIVE)
-                .build();
 
         validEmployeeRequest = new EmployeeCreateRequest();
         validEmployeeRequest.setFirstName("New");
@@ -177,89 +161,90 @@ class AdminControllerTest {
                 .andExpect(status().isNoContent());
     }
 
-    @Test
-    @DisplayName("GET /admin/accounts - should return list")
-    void getAllAccounts() throws Exception {
-        when(adminService.getAllAccounts()).thenReturn(List.of(accountResponse));
+    // --Efe(Admin) — account endpoint tests moved to AccountControllerTest
+//    @Test
+//    @DisplayName("GET /admin/accounts - should return list")
+//    void getAllAccounts() throws Exception {
+//        when(adminService.getAllAccounts()).thenReturn(List.of(accountResponse));
+//
+//        mockMvc.perform(get("/admin/accounts"))
+//                .andExpect(status().isOk())
+//                .andExpect(jsonPath("$").isArray());
+//    }
+//
+//    @Test
+//    @DisplayName("GET /admin/accounts/{iban} - should return 200")
+//    void getAccount() throws Exception {
+//        when(adminService.getAccount("NL01INHO0000000010")).thenReturn(accountResponse);
+//
+//        mockMvc.perform(get("/admin/accounts/NL01INHO0000000010"))
+//                .andExpect(status().isOk())
+//                .andExpect(jsonPath("$.iban").value("NL01INHO0000000010"));
+//    }
+//
+//    @Test
+//    @DisplayName("PATCH /admin/accounts/{iban}/freeze - should return 200")
+//    void freezeAccount() throws Exception {
+//        when(adminService.freezeAccount("NL01INHO0000000010")).thenReturn(accountResponse);
+//
+//        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/freeze"))
+//                .andExpect(status().isOk());
+//    }
+//
+//    @Test
+//    @DisplayName("PATCH /admin/accounts/{iban}/freeze - already frozen should return 409")
+//    void freezeAccount_conflict() throws Exception {
+//        when(adminService.freezeAccount("NL01INHO0000000010")).thenThrow(new AccountStateException("Already frozen"));
+//
+//        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/freeze"))
+//                .andExpect(status().isConflict());
+//    }
+//
+//    @Test
+//    @DisplayName("PATCH /admin/accounts/{iban}/unfreeze - should return 200")
+//    void unfreezeAccount() throws Exception {
+//        when(adminService.unfreezeAccount("NL01INHO0000000010")).thenReturn(accountResponse);
+//
+//        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/unfreeze"))
+//                .andExpect(status().isOk());
+//    }
+//
+//    @Test
+//    @DisplayName("PATCH /admin/accounts/{iban}/close - should return 200")
+//    void closeAccount() throws Exception {
+//        when(adminService.closeAccount("NL01INHO0000000010")).thenReturn(accountResponse);
+//
+//        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/close"))
+//                .andExpect(status().isOk());
+//    }
 
-        mockMvc.perform(get("/admin/accounts"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
-    }
+    // --Efe(Admin) — transaction reversal test moved to TransactionControllerTest
+//    @Test
+//    @DisplayName("POST /admin/transactions/{id}/reverse - should return 200")
+//    void reverseTransaction() throws Exception {
+//        TransactionReversalResponse response = new TransactionReversalResponse();
+//        response.setReversalTransactionId(101L);
+//
+//        when(adminService.reverseTransaction(eq(100L), anyString())).thenReturn(response);
+//
+//        mockMvc.perform(post("/admin/transactions/100/reverse")
+//                        .principal(new UsernamePasswordAuthenticationToken("admin", null)))
+//                .andExpect(status().isOk())
+//                .andExpect(jsonPath("$.reversalTransactionId").value(101));
+//    }
 
-    @Test
-    @DisplayName("GET /admin/accounts/{iban} - should return 200")
-    void getAccount() throws Exception {
-        when(adminService.getAccount("NL01INHO0000000010")).thenReturn(accountResponse);
-
-        mockMvc.perform(get("/admin/accounts/NL01INHO0000000010"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.iban").value("NL01INHO0000000010"));
-    }
-
-    @Test
-    @DisplayName("PATCH /admin/accounts/{iban}/freeze - should return 200")
-    void freezeAccount() throws Exception {
-        when(adminService.freezeAccount("NL01INHO0000000010")).thenReturn(accountResponse);
-
-        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/freeze"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    @DisplayName("PATCH /admin/accounts/{iban}/freeze - already frozen should return 409")
-    void freezeAccount_conflict() throws Exception {
-        when(adminService.freezeAccount("NL01INHO0000000010")).thenThrow(new AccountStateException("Already frozen"));
-
-        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/freeze"))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    @DisplayName("PATCH /admin/accounts/{iban}/unfreeze - should return 200")
-    void unfreezeAccount() throws Exception {
-        when(adminService.unfreezeAccount("NL01INHO0000000010")).thenReturn(accountResponse);
-
-        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/unfreeze"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    @DisplayName("PATCH /admin/accounts/{iban}/close - should return 200")
-    void closeAccount() throws Exception {
-        when(adminService.closeAccount("NL01INHO0000000010")).thenReturn(accountResponse);
-
-        mockMvc.perform(patch("/admin/accounts/NL01INHO0000000010/close"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    @DisplayName("POST /admin/transactions/{id}/reverse - should return 200")
-    void reverseTransaction() throws Exception {
-        TransactionReversalResponse response = new TransactionReversalResponse();
-        response.setReversalTransactionId(101L);
-
-        when(adminService.reverseTransaction(eq(100L), anyString())).thenReturn(response);
-
-        // Must supply a principal — security is excluded but the controller calls
-        // authentication.getName(), which throws NPE if authentication is null
-        mockMvc.perform(post("/admin/transactions/100/reverse")
-                        .principal(new UsernamePasswordAuthenticationToken("admin", null)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reversalTransactionId").value(101));
-    }
-
-    @Test
-    @DisplayName("GET /admin/audit-logs - should return list")
-    void getAuditLogs() throws Exception {
-        AuditLogResponse log = new AuditLogResponse();
-        log.setId(1L);
-        log.setActorUsername("admin");
-
-        when(adminService.getAuditLogs()).thenReturn(List.of(log));
-
-        mockMvc.perform(get("/admin/audit-logs"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].actorUsername").value("admin"));
-    }
+    // --Efe(Admin) — audit log test moved to AuditLogControllerTest
+//    @Test
+//    @DisplayName("GET /admin/audit-logs - should return list")
+//    void getAuditLogs() throws Exception {
+//        AuditLogResponse log = new AuditLogResponse();
+//        log.setId(1L);
+//        log.setActorUsername("admin");
+//
+//        when(adminService.getAuditLogs()).thenReturn(List.of(log));
+//
+//        mockMvc.perform(get("/admin/audit-logs"))
+//                .andExpect(status().isOk())
+//                .andExpect(jsonPath("$[0].actorUsername").value("admin"));
+//    }
 }

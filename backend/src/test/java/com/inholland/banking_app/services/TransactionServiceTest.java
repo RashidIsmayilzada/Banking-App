@@ -44,8 +44,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+// --Efe(Admin)
 
 @ExtendWith(MockitoExtension.class)
 class TransactionServiceTest {
@@ -60,6 +62,10 @@ class TransactionServiceTest {
     @Mock private UserService userService;
     @Mock private TransactionMapper transactionMapper;
     @Mock private TransactionPolicy transactionPolicy;
+    // --Efe(Admin)
+    @Mock private com.inholland.banking_app.repositories.UserRepository userRepository;
+    // --Efe(Admin)
+    @Mock private AuditService auditService;
 
     @InjectMocks private TransactionService transactionService;
 
@@ -525,6 +531,84 @@ class TransactionServiceTest {
         assertThatThrownBy(() -> transactionService.createTransaction(request, "customer"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Daily transfer limit");
+    }
+
+    // --Efe(Admin) — new unit tests for transaction reversal moved from AdminService
+
+    @Test
+    @DisplayName("reverseTransaction() TRANSFER - should restore balances, save reversal, and record audit log")
+    void reverseTransaction_transfer_shouldRestoreBalancesAndSaveReversal() {
+        Account fromAccount = makeAccount(FROM_IBAN, customer, AccountType.CHECKING,
+                new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), true);
+        Account toAccount = makeAccount(TO_IBAN, otherCustomer, AccountType.CHECKING,
+                new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), true);
+
+        Transaction original = new Transaction();
+        original.setId(100L);
+        original.setTransactionType(TransactionType.TRANSFER);
+        original.setAmount(new BigDecimal("100.00"));
+        original.setFromAccount(fromAccount);
+        original.setToAccount(toAccount);
+        original.setCurrency("EUR");
+
+        when(transactionRepository.findById(100L)).thenReturn(Optional.of(original));
+        when(transactionRepository.existsByReversesTransactionId(100L)).thenReturn(false);
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(employee));
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
+            Transaction t = inv.getArgument(0);
+            t.setId(999L);
+            return t;
+        });
+
+        com.inholland.banking_app.dtos.TransactionReversalResponse response =
+                transactionService.reverseTransaction(100L, "admin");
+
+        assertThat(fromAccount.getBalance()).isEqualByComparingTo("1100.00");
+        assertThat(toAccount.getBalance()).isEqualByComparingTo("400.00");
+        assertThat(response.getOriginalTransactionId()).isEqualTo(100L);
+        assertThat(response.getReversalTransactionId()).isEqualTo(999L);
+        assertThat(response.getTransactionType()).isEqualTo("REVERSAL");
+        verify(transactionRepository, times(1)).save(any(Transaction.class));
+        verify(auditService, times(1)).record(any(), eq(com.inholland.banking_app.models.enums.AuditAction.TRANSACTION_REVERSED), anyString(), eq(100L), anyString());
+    }
+
+    @Test
+    @DisplayName("reverseTransaction() - should throw IllegalStateException when transaction is already reversed")
+    void reverseTransaction_shouldThrow_whenAlreadyReversed() {
+        Transaction original = new Transaction();
+        original.setId(100L);
+        original.setTransactionType(TransactionType.TRANSFER);
+
+        when(transactionRepository.findById(100L)).thenReturn(Optional.of(original));
+        when(transactionRepository.existsByReversesTransactionId(100L)).thenReturn(true);
+
+        assertThatThrownBy(() -> transactionService.reverseTransaction(100L, "admin"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("already been reversed");
+    }
+
+    @Test
+    @DisplayName("reverseTransaction() - should throw IllegalStateException when trying to reverse a REVERSAL")
+    void reverseTransaction_shouldThrow_whenOriginalIsAReversal() {
+        Transaction original = new Transaction();
+        original.setId(100L);
+        original.setTransactionType(TransactionType.REVERSAL);
+
+        when(transactionRepository.findById(100L)).thenReturn(Optional.of(original));
+
+        assertThatThrownBy(() -> transactionService.reverseTransaction(100L, "admin"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot reverse a reversal");
+    }
+
+    @Test
+    @DisplayName("reverseTransaction() - should throw IllegalArgumentException when transaction ID not found")
+    void reverseTransaction_shouldThrow_whenTransactionNotFound() {
+        when(transactionRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> transactionService.reverseTransaction(999L, "admin"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Transaction not found with ID: 999");
     }
 
     // --- helpers ---

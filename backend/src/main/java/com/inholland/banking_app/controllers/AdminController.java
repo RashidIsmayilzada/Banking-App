@@ -1,6 +1,5 @@
 package com.inholland.banking_app.controllers;
 
-import com.inholland.banking_app.dtos.AccountResponse;
 import com.inholland.banking_app.dtos.EmployeeCreateRequest;
 import com.inholland.banking_app.dtos.EmployeeResponse;
 import com.inholland.banking_app.dtos.EmployeeUpdateRequest;
@@ -13,9 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import org.springframework.security.core.Authentication;
-import com.inholland.banking_app.dtos.TransactionReversalResponse;
-import com.inholland.banking_app.dtos.AuditLogResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,7 +20,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
-@Tag(name = "Admin Management", description = "Endpoints for high-level system control, employee management, and auditing")
+@Tag(name = "Admin Management", description = "Endpoints for high-level system control and employee management")
 public class AdminController {
 
     private final AdminService adminService;
@@ -76,50 +72,52 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Get All Accounts", description = "Retrieves a system-wide list of all customer bank accounts.")
-    @GetMapping("/accounts")
-    public ResponseEntity<List<AccountResponse>> getAllAccounts() {
-        return ResponseEntity.ok(adminService.getAllAccounts());
-    }
+    // --Efe(Admin) — account operations moved to AccountController under /accounts/{iban}/freeze|unfreeze|close
+//    @Operation(summary = "Get All Accounts", description = "Retrieves a system-wide list of all customer bank accounts.")
+//    @GetMapping("/accounts")
+//    public ResponseEntity<List<AccountResponse>> getAllAccounts() {
+//        return ResponseEntity.ok(adminService.getAllAccounts());
+//    }
+//
+//    @Operation(summary = "Get Account by IBAN", description = "Retrieves the details, balances, and status of a specific bank account.")
+//    @GetMapping("/accounts/{iban}")
+//    public ResponseEntity<AccountResponse> getAccount(@PathVariable String iban) {
+//        return ResponseEntity.ok(adminService.getAccount(iban));
+//    }
+//
+//    @Operation(summary = "Freeze Account", description = "Instantly freezes a bank account, blocking all outgoing withdrawals or transfers. Used for fraud containment.")
+//    @PatchMapping("/accounts/{iban}/freeze")
+//    public ResponseEntity<AccountResponse> freezeAccount(@PathVariable String iban) {
+//        return ResponseEntity.ok(adminService.freezeAccount(iban));
+//    }
+//
+//    @Operation(summary = "Unfreeze Account", description = "Removes a freeze from a bank account, restoring normal transaction capabilities.")
+//    @PatchMapping("/accounts/{iban}/unfreeze")
+//    public ResponseEntity<AccountResponse> unfreezeAccount(@PathVariable String iban) {
+//        return ResponseEntity.ok(adminService.unfreezeAccount(iban));
+//    }
+//
+//    @Operation(summary = "Close Account", description = "Permanently closes a bank account. No further transactions can be processed on a closed account.")
+//    @PatchMapping("/accounts/{iban}/close")
+//    public ResponseEntity<AccountResponse> closeAccount(@PathVariable String iban) {
+//        return ResponseEntity.ok(adminService.closeAccount(iban));
+//    }
 
-    @Operation(summary = "Get Account by IBAN", description = "Retrieves the details, balances, and status of a specific bank account.")
-    @GetMapping("/accounts/{iban}")
-    public ResponseEntity<AccountResponse> getAccount(@PathVariable String iban) {
-        return ResponseEntity.ok(adminService.getAccount(iban));
-    }
+    // --Efe(Admin) — transaction reversal moved to TransactionController under /transactions/{id}/reverse
+//    @Operation(summary = "Reverse Transaction", description = "Reverses a previously completed transaction. Automatically creates a compensating reversal record to restore balances.")
+//    @PostMapping("/transactions/{id}/reverse")
+//    public ResponseEntity<TransactionReversalResponse> reverseTransaction(
+//            @PathVariable Long id,
+//            Authentication authentication) {
+//
+//        String adminUsername = authentication.getName();
+//        return ResponseEntity.ok(adminService.reverseTransaction(id, adminUsername));
+//    }
 
-    @Operation(summary = "Freeze Account", description = "Instantly freezes a bank account, blocking all outgoing withdrawals or transfers. Used for fraud containment.")
-    @PatchMapping("/accounts/{iban}/freeze")
-    public ResponseEntity<AccountResponse> freezeAccount(@PathVariable String iban) {
-        return ResponseEntity.ok(adminService.freezeAccount(iban));
-    }
-
-    @Operation(summary = "Unfreeze Account", description = "Removes a freeze from a bank account, restoring normal transaction capabilities.")
-    @PatchMapping("/accounts/{iban}/unfreeze")
-    public ResponseEntity<AccountResponse> unfreezeAccount(@PathVariable String iban) {
-        return ResponseEntity.ok(adminService.unfreezeAccount(iban));
-    }
-
-    @Operation(summary = "Close Account", description = "Permanently closes a bank account. No further transactions can be processed on a closed account.")
-    @PatchMapping("/accounts/{iban}/close")
-    public ResponseEntity<AccountResponse> closeAccount(@PathVariable String iban) {
-        return ResponseEntity.ok(adminService.closeAccount(iban));
-    }
-
-    @Operation(summary = "Reverse Transaction", description = "Reverses a previously completed transaction. Automatically creates a compensating reversal record to restore balances.")
-    @PostMapping("/transactions/{id}/reverse")
-    public ResponseEntity<TransactionReversalResponse> reverseTransaction(
-            @PathVariable Long id,
-            Authentication authentication) {
-
-        String adminUsername = authentication.getName();
-        return ResponseEntity.ok(adminService.reverseTransaction(id, adminUsername));
-    }
-
-    @Operation(summary = "Get Audit Logs", description = "Retrieves the immutable system audit log, detailing all high-level actions taken by administrative users.")
-    @GetMapping("/audit-logs")
-    public ResponseEntity<List<AuditLogResponse>> getAuditLogs() {
-        return ResponseEntity.ok(adminService.getAuditLogs());
-    }
-
+    // --Efe(Admin) — audit logs moved to AuditLogController under /audit-logs
+//    @Operation(summary = "Get Audit Logs", description = "Retrieves the immutable system audit log, detailing all high-level actions taken by administrative users.")
+//    @GetMapping("/audit-logs")
+//    public ResponseEntity<List<AuditLogResponse>> getAuditLogs() {
+//        return ResponseEntity.ok(adminService.getAuditLogs());
+//    }
 }

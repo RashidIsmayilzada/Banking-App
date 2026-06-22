@@ -11,6 +11,7 @@ import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.security.JwtAuthenticationFilter;
 import com.inholland.banking_app.services.AccountService;
 import jakarta.persistence.EntityNotFoundException;
+// --Efe(Admin)
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -193,6 +194,66 @@ class AccountControllerTest {
         mockMvc.perform(patch("/accounts/" + IBAN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(limitRequest("8000.00"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_STATE_CONFLICT"));
+    }
+
+    // --Efe(Admin)
+    @Test
+    void freezeAccount_returns200_whenAccountIsActive() throws Exception {
+        when(accountService.freezeAccount(IBAN)).thenReturn(accountResponse);
+
+        mockMvc.perform(patch("/accounts/" + IBAN + "/freeze"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.iban").value(IBAN));
+    }
+
+    // --Efe(Admin)
+    @Test
+    void freezeAccount_returns409_whenAlreadyFrozenOrClosed() throws Exception {
+        when(accountService.freezeAccount(IBAN)).thenThrow(new AccountStateException("Account is already frozen"));
+
+        mockMvc.perform(patch("/accounts/" + IBAN + "/freeze"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_STATE_CONFLICT"));
+    }
+
+    // --Efe(Admin)
+    @Test
+    void unfreezeAccount_returns200_whenAccountIsFrozen() throws Exception {
+        when(accountService.unfreezeAccount(IBAN)).thenReturn(accountResponse);
+
+        mockMvc.perform(patch("/accounts/" + IBAN + "/unfreeze"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.iban").value(IBAN));
+    }
+
+    // --Efe(Admin)
+    @Test
+    void unfreezeAccount_returns409_whenAccountIsNotFrozen() throws Exception {
+        when(accountService.unfreezeAccount(IBAN)).thenThrow(new AccountStateException("Account is not frozen"));
+
+        mockMvc.perform(patch("/accounts/" + IBAN + "/unfreeze"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_STATE_CONFLICT"));
+    }
+
+    // --Efe(Admin)
+    @Test
+    void closeAccount_returns200_whenAccountIsActive() throws Exception {
+        when(accountService.closeAccount(IBAN)).thenReturn(accountResponse);
+
+        mockMvc.perform(patch("/accounts/" + IBAN + "/close"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.iban").value(IBAN));
+    }
+
+    // --Efe(Admin)
+    @Test
+    void closeAccount_returns409_whenAlreadyClosed() throws Exception {
+        when(accountService.closeAccount(IBAN)).thenThrow(new AccountStateException("Account is already closed"));
+
+        mockMvc.perform(patch("/accounts/" + IBAN + "/close"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ACCOUNT_STATE_CONFLICT"));
     }

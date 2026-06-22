@@ -1,5 +1,6 @@
 package com.inholland.banking_app.services;
 
+import com.inholland.banking_app.dtos.AuditLogResponse;
 import com.inholland.banking_app.models.AuditLog;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AuditAction;
@@ -8,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,5 +33,30 @@ public class AuditService {
         auditLog.setCreatedAt(LocalDateTime.now());
 
         auditLogRepository.save(auditLog);
+    }
+
+    // --Efe(Admin)
+    public List<AuditLogResponse> getAuditLogs() {
+        return auditLogRepository.findAll().stream()
+                .map(this::toAuditLogResponse)
+                .collect(Collectors.toList());
+    }
+
+    // --Efe(Admin)
+    private AuditLogResponse toAuditLogResponse(AuditLog log) {
+        AuditLogResponse response = new AuditLogResponse();
+        response.setId(log.getId());
+        response.setActorId(log.getActorId());
+        response.setActorUsername(log.getActorUsername());
+
+        if (log.getAction() != null) {
+            response.setAction(log.getAction().name());
+        }
+
+        response.setTargetType(log.getTargetType());
+        response.setTargetId(log.getTargetId());
+        response.setDetails(log.getDetails());
+        response.setCreatedAt(log.getCreatedAt());
+        return response;
     }
 }

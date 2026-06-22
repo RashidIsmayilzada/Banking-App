@@ -4,6 +4,8 @@ import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
 import com.inholland.banking_app.services.AccountService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/accounts")
 @PreAuthorize("hasAnyRole('EMPLOYEE', 'CUSTOMER')")
+@Tag(name = "Account Management", description = "Endpoints for reading and managing bank accounts")
 public class AccountController {
 
     private final AccountService accountService;
@@ -58,5 +61,32 @@ public class AccountController {
             @PathVariable String iban,
             @Valid @RequestBody AccountUpdateRequest request) {
         return ResponseEntity.ok(accountService.updateAccount(iban, request));
+    }
+
+    // --Efe(Admin)
+    @Operation(summary = "Freeze Account",
+            description = "Admin operation: instantly freezes a bank account, blocking all outgoing withdrawals or transfers. Used for fraud containment. Requires ADMIN role.")
+    @PatchMapping("/{iban}/freeze")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AccountResponse> freezeAccount(@PathVariable String iban) {
+        return ResponseEntity.ok(accountService.freezeAccount(iban));
+    }
+
+    // --Efe(Admin)
+    @Operation(summary = "Unfreeze Account",
+            description = "Admin operation: removes a freeze from a bank account, restoring normal transaction capabilities. Requires ADMIN role.")
+    @PatchMapping("/{iban}/unfreeze")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AccountResponse> unfreezeAccount(@PathVariable String iban) {
+        return ResponseEntity.ok(accountService.unfreezeAccount(iban));
+    }
+
+    // --Efe(Admin)
+    @Operation(summary = "Close Account",
+            description = "Admin operation: permanently closes a bank account. No further transactions can be processed on a closed account. Requires ADMIN role.")
+    @PatchMapping("/{iban}/close")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AccountResponse> closeAccount(@PathVariable String iban) {
+        return ResponseEntity.ok(accountService.closeAccount(iban));
     }
 }
