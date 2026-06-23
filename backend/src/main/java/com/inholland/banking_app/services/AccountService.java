@@ -61,7 +61,6 @@ public class AccountService {
     }
 
     // --- Updates ---
-
     // Applies limit changes and/or closes the account, enforcing account rules.
     @Transactional
     public AccountResponse updateAccount(String iban, AccountUpdateRequest request) {
@@ -71,7 +70,6 @@ public class AccountService {
         if (account.getStatus() == AccountStatus.CLOSED) {
             throw new AccountStateException("Cannot update a closed account");
         }
-
         if (request.getAbsoluteTransferLimit() != null) {
             account.setAbsoluteTransferLimit(request.getAbsoluteTransferLimit());
         }
@@ -79,8 +77,7 @@ public class AccountService {
             account.setDailyTransferLimit(request.getDailyTransferLimit());
         }
         if (request.getStatus() == AccountStatus.CLOSED) {
-            account.setStatus(AccountStatus.CLOSED);
-            account.setClosedAt(LocalDateTime.now());
+            account.markClosed();
         }
         accountRepository.save(account);
         return accountMapper.toResponse(account);
