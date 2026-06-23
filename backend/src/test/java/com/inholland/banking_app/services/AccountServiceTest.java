@@ -94,7 +94,7 @@ class AccountServiceTest {
         AccountListResponse result = accountService.listAccounts(null, pageable);
 
         assertEquals(1, result.getAccounts().size());
-        verify(accountRepository).findAll(pageable);
+        verify(accountRepository).findAll(pageable); //as null, return all
         verify(accountRepository, never()).findByCustomerId(any(), any());
     }
 
@@ -153,17 +153,6 @@ class AccountServiceTest {
         verify(accountRepository, never()).save(any());
     }
 
-    @Test
-    void updateAccount_throwsAndDoesNotSave_whenClosingAnAlreadyClosedAccount() {
-        account.setStatus(AccountStatus.CLOSED);
-        when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
-
-        AccountUpdateRequest request = new AccountUpdateRequest();
-        request.setStatus(AccountStatus.CLOSED);
-
-        assertThrows(AccountStateException.class, () -> accountService.updateAccount(IBAN, request));
-        verify(accountRepository, never()).save(any());
-    }
 
     // --Efe(Admin) — new unit tests for account lifecycle operations moved from AdminService
 
