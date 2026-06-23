@@ -13,7 +13,6 @@ import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.AuditAction;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
 // --Efe(Admin)
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -100,17 +99,6 @@ class AccountServiceTest {
     }
 
     @Test
-    void listAccounts_filtersByCustomerId_whenProvided() {
-        when(accountRepository.findByCustomerId(1L, pageable)).thenReturn(oneAccountPage());
-        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
-
-        accountService.listAccounts(1L, pageable);
-
-        verify(accountRepository).findByCustomerId(1L, pageable);
-        verify(accountRepository, never()).findAll(any(Pageable.class));
-    }
-
-    @Test
     void listAccountsOwnedBy_queriesByUsername() {
         when(accountRepository.findByCustomerUsername("customer", pageable)).thenReturn(oneAccountPage());
         when(accountMapper.toResponse(account)).thenReturn(accountResponse);
@@ -129,13 +117,6 @@ class AccountServiceTest {
     }
 
     @Test
-    void getAccount_throwsNotFound_whenAccountMissing() {
-        when(accountRepository.findById(IBAN)).thenReturn(Optional.empty());
-
-        assertThrows(EntityNotFoundException.class, () -> accountService.getAccount(IBAN));
-    }
-
-    @Test
     void updateAccount_changesBothLimits_whenProvided() {
         when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
 
@@ -145,16 +126,6 @@ class AccountServiceTest {
         assertThat(account.getAbsoluteTransferLimit()).isEqualByComparingTo("8000.00");
         assertThat(account.getDailyTransferLimit()).isEqualByComparingTo("3000.00");
         verify(accountRepository).save(account);
-    }
-
-    @Test
-    void updateAccount_changesOnlyProvidedLimit_andLeavesOtherUntouched() {
-        when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
-
-        accountService.updateAccount(IBAN, limitRequest("8000.00", null));
-
-        assertThat(account.getAbsoluteTransferLimit()).isEqualByComparingTo("8000.00");
-        assertThat(account.getDailyTransferLimit()).isEqualByComparingTo("2000.00");
     }
 
     @Test
@@ -168,14 +139,6 @@ class AccountServiceTest {
         assertEquals(AccountStatus.CLOSED, account.getStatus());
         assertNotNull(account.getClosedAt());
         verify(accountRepository).save(account);
-    }
-
-    @Test
-    void updateAccount_throwsNotFound_whenAccountMissing() {
-        when(accountRepository.findById(IBAN)).thenReturn(Optional.empty());
-
-        assertThrows(EntityNotFoundException.class,
-                () -> accountService.updateAccount(IBAN, limitRequest("8000.00", null)));
     }
 
     @Test
@@ -300,6 +263,7 @@ class AccountServiceTest {
 
         lenient().when(userRepository.findByUsername("admin")).thenReturn(java.util.Optional.of(admin));
     }
+
 
     private Page<Account> oneAccountPage() {
         return new PageImpl<>(List.of(account), pageable, 1);

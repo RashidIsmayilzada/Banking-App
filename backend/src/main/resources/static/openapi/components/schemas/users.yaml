@@ -38,43 +38,31 @@ UserCreateRequest:
       $ref: ./common.yaml#/Role
       description: Defaults to CUSTOMER if omitted.
 
-UserUpdateRequest:
+UserApprovalRequest:
   type: object
+  required:
+    - status
   description: |
-    All fields are optional. Customers may update their own profile fields.
-    Employees may additionally set status (approval decision) and account limits
-    which are applied when status is set to APPROVED.
+    Approval decision for a customer. When status is APPROVED the customer is
+    activated and their default accounts are created with the optional limits
+    below (defaults are used when omitted).
   properties:
-    firstName:
-      type: string
-      maxLength: 100
-    lastName:
-      type: string
-      maxLength: 100
-    phoneNumber:
-      type: string
-      maxLength: 20
     status:
-      $ref: ./common.yaml#/UserStatus
-    note:
-      type: string
-      maxLength: 4000
-    checkingAbsoluteTransferLimit:
+      $ref: ./common.yaml#/CustomerStatus
+    checkingAbsoluteLimit:
+      type: number
+      format: double
+      description: Optional absolute (minimum balance) limit for the new checking account. May be negative for an overdraft.
+    checkingDailyLimit:
       type: number
       format: double
       minimum: 0
-    checkingDailyTransferLimit:
+      description: Optional daily transfer limit for the new checking account.
+    savingsDailyLimit:
       type: number
       format: double
       minimum: 0
-    savingsAbsoluteTransferLimit:
-      type: number
-      format: double
-      minimum: 0
-    savingsDailyTransferLimit:
-      type: number
-      format: double
-      minimum: 0
+      description: Optional daily transfer limit for the new savings account.
 
 UserResponse:
   type: object

@@ -165,9 +165,12 @@ async function approve() {
   if (!confirm('Are you sure you want to approve this customer and create their accounts?')) return
   loading.value = true
   try {
-    // Note: The backend approveUser might need enhancement to handle limits and IBANs 
-    // but for now we follow the existing API which just takes a status
-    await userService.approveUser(route.params.id, 'APPROVED')
+    // Approve the customer (creating their accounts) and apply the checking
+    // transfer limits in one call.
+    await userService.approveUser(route.params.id, 'APPROVED', {
+      checkingAbsoluteLimit: parseFloat(form.value.absoluteLimit),
+      checkingDailyLimit: parseFloat(form.value.dailyLimit),
+    })
     router.push('/employee/approvals')
   } catch (err) {
     alert('Failed to approve: ' + err.message)

@@ -80,13 +80,13 @@ public class SecurityConfig {
                                 "/auth/login",
                                 "/auth/logout",
                                 "/auth/register",
-                                "/users/register",
                                 "/atm/sessions",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/openapi/**",
-                                "/v3/api-docs/**",
-                                "/h2-console/**")
+                                "/v3/api-docs/**"
+ //                               "/h2-console/**"
+ )
                         .permitAll()
                             .requestMatchers(HttpMethod.PATCH, "/users/*/approval").hasRole("EMPLOYEE")
                         .requestMatchers("/admin/**").hasRole("ADMIN")

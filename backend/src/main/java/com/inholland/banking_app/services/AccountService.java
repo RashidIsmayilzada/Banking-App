@@ -8,7 +8,9 @@ import com.inholland.banking_app.mappers.AccountMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
+import com.inholland.banking_app.models.enums.AccountType;
 import com.inholland.banking_app.models.enums.AuditAction;
+import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -19,6 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @RequiredArgsConstructor
@@ -36,9 +39,12 @@ public class AccountService {
 
     // Lists all accounts, or just one customer's when customerId is given.
     public AccountListResponse listAccounts(Long customerId, Pageable pageable) {
-        Page<Account> accounts = (customerId != null)
-                ? accountRepository.findByCustomerId(customerId, pageable)
-                : accountRepository.findAll(pageable);
+        Page<Account> accounts;
+        if (customerId != null) {
+            accounts = accountRepository.findByCustomerId(customerId, pageable);
+        } else {
+            accounts = accountRepository.findAll(pageable);
+        }
         return AccountListResponse.of(accounts.map(accountMapper::toResponse));
     }
 
@@ -61,20 +67,20 @@ public class AccountService {
     public AccountResponse updateAccount(String iban, AccountUpdateRequest request) {
         Account account = findAccountOrThrow(iban);
 
-        assertCanUpdateLimits(account);
+        // A closed account is frozen: its limits and status can no longer change.
+        if (account.getStatus() == AccountStatus.CLOSED) {
+            throw new AccountStateException("Cannot update a closed account");
+        }
+
         if (request.getAbsoluteTransferLimit() != null) {
             account.setAbsoluteTransferLimit(request.getAbsoluteTransferLimit());
         }
         if (request.getDailyTransferLimit() != null) {
             account.setDailyTransferLimit(request.getDailyTransferLimit());
         }
-        if (AccountStatus.CLOSED.equals(request.getStatus())) {
-            assertCanClose(account);
+        if (request.getStatus() == AccountStatus.CLOSED) {
             account.setStatus(AccountStatus.CLOSED);
             account.setClosedAt(LocalDateTime.now());
-        } else if (AccountStatus.ACTIVE.equals(request.getStatus())) {
-            account.setStatus(AccountStatus.ACTIVE);
-            account.setClosedAt(null);
         }
         accountRepository.save(account);
         return accountMapper.toResponse(account);
@@ -144,25 +150,61 @@ public class AccountService {
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
     }
 
-    // A closed account is frozen: its transfer limits can no longer be changed.
-    private void assertCanUpdateLimits(Account account) {
-        if (account.getStatus() == AccountStatus.CLOSED) {
-            throw new AccountStateException("Cannot update a closed account");
-        }
-    }
-
-    // An account can only be closed once.
-    private void assertCanClose(Account account) {
-        if (account.getStatus() == AccountStatus.CLOSED) {
-            throw new AccountStateException("Account is already closed");
-        }
-    }
-
     // --Efe(Admin)
-    // Get current admin user if not crash it
     private User getCurrentAdmin() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Current authenticated admin user not found"));
+    }
+
+    // --- User account lifecycle (called by UserService) ---
+
+    public void createDefaultAccounts(User user, BigDecimal checkingAbsoluteLimit,
+                                      BigDecimal checkingDailyLimit, BigDecimal savingsDailyLimit) {
+        createAccount(user, AccountType.CHECKING, checkingAbsoluteLimit, checkingDailyLimit);
+        createAccount(user, AccountType.SAVINGS, null, savingsDailyLimit);
+    }
+
+    public boolean hasNoAccounts(User user) {
+        return accountRepository.findByCustomerId(user.getId(), Pageable.unpaged()).isEmpty();
+    }
+
+    public void closeAllAccounts(User user) {
+        for (Account account : user.getAccounts()) {
+            account.setStatus(AccountStatus.CLOSED);
+            account.setClosedAt(LocalDateTime.now());
+        }
+    }
+
+    public void reopenAllAccounts(User user) {
+        for (Account account : user.getAccounts()) {
+            account.setStatus(AccountStatus.ACTIVE);
+            account.setClosedAt(null);
+        }
+    }
+
+    private void createAccount(User user, AccountType accountType,
+                               BigDecimal customAbsoluteLimit, BigDecimal customDailyLimit) {
+        String iban = generateIban(user.getId(), accountType);
+        Account account = accountType == AccountType.CHECKING
+                ? AccountFactory.createCheckingAccount(user, iban)
+                : AccountFactory.createSavingsAccount(user, iban);
+        applyLimits(account, customAbsoluteLimit, customDailyLimit);
+        user.getAccounts().add(account);
+    }
+
+    private void applyLimits(Account account, BigDecimal absolute, BigDecimal daily) {
+        if (absolute != null) account.setAbsoluteTransferLimit(absolute);
+        if (daily != null) account.setDailyTransferLimit(daily);
+    }
+
+    private String generateIban(Long userId, AccountType accountType) {
+        long accountNumber = userId * 10 + (accountType == AccountType.CHECKING ? 1 : 2);
+        String iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
+        while (accountRepository.existsByIban(iban)) {
+            accountNumber++;
+            iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
+        }
+        return iban;
     }
 }

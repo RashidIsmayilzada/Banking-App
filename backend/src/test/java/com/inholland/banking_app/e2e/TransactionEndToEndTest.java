@@ -107,7 +107,7 @@ class TransactionEndToEndTest {
         userRepository.deleteAll();
     }
 
-    // --- Deposit ---
+    // Deposit
 
     @Test
     @DisplayName("DEPOSIT increases account balance and returns transaction result")
@@ -134,7 +134,7 @@ class TransactionEndToEndTest {
         assertThat(newBalance).isEqualByComparingTo("5200.00");
     }
 
-    // --- Withdrawal ---
+    // Withdrawal
 
     @Test
     @DisplayName("WITHDRAWAL decreases account balance and returns transaction result")
@@ -199,7 +199,7 @@ class TransactionEndToEndTest {
                 .andExpect(status().isForbidden());
     }
 
-    // --- Transfer ---
+    // Transfer
 
     @Test
     @DisplayName("TRANSFER via IBAN updates both account balances")
@@ -270,7 +270,7 @@ class TransactionEndToEndTest {
                 .andExpect(status().isBadRequest());
     }
 
-    // --- List transactions ---
+    // List Transactions
 
     @Test
     @DisplayName("GET /transactions returns only the authenticated customer's transactions")
@@ -313,7 +313,7 @@ class TransactionEndToEndTest {
                 .andExpect(jsonPath("$.page.totalElements").value(0));
     }
 
-    // --- Helpers ---
+    // Helpers
 
     private User createUser(String email, String username, Role role) {
         User user = new User();
