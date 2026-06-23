@@ -40,34 +40,36 @@ export function deleteEmployee(id) {
 
 // ==========================================
 // ACCOUNT MANAGEMENT
+// --Efe(Admin) updated paths to match refactored RESTful endpoints
 // ==========================================
 
 export function getAllAccounts() {
-    return apiFetch('/admin/accounts')
+    return apiFetch('/accounts')
 }
 
 export function freezeAccount(id) {
-    return apiFetch(`/admin/accounts/${id}/freeze`, { method: 'PATCH' })
+    return apiFetch(`/accounts/${id}/freeze`, { method: 'PATCH' })
 }
 
 export function unfreezeAccount(id) {
-    return apiFetch(`/admin/accounts/${id}/unfreeze`, { method: 'PATCH' })
+    return apiFetch(`/accounts/${id}/unfreeze`, { method: 'PATCH' })
 }
 
 export function closeAccount(id) {
-    return apiFetch(`/admin/accounts/${id}/close`, { method: 'PATCH' })
+    return apiFetch(`/accounts/${id}/close`, { method: 'PATCH' })
 }
 
 // ==========================================
 // TRANSACTIONS & AUDIT LOGS
+// --Efe(Admin) updated paths to match refactored RESTful endpoints
 // ==========================================
 
 export function reverseTransaction(id) {
-    return apiFetch(`/admin/transactions/${id}/reverse`, {
+    return apiFetch(`/transactions/${id}/reverse`, {
         method: 'POST'
     })
 }
 
 export function getAuditLogs() {
-    return apiFetch('/admin/audit-logs')
+    return apiFetch('/audit-logs')
 }

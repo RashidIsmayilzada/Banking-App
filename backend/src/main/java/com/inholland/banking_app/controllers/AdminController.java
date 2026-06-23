@@ -73,18 +73,6 @@ public class AdminController {
     }
 
     // --Efe(Admin) — account operations moved to AccountController under /accounts/{iban}/freeze|unfreeze|close
-//    @Operation(summary = "Get All Accounts", description = "Retrieves a system-wide list of all customer bank accounts.")
-//    @GetMapping("/accounts")
-//    public ResponseEntity<List<AccountResponse>> getAllAccounts() {
-//        return ResponseEntity.ok(adminService.getAllAccounts());
-//    }
-//
-//    @Operation(summary = "Get Account by IBAN", description = "Retrieves the details, balances, and status of a specific bank account.")
-//    @GetMapping("/accounts/{iban}")
-//    public ResponseEntity<AccountResponse> getAccount(@PathVariable String iban) {
-//        return ResponseEntity.ok(adminService.getAccount(iban));
-//    }
-//
 //    @Operation(summary = "Freeze Account", description = "Instantly freezes a bank account, blocking all outgoing withdrawals or transfers. Used for fraud containment.")
 //    @PatchMapping("/accounts/{iban}/freeze")
 //    public ResponseEntity<AccountResponse> freezeAccount(@PathVariable String iban) {

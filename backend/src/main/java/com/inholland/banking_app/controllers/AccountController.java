@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/accounts")
-@PreAuthorize("hasAnyRole('EMPLOYEE', 'CUSTOMER')")
+@PreAuthorize("hasAnyRole('EMPLOYEE', 'CUSTOMER', 'ADMIN')")
 @Tag(name = "Account Management", description = "Endpoints for reading and managing bank accounts")
 public class AccountController {
 

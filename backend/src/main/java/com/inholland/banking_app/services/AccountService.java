@@ -159,6 +159,7 @@ public class AccountService {
     }
 
     // --Efe(Admin)
+    // Get current admin user if not crash it
     private User getCurrentAdmin() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
