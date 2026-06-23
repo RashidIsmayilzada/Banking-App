@@ -10,7 +10,10 @@ import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AccountType;
+import com.inholland.banking_app.models.enums.AuditAction;
 import com.inholland.banking_app.repositories.AccountRepository;
+import com.inholland.banking_app.repositories.UserRepository;
+// --Efe(Admin)
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +36,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,6 +52,10 @@ class AccountServiceTest {
 
     @Mock private AccountRepository accountRepository;
     @Mock private AccountMapper accountMapper;
+    // --Efe(Admin)
+    @Mock private AuditService auditService;
+    // --Efe(Admin)
+    @Mock private UserRepository userRepository;
 
     @InjectMocks private AccountService accountService;
 
@@ -140,6 +152,118 @@ class AccountServiceTest {
         assertTrue(thrown.getMessage().contains("closed"));
         verify(accountRepository, never()).save(any());
     }
+
+    @Test
+    void updateAccount_throwsAndDoesNotSave_whenClosingAnAlreadyClosedAccount() {
+        account.setStatus(AccountStatus.CLOSED);
+        when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
+
+        AccountUpdateRequest request = new AccountUpdateRequest();
+        request.setStatus(AccountStatus.CLOSED);
+
+        assertThrows(AccountStateException.class, () -> accountService.updateAccount(IBAN, request));
+        verify(accountRepository, never()).save(any());
+    }
+
+    // --Efe(Admin) — new unit tests for account lifecycle operations moved from AdminService
+
+    @Test
+    void freezeAccount_marksFrozenAndRecordsAudit_whenActiveAccount() {
+        account.setStatus(AccountStatus.ACTIVE);
+        when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
+        when(accountRepository.save(any())).thenReturn(account);
+        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
+        stubCurrentAdmin();
+
+        accountService.freezeAccount(IBAN);
+
+        assertTrue(account.isFrozen());
+        verify(accountRepository, times(1)).save(account);
+        verify(auditService, times(1)).record(any(), eq(AuditAction.ACCOUNT_FROZEN), eq("ACCOUNT"), isNull(), anyString());
+    }
+
+    @Test
+    void freezeAccount_throwsConflict_whenAlreadyFrozen() {
+        account.setStatus(AccountStatus.FROZEN);
+        when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
+
+        assertThrows(AccountStateException.class, () -> accountService.freezeAccount(IBAN));
+        verify(accountRepository, never()).save(any());
+    }
+
+    @Test
+    void freezeAccount_throwsConflict_whenAccountIsClosed() {
+        account.setStatus(AccountStatus.CLOSED);
+        when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
+
+        assertThrows(AccountStateException.class, () -> accountService.freezeAccount(IBAN));
+        verify(accountRepository, never()).save(any());
+    }
+
+    @Test
+    void unfreezeAccount_marksActiveAndRecordsAudit_whenFrozen() {
+        account.setStatus(AccountStatus.FROZEN);
+        when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
+        when(accountRepository.save(any())).thenReturn(account);
+        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
+        stubCurrentAdmin();
+
+        accountService.unfreezeAccount(IBAN);
+
+        assertTrue(account.isActive());
+        verify(accountRepository, times(1)).save(account);
+        verify(auditService, times(1)).record(any(), eq(AuditAction.ACCOUNT_UNFROZEN), eq("ACCOUNT"), isNull(), anyString());
+    }
+
+    @Test
+    void unfreezeAccount_throwsConflict_whenNotFrozen() {
+        account.setStatus(AccountStatus.ACTIVE);
+        when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
+
+        assertThrows(AccountStateException.class, () -> accountService.unfreezeAccount(IBAN));
+        verify(accountRepository, never()).save(any());
+    }
+
+    @Test
+    void closeAccount_marksClosedAndRecordsAudit_whenActiveAccount() {
+        account.setStatus(AccountStatus.ACTIVE);
+        when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
+        when(accountRepository.save(any())).thenReturn(account);
+        when(accountMapper.toResponse(account)).thenReturn(accountResponse);
+        stubCurrentAdmin();
+
+        accountService.closeAccount(IBAN);
+
+        assertTrue(account.isClosed());
+        verify(accountRepository, times(1)).save(account);
+        verify(auditService, times(1)).record(any(), eq(AuditAction.ACCOUNT_CLOSED), eq("ACCOUNT"), isNull(), anyString());
+    }
+
+    @Test
+    void closeAccount_throwsConflict_whenAlreadyClosed() {
+        account.setStatus(AccountStatus.CLOSED);
+        when(accountRepository.findById(IBAN)).thenReturn(Optional.of(account));
+
+        assertThrows(AccountStateException.class, () -> accountService.closeAccount(IBAN));
+        verify(accountRepository, never()).save(any());
+    }
+
+    private void stubCurrentAdmin() {
+        User admin = new User();
+        admin.setId(1L);
+        admin.setUsername("admin");
+
+        org.springframework.security.core.Authentication auth =
+                org.mockito.Mockito.mock(org.springframework.security.core.Authentication.class);
+        lenient().when(auth.getName()).thenReturn("admin");
+        org.springframework.security.core.context.SecurityContext ctx =
+                org.mockito.Mockito.mock(org.springframework.security.core.context.SecurityContext.class);
+        lenient().when(ctx.getAuthentication()).thenReturn(auth);
+        org.springframework.security.core.context.SecurityContextHolder.setContext(ctx);
+
+        lenient().when(userRepository.findByUsername("admin")).thenReturn(java.util.Optional.of(admin));
+    }
+
 
     private Page<Account> oneAccountPage() {
         return new PageImpl<>(List.of(account), pageable, 1);
