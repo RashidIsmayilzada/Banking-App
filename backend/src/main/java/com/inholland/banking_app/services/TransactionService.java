@@ -6,6 +6,7 @@ import com.inholland.banking_app.dtos.TransactionRequest;
 import com.inholland.banking_app.dtos.TransactionResultDto;
 import com.inholland.banking_app.dtos.TransactionReversalResponse;
 import com.inholland.banking_app.exceptions.AccountStateException;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.mappers.TransactionMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.DailyTransferUsage;
@@ -300,7 +301,9 @@ public class TransactionService {
     }
 
     private void validateAccountForReversalDebit(Account account, BigDecimal amount) {
-        transactionPolicy.validateActiveAccount(account, "Cannot reverse: account is closed");
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new AccountStateException("Cannot reverse: account is closed");
+        }
         transactionPolicy.checkBalance(account, amount);
     }
 
