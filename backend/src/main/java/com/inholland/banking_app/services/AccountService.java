@@ -9,13 +9,13 @@ import com.inholland.banking_app.mappers.AccountMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
-import com.inholland.banking_app.models.enums.AccountType;
-import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.repositories.AccountRepository;
+import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +28,10 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final AccountMapper accountMapper;
+    // --Efe(Admin)
+    private final AuditService auditService;
+    // --Efe(Admin)
+    private final UserRepository userRepository;
 
     // --- Reads ---
 
@@ -55,7 +59,6 @@ public class AccountService {
     }
 
     // --- Updates ---
-
     // Applies limit changes and/or closes the account, enforcing account rules.
     @Transactional
     public AccountResponse updateAccount(String iban, AccountUpdateRequest request) {
@@ -65,7 +68,6 @@ public class AccountService {
         if (account.getStatus() == AccountStatus.CLOSED) {
             throw new AccountStateException("Cannot update a closed account");
         }
-
         if (request.getAbsoluteTransferLimit() != null) {
             account.setAbsoluteTransferLimit(request.getAbsoluteTransferLimit());
         }
@@ -73,10 +75,66 @@ public class AccountService {
             account.setDailyTransferLimit(request.getDailyTransferLimit());
         }
         if (request.getStatus() == AccountStatus.CLOSED) {
-            account.setStatus(AccountStatus.CLOSED);
-            account.setClosedAt(LocalDateTime.now());
+            account.markClosed();
         }
         accountRepository.save(account);
+        return accountMapper.toResponse(account);
+    }
+
+    // --Efe(Admin)
+    @Transactional
+    public AccountResponse freezeAccount(String iban) {
+        Account account = accountRepository.findById(iban)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
+
+        if (account.isClosed()) {
+            throw new AccountStateException("Cannot freeze a closed account");
+        }
+        if (account.isFrozen()) {
+            throw new AccountStateException("Account is already frozen");
+        }
+
+        account.markFrozen();
+        accountRepository.save(account);
+
+        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_FROZEN, "ACCOUNT", null, "Froze account: " + iban);
+
+        return accountMapper.toResponse(account);
+    }
+
+    // --Efe(Admin)
+    @Transactional
+    public AccountResponse unfreezeAccount(String iban) {
+        Account account = accountRepository.findById(iban)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
+
+        if (!account.isFrozen()) {
+            throw new AccountStateException("Account is not frozen");
+        }
+
+        account.unfreeze();
+        accountRepository.save(account);
+
+        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_UNFROZEN, "ACCOUNT", null, "Unfroze account: " + iban);
+
+        return accountMapper.toResponse(account);
+    }
+
+    // --Efe(Admin)
+    @Transactional
+    public AccountResponse closeAccount(String iban) {
+        Account account = accountRepository.findById(iban)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
+
+        if (account.isClosed()) {
+            throw new AccountStateException("Account is already closed");
+        }
+
+        account.markClosed();
+        accountRepository.save(account);
+
+        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_CLOSED, "ACCOUNT", null, "Closed account: " + iban);
+
         return accountMapper.toResponse(account);
     }
 
@@ -85,59 +143,5 @@ public class AccountService {
     private Account findAccountOrThrow(String iban) {
         return accountRepository.findById(iban)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
-    }
-
-    // ==================== Amazing code ====================
-
-    // Creates the default CHECKING + SAVINGS accounts and 
-    // apply the account limit for a newly approved customer
-    public void createDefaultAccounts(User user, ApproveCustomerRequest approveCustomer) {
-        createAccount(user, AccountType.CHECKING, approveCustomer.getCheckingAbsoluteLimit(), approveCustomer.getCheckingDailyLimit());
-        createAccount(user, AccountType.SAVINGS, null, approveCustomer.getSavingsDailyLimit());
-    }
-
-    public void closeAllAccounts(User user) {
-        // Get all the user account and set status to close
-        // and set the datetime
-        for (Account account : user.getAccounts()) {
-            account.setStatus(AccountStatus.CLOSED);
-            account.setClosedAt(LocalDateTime.now());
-        }
-    }
-
-    public void reopenAllAccounts(User user) {
-        for (Account account : user.getAccounts()) {
-            account.setStatus(AccountStatus.ACTIVE);
-            account.setClosedAt(null);
-        }
-    }
-
-    // Create Bank Account with Iban
-    private void createAccount(User user, AccountType accountType,
-            BigDecimal customAbsoluteLimit, BigDecimal customDailyLimit) {
-        // generate Iban according to Netherlands standard
-        String iban = generateIban(user.getId(), accountType);
-        // Use a linear operation to create two account account type
-        Account account = accountType == AccountType.CHECKING
-                ? AccountFactory.createCheckingAccount(user, iban)
-                : AccountFactory.createSavingsAccount(user, iban);
-
-        // Apply account Limits
-        account.applyLimits(customAbsoluteLimit, customDailyLimit);
-
-        // add account to user not DB yet
-        user.getAccounts().add(account);
-    }
-
-    private String generateIban(Long userId, AccountType accountType) {
-        long accountNumber = userId * 10 + (accountType == AccountType.CHECKING ? 1 : 2);
-        String iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
-
-        while (accountRepository.existsByIban(iban)) {
-            accountNumber++;
-            iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
-        }
-
-        return iban;
     }
 }

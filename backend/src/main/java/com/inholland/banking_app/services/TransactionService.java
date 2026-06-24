@@ -4,19 +4,25 @@ import com.inholland.banking_app.dtos.TransactionFilterParams;
 import com.inholland.banking_app.dtos.TransactionPageDto;
 import com.inholland.banking_app.dtos.TransactionRequest;
 import com.inholland.banking_app.dtos.TransactionResultDto;
+import com.inholland.banking_app.dtos.TransactionReversalResponse;
+import com.inholland.banking_app.exceptions.AccountStateException;
+import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.mappers.TransactionMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.DailyTransferUsage;
 import com.inholland.banking_app.models.Transaction;
 import com.inholland.banking_app.models.User;
+import com.inholland.banking_app.models.enums.AuditAction;
 import com.inholland.banking_app.models.enums.Channel;
 import com.inholland.banking_app.models.enums.Role;
+import com.inholland.banking_app.models.enums.TransactionType;
 import com.inholland.banking_app.models.factory.DailyTransferUsageFactory;
 import com.inholland.banking_app.models.factory.TransactionFactory;
 import com.inholland.banking_app.policies.TransactionPolicy;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.DailyTransferUsageRepository;
 import com.inholland.banking_app.repositories.TransactionRepository;
+import com.inholland.banking_app.repositories.UserRepository;
 import com.inholland.banking_app.specifications.TransactionSpecification;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +50,10 @@ public class TransactionService {
     private final UserService userService;
     private final TransactionMapper transactionMapper;
     private final TransactionPolicy transactionPolicy;
+    // --Efe(Admin)
+    private final UserRepository userRepository;
+    // --Efe(Admin)
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public TransactionPageDto listTransactions(TransactionFilterParams params, String username) {
@@ -225,5 +235,101 @@ public class TransactionService {
 
     private User resolveUser(String username) {
         return userService.getByUsername(username);
+    }
+
+    // --Efe(Admin) — reversal (public entry point + private helpers)
+
+    @Transactional
+    public TransactionReversalResponse reverseTransaction(Long id, String adminUsername) {
+
+        // 1. Fetch & validate
+        Transaction original = transactionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Transaction not found with ID: " + id));
+        validateReversalEligibility(original);
+
+        User admin = userRepository.findByUsername(adminUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
+
+        // 2. Reverse the money
+        executeReversalMath(original);
+
+        // 3. Create & save the reversal record
+        Transaction reversal = createReversalEntity(original, admin);
+        transactionRepository.save(reversal);
+
+        // 4. Audit
+        auditService.record(admin, AuditAction.TRANSACTION_REVERSED, "TRANSACTION", original.getId(),
+                "Reversed original transaction #" + original.getId());
+
+        // 5. Return DTO
+        return buildReversalResponse(reversal, original);
+    }
+
+    // --Efe(Admin) — reversal helpers
+
+    private void validateReversalEligibility(Transaction original) {
+        if (original.getTransactionType() == TransactionType.REVERSAL) {
+            throw new IllegalStateException("Cannot reverse a reversal transaction");
+        }
+        if (transactionRepository.existsByReversesTransactionId(original.getId())) {
+            throw new IllegalStateException("Transaction has already been reversed");
+        }
+    }
+
+    private void executeReversalMath(Transaction original) {
+        Account fromAccount = original.getFromAccount();
+        Account toAccount = original.getToAccount();
+        BigDecimal amount = original.getAmount();
+
+        switch (original.getTransactionType()) {
+            case TRANSFER -> {
+                validateAccountForReversalDebit(toAccount, amount);
+                transactionPolicy.validateActiveAccount(fromAccount, "Cannot reverse: source account is closed");
+                debit(toAccount, amount);
+                credit(fromAccount, amount);
+            }
+            case DEPOSIT -> {
+                validateAccountForReversalDebit(toAccount, amount);
+                debit(toAccount, amount);
+            }
+            case WITHDRAWAL -> {
+                transactionPolicy.validateActiveAccount(fromAccount, "Cannot reverse: account is closed");
+                credit(fromAccount, amount);
+            }
+            default -> throw new IllegalStateException("Unsupported transaction type for reversal");
+        }
+    }
+
+    private void validateAccountForReversalDebit(Account account, BigDecimal amount) {
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new AccountStateException("Cannot reverse: account is closed");
+        }
+        transactionPolicy.checkBalance(account, amount);
+    }
+
+    private Transaction createReversalEntity(Transaction original, User admin) {
+        Transaction reversal = new Transaction();
+        reversal.setTransactionType(TransactionType.REVERSAL);
+        reversal.setFromAccount(original.getToAccount());
+        reversal.setToAccount(original.getFromAccount());
+        reversal.setAmount(original.getAmount());
+        reversal.setCurrency(original.getCurrency());
+        reversal.setChannel(Channel.EMPLOYEE);
+        reversal.setInitiatedBy(admin);
+        reversal.setCreatedAt(LocalDateTime.now());
+        reversal.setDescription("Reversal of transaction #" + original.getId());
+        reversal.setReversesTransaction(original);
+        return reversal;
+    }
+
+    private TransactionReversalResponse buildReversalResponse(Transaction reversal, Transaction original) {
+        TransactionReversalResponse response = new TransactionReversalResponse();
+        response.setOriginalTransactionId(original.getId());
+        response.setReversalTransactionId(reversal.getId());
+        response.setTransactionType(TransactionType.REVERSAL.name());
+        response.setAmount(original.getAmount());
+        response.setDescription(reversal.getDescription());
+        response.setCreatedAt(reversal.getCreatedAt());
+        return response;
     }
 }

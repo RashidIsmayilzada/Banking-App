@@ -6,10 +6,8 @@ import com.inholland.banking_app.dtos.EmployeeUpdateRequest;
 import com.inholland.banking_app.exceptions.DuplicateResourceException;
 import com.inholland.banking_app.models.EmployeeProfile;
 import com.inholland.banking_app.models.User;
-import com.inholland.banking_app.models.enums.Channel;
-import com.inholland.banking_app.models.enums.Role;
-import com.inholland.banking_app.models.enums.TransactionType;
 import com.inholland.banking_app.models.enums.AuditAction;
+import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.repositories.EmployeeProfileRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.transaction.Transactional;
@@ -22,19 +20,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.inholland.banking_app.models.Account;
-import com.inholland.banking_app.dtos.AccountResponse;
-import com.inholland.banking_app.repositories.AccountRepository;
-import com.inholland.banking_app.mappers.AccountMapper;
-import com.inholland.banking_app.exceptions.AccountStateException;
-
-import com.inholland.banking_app.repositories.TransactionRepository;
-import com.inholland.banking_app.dtos.TransactionReversalResponse;
-import com.inholland.banking_app.models.Transaction;
-import com.inholland.banking_app.repositories.AuditLogRepository;
-import com.inholland.banking_app.dtos.AuditLogResponse;
-import com.inholland.banking_app.models.AuditLog;
-
+// --Efe(Admin) — account, transaction, and audit methods removed from this service.
+// They have been moved to AccountService, TransactionService, and AuditService respectively.
+// Original implementations are commented out below.
 
 @Service
 @RequiredArgsConstructor
@@ -43,12 +31,13 @@ public class AdminService {
     private final UserRepository userRepository;
     private final EmployeeProfileRepository employeeProfileRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AccountRepository accountRepository;
-    private final AccountMapper accountMapper;
-    private final TransactionRepository transactionRepository;
-
     private final AuditService auditService;
-    private final AuditLogRepository auditLogRepository;
+
+    // --Efe(Admin) — these dependencies were removed; their methods now live in AccountService and TransactionService
+//    private final AccountRepository accountRepository;
+//    private final AccountMapper accountMapper;
+//    private final TransactionRepository transactionRepository;
+//    private final AuditLogRepository auditLogRepository;
 
     @Transactional
     public EmployeeResponse createEmployee(EmployeeCreateRequest request) {
@@ -85,7 +74,7 @@ public class AdminService {
 
         return toResponse(user, profile);
     }
-
+    // Convert to DTO
     private EmployeeResponse toResponse(User user, EmployeeProfile profile) {
         EmployeeResponse response = new EmployeeResponse();
         response.setId(user.getId());
@@ -173,187 +162,180 @@ public class AdminService {
         auditService.record(getCurrentAdmin(), AuditAction.EMPLOYEE_DELETED, "EMPLOYEE", user.getId(), "Soft deleted employee");
     }
 
-
-    // ACCOUNT METHODS
-
-    public List<AccountResponse> getAllAccounts() {
-        return accountRepository.findAll().stream()
-                .map(accountMapper::toResponse)
-                .collect(Collectors.toList());
-    }
-
-    public AccountResponse getAccount(String iban) {
-        Account account = accountRepository.findById(iban)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
-
-        return accountMapper.toResponse(account);
-    }
-
-    @Transactional
-    public AccountResponse freezeAccount(String iban) {
-        Account account = accountRepository.findById(iban)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
-
-        if (account.isClosed()) {
-            throw new AccountStateException("Cannot freeze a closed account");
-        }
-        if (account.isFrozen()) {
-            throw new AccountStateException("Account is already frozen");
-        }
-
-        account.markFrozen();
-        accountRepository.save(account);
-
-        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_FROZEN, "ACCOUNT", null, "Froze account: " + iban);
-
-        return accountMapper.toResponse(account);
-    }
-
-    @Transactional
-    public AccountResponse unfreezeAccount(String iban) {
-        Account account = accountRepository.findById(iban)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
-
-        if (!account.isFrozen()) {
-            throw new AccountStateException("Account is not frozen");
-        }
-
-        account.unfreeze();
-        accountRepository.save(account);
-
-        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_UNFROZEN, "ACCOUNT", null, "Unfroze account: " + iban);
-
-        return accountMapper.toResponse(account);
-    }
-
-    @Transactional
-    public AccountResponse closeAccount(String iban) {
-        Account account = accountRepository.findById(iban)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
-
-        if (account.isClosed()) {
-            throw new AccountStateException("Account is already closed");
-        }
-
-        account.markClosed();
-        accountRepository.save(account);
-
-        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_CLOSED, "ACCOUNT", null, "Closed account: " + iban);
-
-        return accountMapper.toResponse(account);
-    }
-
-
-    // TRANSACTION METHODS
-
-
-    @Transactional
-    public TransactionReversalResponse reverseTransaction(Long id, String adminUsername) {
-
-        Transaction original = transactionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Transaction not found with ID: " + id));
-
-        if (original.getTransactionType() == TransactionType.REVERSAL) {
-            throw new IllegalStateException("Cannot reverse a reversal transaction");
-        }
-
-        if (transactionRepository.existsByReversesTransactionId(id)) {
-            throw new IllegalStateException("Transaction has already been reversed");
-        }
-
-        User admin = userRepository.findByUsername(adminUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
-
-        Account fromAccount = original.getFromAccount();
-        Account toAccount = original.getToAccount();
-
-        switch (original.getTransactionType()) {
-            case TRANSFER -> {
-                if (toAccount.isClosed()) {
-                    throw new AccountStateException("Cannot reverse: destination account is closed");
-                }
-                if (toAccount.getBalance().compareTo(original.getAmount()) < 0) {
-                    throw new IllegalStateException("Cannot reverse: destination account has insufficient funds");
-                }
-                toAccount.setBalance(toAccount.getBalance().subtract(original.getAmount()));
-                fromAccount.setBalance(fromAccount.getBalance().add(original.getAmount()));
-                accountRepository.save(toAccount);
-                accountRepository.save(fromAccount);
-            }
-            case DEPOSIT -> {
-                if (toAccount.isClosed()) {
-                    throw new AccountStateException("Cannot reverse: account is closed");
-                }
-                if (toAccount.getBalance().compareTo(original.getAmount()) < 0) {
-                    throw new IllegalStateException("Cannot reverse: account has insufficient funds");
-                }
-                toAccount.setBalance(toAccount.getBalance().subtract(original.getAmount()));
-                accountRepository.save(toAccount);
-            }
-            case WITHDRAWAL -> {
-                if (fromAccount.isClosed()) {
-                    throw new AccountStateException("Cannot reverse: account is closed");
-                }
-                fromAccount.setBalance(fromAccount.getBalance().add(original.getAmount()));
-                accountRepository.save(fromAccount);
-            }
-            default -> throw new IllegalStateException("Unsupported transaction type for reversal");
-        }
-
-        Transaction reversal = new Transaction();
-        reversal.setTransactionType(TransactionType.REVERSAL);
-        reversal.setFromAccount(toAccount);
-        reversal.setToAccount(fromAccount);
-        reversal.setAmount(original.getAmount());
-        reversal.setCurrency(original.getCurrency());
-        reversal.setChannel(Channel.EMPLOYEE);
-        reversal.setInitiatedBy(admin);
-        reversal.setCreatedAt(LocalDateTime.now());
-        reversal.setDescription("Reversal of transaction #" + original.getId());
-        reversal.setReversesTransaction(original);
-        transactionRepository.save(reversal);
-
-        // Record Audit Log
-        auditService.record(admin, AuditAction.TRANSACTION_REVERSED, "TRANSACTION", original.getId(), "Reversed original transaction #" + original.getId());
-
-        TransactionReversalResponse response = new TransactionReversalResponse();
-        response.setOriginalTransactionId(original.getId());
-        response.setReversalTransactionId(reversal.getId());
-        response.setTransactionType(TransactionType.REVERSAL.name());
-        response.setAmount(original.getAmount());
-        response.setDescription(reversal.getDescription());
-        response.setCreatedAt(reversal.getCreatedAt());
-        return response;
-    }
-
-
-// AUDIT LOG METHODS
-
-    public List<AuditLogResponse> getAuditLogs() {
-        return auditLogRepository.findAll().stream()
-                .map(this::toAuditLogResponse)
-                .collect(Collectors.toList());
-    }
-
-    private AuditLogResponse toAuditLogResponse(AuditLog log) {
-        AuditLogResponse response = new AuditLogResponse();
-        response.setId(log.getId());
-        response.setActorId(log.getActorId());
-        response.setActorUsername(log.getActorUsername());
-
-        if (log.getAction() != null) {
-            response.setAction(log.getAction().name());
-        }
-
-        response.setTargetType(log.getTargetType());
-        response.setTargetId(log.getTargetId());
-        response.setDetails(log.getDetails());
-        response.setCreatedAt(log.getCreatedAt());
-        return response;
-    }
     private User getCurrentAdmin() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Current authenticated admin user not found"));
     }
+
+    // --Efe(Admin) — account methods moved to AccountService
+//    public List<AccountResponse> getAllAccounts() {
+//        return accountRepository.findAll().stream()
+//                .map(accountMapper::toResponse)
+//                .collect(Collectors.toList());
+//    }
+//
+//    public AccountResponse getAccount(String iban) {
+//        Account account = accountRepository.findById(iban)
+//                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
+//
+//        return accountMapper.toResponse(account);
+//    }
+//
+//    @Transactional
+//    public AccountResponse freezeAccount(String iban) {
+//        Account account = accountRepository.findById(iban)
+//                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
+//
+//        if (account.isClosed()) {
+//            throw new AccountStateException("Cannot freeze a closed account");
+//        }
+//        if (account.isFrozen()) {
+//            throw new AccountStateException("Account is already frozen");
+//        }
+//
+//        account.markFrozen();
+//        accountRepository.save(account);
+//
+//        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_FROZEN, "ACCOUNT", null, "Froze account: " + iban);
+//
+//        return accountMapper.toResponse(account);
+//    }
+//
+//    @Transactional
+//    public AccountResponse unfreezeAccount(String iban) {
+//        Account account = accountRepository.findById(iban)
+//                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
+//
+//        if (!account.isFrozen()) {
+//            throw new AccountStateException("Account is not frozen");
+//        }
+//
+//        account.unfreeze();
+//        accountRepository.save(account);
+//
+//        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_UNFROZEN, "ACCOUNT", null, "Unfroze account: " + iban);
+//
+//        return accountMapper.toResponse(account);
+//    }
+//
+//    @Transactional
+//    public AccountResponse closeAccount(String iban) {
+//        Account account = accountRepository.findById(iban)
+//                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + iban));
+//
+//        if (account.isClosed()) {
+//            throw new AccountStateException("Account is already closed");
+//        }
+//
+//        account.markClosed();
+//        accountRepository.save(account);
+//
+//        auditService.record(getCurrentAdmin(), AuditAction.ACCOUNT_CLOSED, "ACCOUNT", null, "Closed account: " + iban);
+//
+//        return accountMapper.toResponse(account);
+//    }
+
+    // --Efe(Admin) — transaction reversal moved to TransactionService
+//    @Transactional
+//    public TransactionReversalResponse reverseTransaction(Long id, String adminUsername) {
+//
+//        Transaction original = transactionRepository.findById(id)
+//                .orElseThrow(() -> new IllegalArgumentException("Transaction not found with ID: " + id));
+//
+//        if (original.getTransactionType() == TransactionType.REVERSAL) {
+//            throw new IllegalStateException("Cannot reverse a reversal transaction");
+//        }
+//
+//        if (transactionRepository.existsByReversesTransactionId(id)) {
+//            throw new IllegalStateException("Transaction has already been reversed");
+//        }
+//
+//        User admin = userRepository.findByUsername(adminUsername)
+//                .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
+//
+//        Account fromAccount = original.getFromAccount();
+//        Account toAccount = original.getToAccount();
+//
+//        switch (original.getTransactionType()) {
+//            case TRANSFER -> {
+//                if (toAccount.isClosed()) {
+//                    throw new AccountStateException("Cannot reverse: destination account is closed");
+//                }
+//                if (toAccount.getBalance().compareTo(original.getAmount()) < 0) {
+//                    throw new IllegalStateException("Cannot reverse: destination account has insufficient funds");
+//                }
+//                toAccount.setBalance(toAccount.getBalance().subtract(original.getAmount()));
+//                fromAccount.setBalance(fromAccount.getBalance().add(original.getAmount()));
+//                accountRepository.save(toAccount);
+//                accountRepository.save(fromAccount);
+//            }
+//            case DEPOSIT -> {
+//                if (toAccount.isClosed()) {
+//                    throw new AccountStateException("Cannot reverse: account is closed");
+//                }
+//                if (toAccount.getBalance().compareTo(original.getAmount()) < 0) {
+//                    throw new IllegalStateException("Cannot reverse: account has insufficient funds");
+//                }
+//                toAccount.setBalance(toAccount.getBalance().subtract(original.getAmount()));
+//                accountRepository.save(toAccount);
+//            }
+//            case WITHDRAWAL -> {
+//                if (fromAccount.isClosed()) {
+//                    throw new AccountStateException("Cannot reverse: account is closed");
+//                }
+//                fromAccount.setBalance(fromAccount.getBalance().add(original.getAmount()));
+//                accountRepository.save(fromAccount);
+//            }
+//            default -> throw new IllegalStateException("Unsupported transaction type for reversal");
+//        }
+//
+//        Transaction reversal = new Transaction();
+//        reversal.setTransactionType(TransactionType.REVERSAL);
+//        reversal.setFromAccount(toAccount);
+//        reversal.setToAccount(fromAccount);
+//        reversal.setAmount(original.getAmount());
+//        reversal.setCurrency(original.getCurrency());
+//        reversal.setChannel(Channel.EMPLOYEE);
+//        reversal.setInitiatedBy(admin);
+//        reversal.setCreatedAt(LocalDateTime.now());
+//        reversal.setDescription("Reversal of transaction #" + original.getId());
+//        reversal.setReversesTransaction(original);
+//        transactionRepository.save(reversal);
+//
+//        auditService.record(admin, AuditAction.TRANSACTION_REVERSED, "TRANSACTION", original.getId(), "Reversed original transaction #" + original.getId());
+//
+//        TransactionReversalResponse response = new TransactionReversalResponse();
+//        response.setOriginalTransactionId(original.getId());
+//        response.setReversalTransactionId(reversal.getId());
+//        response.setTransactionType(TransactionType.REVERSAL.name());
+//        response.setAmount(original.getAmount());
+//        response.setDescription(reversal.getDescription());
+//        response.setCreatedAt(reversal.getCreatedAt());
+//        return response;
+//    }
+
+    // --Efe(Admin) — audit log querying moved to AuditService / AuditLogController
+//    public List<AuditLogResponse> getAuditLogs() {
+//        return auditLogRepository.findAll().stream()
+//                .map(this::toAuditLogResponse)
+//                .collect(Collectors.toList());
+//    }
+//
+//    private AuditLogResponse toAuditLogResponse(AuditLog log) {
+//        AuditLogResponse response = new AuditLogResponse();
+//        response.setId(log.getId());
+//        response.setActorId(log.getActorId());
+//        response.setActorUsername(log.getActorUsername());
+//
+//        if (log.getAction() != null) {
+//            response.setAction(log.getAction().name());
+//        }
+//
+//        response.setTargetType(log.getTargetType());
+//        response.setTargetId(log.getTargetId());
+//        response.setDetails(log.getDetails());
+//        response.setCreatedAt(log.getCreatedAt());
+//        return response;
+//    }
 }

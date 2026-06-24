@@ -81,7 +81,7 @@ class CustomerApprovalEndToEndTest {
 
     @Test
     @DisplayName("Re-approving an already-approved customer does not create duplicate accounts")
-    void approve_isIdempotent(ApproveCustomerRequest request ) {
+    void approve_isIdempotent() {
         User customer = persistPendingCustomer();
         userService.approveCustomer(approvedRequest(), customer.getId());
         userService.approveCustomer(approvedRequest(), customer.getId());

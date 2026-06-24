@@ -1,14 +1,10 @@
 package com.inholland.banking_app.services;
 
 import com.inholland.banking_app.dtos.*;
-import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.exceptions.DuplicateResourceException;
-import com.inholland.banking_app.mappers.AccountMapper;
 import com.inholland.banking_app.models.*;
-import com.inholland.banking_app.models.enums.AccountStatus;
 import com.inholland.banking_app.models.enums.AuditAction;
 import com.inholland.banking_app.models.enums.Role;
-import com.inholland.banking_app.models.enums.TransactionType;
 import com.inholland.banking_app.repositories.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,8 +18,6 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,11 +31,13 @@ class AdminServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private EmployeeProfileRepository employeeProfileRepository;
     @Mock private PasswordEncoder passwordEncoder;
-    @Mock private AccountRepository accountRepository;
-    @Mock private AccountMapper accountMapper;
-    @Mock private TransactionRepository transactionRepository;
     @Mock private AuditService auditService;
-    @Mock private AuditLogRepository auditLogRepository;
+
+    // --Efe(Admin) — these mocks were removed; their methods now live in AccountService and TransactionService
+//    @Mock private AccountRepository accountRepository;
+//    @Mock private AccountMapper accountMapper;
+//    @Mock private TransactionRepository transactionRepository;
+//    @Mock private AuditLogRepository auditLogRepository;
 
     @InjectMocks
     private AdminService adminService;
@@ -49,7 +45,6 @@ class AdminServiceTest {
     private User adminUser;
     private User employeeUser;
     private EmployeeProfile employeeProfile;
-    private Account account;
 
     @BeforeEach
     void setUp() {
@@ -59,7 +54,6 @@ class AdminServiceTest {
         SecurityContext securityContext = mock(SecurityContext.class);
         lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
         SecurityContextHolder.setContext(securityContext);
-
 
         adminUser = new User();
         adminUser.setId(1L);
@@ -78,14 +72,7 @@ class AdminServiceTest {
         employeeProfile.setLastName("Doe");
         employeeProfile.setEmployeeNumber("EMP123");
         employeeProfile.setEnabled(true);
-
-        account = new Account();
-        account.setIban("NL01INHO0000000010");
-        account.setBalance(new BigDecimal("1000.00"));
-        account.setStatus(AccountStatus.ACTIVE);
     }
-
-
 
     @Test
     @DisplayName("Create Employee - Success")
@@ -195,149 +182,42 @@ class AdminServiceTest {
         verify(auditService, times(1)).record(any(), eq(AuditAction.EMPLOYEE_DELETED), anyString(), anyLong(), anyString());
     }
 
+    // --Efe(Admin) — account service tests moved to AccountServiceTest
+//    @Test
+//    @DisplayName("Get All Accounts")
+//    void getAllAccounts() { ... }
+//
+//    @Test
+//    @DisplayName("Get Account by ID")
+//    void getAccount() { ... }
+//
+//    @Test
+//    @DisplayName("Freeze Account - Success")
+//    void freezeAccount_Success() { ... }
+//
+//    @Test
+//    @DisplayName("Freeze Account - Throws if already frozen")
+//    void freezeAccount_AlreadyFrozen() { ... }
+//
+//    @Test
+//    @DisplayName("Unfreeze Account - Success")
+//    void unfreezeAccount_Success() { ... }
+//
+//    @Test
+//    @DisplayName("Close Account - Success")
+//    void closeAccount_Success() { ... }
 
-    @Test
-    @DisplayName("Get All Accounts")
-    void getAllAccounts() {
-        when(accountRepository.findAll()).thenReturn(List.of(account));
-        when(accountMapper.toResponse(account)).thenReturn(AccountResponse.builder().build());
+    // --Efe(Admin) — transaction reversal tests moved to TransactionServiceTest
+//    @Test
+//    @DisplayName("Reverse Transaction - Transfer Success")
+//    void reverseTransaction_Success() { ... }
+//
+//    @Test
+//    @DisplayName("Reverse Transaction - Throws if already reversed")
+//    void reverseTransaction_AlreadyReversed() { ... }
 
-        List<AccountResponse> responses = adminService.getAllAccounts();
-
-        assertEquals(1, responses.size());
-    }
-
-    @Test
-    @DisplayName("Get Account by ID")
-    void getAccount() {
-        when(accountRepository.findById("NL01INHO0000000010")).thenReturn(Optional.of(account));
-        when(accountMapper.toResponse(account)).thenReturn(AccountResponse.builder().build());
-
-        assertNotNull(adminService.getAccount("NL01INHO0000000010"));
-    }
-
-    @Test
-    @DisplayName("Freeze Account - Success")
-    void freezeAccount_Success() {
-        when(accountRepository.findById("NL01INHO0000000010")).thenReturn(Optional.of(account));
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
-        when(accountMapper.toResponse(account)).thenReturn(AccountResponse.builder().build());
-
-        adminService.freezeAccount("NL01INHO0000000010");
-
-        assertTrue(account.isFrozen());
-        verify(accountRepository, times(1)).save(account);
-        verify(auditService, times(1)).record(any(), eq(AuditAction.ACCOUNT_FROZEN), anyString(), isNull(), anyString());
-    }
-
-    @Test
-
-    @DisplayName("Freeze Account - Throws if already frozen")
-    void freezeAccount_AlreadyFrozen() {
-        account.setStatus(AccountStatus.FROZEN);
-        when(accountRepository.findById("NL01INHO0000000010")).thenReturn(Optional.of(account));
-
-        assertThrows(AccountStateException.class, () -> adminService.freezeAccount("NL01INHO0000000010"));
-    }
-
-    @Test
-    @DisplayName("Unfreeze Account - Success")
-    void unfreezeAccount_Success() {
-
-        account.setStatus(AccountStatus.FROZEN);
-        when(accountRepository.findById("NL01INHO0000000010")).thenReturn(Optional.of(account));
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
-        when(accountMapper.toResponse(account)).thenReturn(AccountResponse.builder().build());
-
-        adminService.unfreezeAccount("NL01INHO0000000010");
-
-        assertFalse(account.isFrozen());
-        verify(accountRepository, times(1)).save(account);
-    }
-
-    @Test
-    @DisplayName("Close Account - Success")
-    void closeAccount_Success() {
-        when(accountRepository.findById("NL01INHO0000000010")).thenReturn(Optional.of(account));
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
-        when(accountMapper.toResponse(account)).thenReturn(AccountResponse.builder().build());
-
-        adminService.closeAccount("NL01INHO0000000010");
-
-        assertTrue(account.isClosed());
-        verify(accountRepository, times(1)).save(account);
-        verify(auditService, times(1)).record(any(), eq(AuditAction.ACCOUNT_CLOSED), anyString(), isNull(), anyString());
-    }
-
-
-
-    @Test
-    @DisplayName("Reverse Transaction - Transfer Success")
-    void reverseTransaction_Success() {
-        Account toAccount = new Account();
-        toAccount.setIban("NL01INHO0000000020");
-        toAccount.setBalance(new BigDecimal("500.00"));
-        toAccount.setStatus(AccountStatus.ACTIVE);
-
-        Transaction originalTx = new Transaction();
-        originalTx.setId(100L);
-        originalTx.setTransactionType(TransactionType.TRANSFER);
-        originalTx.setAmount(new BigDecimal("100.00"));
-        originalTx.setFromAccount(account); // balance 1000
-        originalTx.setToAccount(toAccount); // balance 500
-
-        when(transactionRepository.findById(100L)).thenReturn(Optional.of(originalTx));
-        when(transactionRepository.existsByReversesTransactionId(100L)).thenReturn(false);
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
-
-        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
-            Transaction t = invocation.getArgument(0);
-            t.setId(999L);
-            return t;
-        });
-
-        TransactionReversalResponse response = adminService.reverseTransaction(100L, "admin");
-
-
-        assertEquals(new BigDecimal("400.00"), toAccount.getBalance());
-        assertEquals(new BigDecimal("1100.00"), account.getBalance());
-
-        assertNotNull(response);
-        assertEquals(100L, response.getOriginalTransactionId());
-        assertEquals(TransactionType.REVERSAL.name(), response.getTransactionType());
-        assertNotNull(response.getReversalTransactionId()); // now 999L, not null
-        verify(transactionRepository, times(1)).save(any(Transaction.class));
-        verify(auditService, times(1)).record(any(), eq(AuditAction.TRANSACTION_REVERSED), anyString(), anyLong(), anyString());
-    }
-
-    @Test
-    @DisplayName("Reverse Transaction - Throws if already reversed")
-    void reverseTransaction_AlreadyReversed() {
-        Transaction originalTx = new Transaction();
-        originalTx.setId(100L);
-        originalTx.setTransactionType(TransactionType.TRANSFER);
-
-        when(transactionRepository.findById(100L)).thenReturn(Optional.of(originalTx));
-        when(transactionRepository.existsByReversesTransactionId(100L)).thenReturn(true);
-
-        assertThrows(IllegalStateException.class, () -> adminService.reverseTransaction(100L, "admin"));
-    }
-
-
-    @Test
-    @DisplayName("Get Audit Logs")
-    void getAuditLogs() {
-        AuditLog log = new AuditLog();
-        log.setId(1L);
-        log.setActorUsername("admin");
-        log.setAction(AuditAction.EMPLOYEE_CREATED);
-
-        when(auditLogRepository.findAll()).thenReturn(List.of(log));
-
-        List<AuditLogResponse> logs = adminService.getAuditLogs();
-
-        assertEquals(1, logs.size());
-        assertEquals("admin", logs.get(0).getActorUsername());
-        assertEquals(AuditAction.EMPLOYEE_CREATED.name(), logs.get(0).getAction());
-    }
+    // --Efe(Admin) — audit log tests moved to AuditService test coverage
+//    @Test
+//    @DisplayName("Get Audit Logs")
+//    void getAuditLogs() { ... }
 }

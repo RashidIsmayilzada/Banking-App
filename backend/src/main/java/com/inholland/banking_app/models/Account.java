@@ -81,15 +81,6 @@ public class Account {
         this.status = AccountStatus.ACTIVE;
     }
 
-    public void applyLimits(BigDecimal absoluteLimit, BigDecimal dailyLimit) {
-        if (absoluteLimit != null) {
-            this.absoluteTransferLimit = absoluteLimit;
-        }
-        if (dailyLimit != null) {
-            this.dailyTransferLimit = dailyLimit;
-        }
-    }
-
     public void markClosed() {
         this.status = AccountStatus.CLOSED;
         this.closedAt = LocalDateTime.now();

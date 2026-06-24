@@ -20,3 +20,4 @@ backend/.env.example
 # H2 database files
 backend/data/bankingdb.mv.db
 backend/data/bankingdb.trace.db
+backend/data/bankingdb.mv.db
