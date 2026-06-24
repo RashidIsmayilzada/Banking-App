@@ -77,6 +77,7 @@ class UserServiceTest {
 
         customerUser.setCustomerProfile(customerProfile);
 
+
         userResponse = UserResponse.builder()
                 .id(1L)
                 .firstName("John")
@@ -159,13 +160,12 @@ class UserServiceTest {
         customerUser.setActive(false); // a pending customer is inactive until approved
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
-        when(accountService.hasNoAccounts(customerUser)).thenReturn(true);
 
         userService.approveCustomer(request, 1L);
 
         assertThat(customerProfile.getStatus()).isEqualTo(CustomerStatus.APPROVED);
         assertThat(customerUser.isActive()).isTrue();
-        verify(accountService).createDefaultAccounts(customerUser, null, null, null);
+        verify(accountService).createDefaultAccounts(customerUser, request);
     }
 
 
@@ -190,12 +190,12 @@ class UserServiceTest {
         request.setSavingsDailyLimit(new BigDecimal("3000.00"));
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(customerUser));
-        when(accountService.hasNoAccounts(customerUser)).thenReturn(true);
 
         userService.approveCustomer(request, 1L);
 
-        verify(accountService).createDefaultAccounts(customerUser,
-                new BigDecimal("-500.00"), new BigDecimal("500.00"), new BigDecimal("3000.00"));
+        // UserService just forwards the request; the request object carries the custom limits,
+        // so verifying the same request reaches AccountService is what this layer is responsible for.
+        verify(accountService).createDefaultAccounts(customerUser, request);
     }
 
     @Test
@@ -208,7 +208,7 @@ class UserServiceTest {
 
         userService.approveCustomer(request, 1L);
 
-        verify(accountService, never()).createDefaultAccounts(any(), any(), any(), any());
+        verify(accountService, never()).createDefaultAccounts(any(), any());
     }
 
     // --- getByUsername ---
