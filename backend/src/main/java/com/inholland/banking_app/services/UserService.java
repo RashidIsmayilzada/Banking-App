@@ -61,20 +61,20 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
     }
 
-
-    ///  Private Helper /////
-
+    /// Private Helper /////
 
     // set customer profile to approved and set user active true to allow login
     private void setApprove(User user, ApproveCustomerRequest approveCustomer) {
-            getCustomerProfileOrThrow(user).setStatus(CustomerStatus.APPROVED);
-            user.setActive(true);
-                // Create bank account 
-                accountService.createDefaultAccounts(user, approveCustomer);
+        getCustomerProfileOrThrow(user).setStatus(CustomerStatus.APPROVED);
+        user.setActive(true);
+
+        accountService.createDefaultAccounts(user, approveCustomer);
+
     }
 
     // Set user state with the input status
-    private UserResponse setUserState(Long userId, boolean active, CustomerStatus status, Consumer<User> accountAction) {
+    private UserResponse setUserState(Long userId, boolean active, CustomerStatus status,
+            Consumer<User> accountAction) {
 
         // find the user or throw exception
         User user = findUserOrThrow(userId);

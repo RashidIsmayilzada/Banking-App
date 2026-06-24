@@ -3,12 +3,14 @@ package com.inholland.banking_app.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inholland.banking_app.config.RateLimitFilter;
 import com.inholland.banking_app.dtos.MoneyResponse;
+// --Efe(Admin)
 import java.math.BigDecimal;
 import com.inholland.banking_app.dtos.PageMetadataDto;
 import com.inholland.banking_app.dtos.TransactionDto;
 import com.inholland.banking_app.dtos.TransactionPageDto;
 import com.inholland.banking_app.dtos.TransactionRequest;
 import com.inholland.banking_app.dtos.TransactionResultDto;
+import com.inholland.banking_app.dtos.TransactionReversalResponse;
 import com.inholland.banking_app.exceptions.ForbiddenException;
 import com.inholland.banking_app.models.enums.Channel;
 import com.inholland.banking_app.models.enums.TransactionType;
@@ -37,6 +39,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -301,6 +304,48 @@ class TransactionControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.message").value("Insufficient funds"));
+    }
+
+    // --Efe(Admin)
+    @Test
+    @DisplayName("POST /transactions/{id}/reverse - should return 200 on success")
+    void reverseTransaction_shouldReturn200_whenSuccessful() throws Exception {
+        TransactionReversalResponse response = new TransactionReversalResponse();
+        response.setOriginalTransactionId(100L);
+        response.setReversalTransactionId(101L);
+
+        when(transactionService.reverseTransaction(eq(100L), anyString())).thenReturn(response);
+
+        mockMvc.perform(post("/transactions/100/reverse")
+                        .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.originalTransactionId").value(100))
+                .andExpect(jsonPath("$.reversalTransactionId").value(101));
+    }
+
+    // --Efe(Admin)
+    @Test
+    @DisplayName("POST /transactions/{id}/reverse - should return 500 when transaction already reversed (IllegalStateException not mapped to 4xx)")
+    void reverseTransaction_shouldReturn500_whenAlreadyReversed() throws Exception {
+        when(transactionService.reverseTransaction(eq(100L), anyString()))
+                .thenThrow(new IllegalStateException("Transaction has already been reversed"));
+
+        mockMvc.perform(post("/transactions/100/reverse")
+                        .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    // --Efe(Admin)
+    @Test
+    @DisplayName("POST /transactions/{id}/reverse - should return 400 when transaction not found")
+    void reverseTransaction_shouldReturn400_whenTransactionNotFound() throws Exception {
+        when(transactionService.reverseTransaction(eq(999L), anyString()))
+                .thenThrow(new IllegalArgumentException("Transaction not found with ID: 999"));
+
+        mockMvc.perform(post("/transactions/999/reverse")
+                        .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Transaction not found with ID: 999"));
     }
 
     // helpers

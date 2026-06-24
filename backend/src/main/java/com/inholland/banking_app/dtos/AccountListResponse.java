@@ -31,11 +31,13 @@ public class AccountListResponse {
     }
 
     public static AccountListResponse of(Page<AccountResponse> page) {
+        // 1. Extract the list of children (A.objects)
         List<AccountResponse> accounts = page.getContent();
-
-        BigDecimal combined = accounts.stream()
-                .map(a -> a.getBalance().getAmount())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 2. Loop to get combined balance
+        BigDecimal combined = BigDecimal.ZERO;
+        for (AccountResponse accountResponse : accounts) {
+            combined = combined.add(accountResponse.getBalance().getAmount());
+        }
 
         return new AccountListResponse(
                 accounts,
