@@ -25,11 +25,6 @@ public class AdminController {
 
     private final AdminService adminService;
 
-    @Operation(summary = "Health Check", description = "Verify that the admin API endpoints are reachable and the user has correct ADMIN authority.")
-    @GetMapping("/ping")
-    public ResponseEntity<Map<String, String>> ping() {
-        return ResponseEntity.ok(Map.of("status", "ok"));
-    }
 
     @Operation(summary = "Create an Employee", description = "Provisions a new employee profile and user account. Fails if email, username, or employee number is already taken.")
     @PostMapping("/employees")

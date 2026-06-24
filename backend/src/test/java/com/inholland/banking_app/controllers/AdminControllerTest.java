@@ -8,6 +8,8 @@ import com.inholland.banking_app.services.AdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration;
@@ -36,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         excludeAutoConfiguration = {SecurityAutoConfiguration.class, SecurityFilterAutoConfiguration.class},
         excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JwtAuthenticationFilter.class)
 )
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AdminControllerTest {
 
     @Autowired
@@ -53,11 +56,11 @@ class AdminControllerTest {
     void setUp() {
         Authentication authentication = mock(Authentication.class);
 
-        lenient().when(authentication.getName()).thenReturn("admin");
+        when(authentication.getName()).thenReturn("admin");
 
         SecurityContext securityContext = mock(SecurityContext.class);
 
-        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
         SecurityContextHolder.setContext(securityContext);
         employeeResponse = new EmployeeResponse();
         employeeResponse.setId(1L);

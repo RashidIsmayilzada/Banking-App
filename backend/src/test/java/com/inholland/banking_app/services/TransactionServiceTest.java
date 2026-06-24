@@ -563,7 +563,7 @@ class TransactionServiceTest {
 
         com.inholland.banking_app.dtos.TransactionReversalResponse response =
                 transactionService.reverseTransaction(100L, "admin");
-
+        // use assertJ library instead of assertEquals(100, account.getBalance());
         assertThat(fromAccount.getBalance()).isEqualByComparingTo("1100.00");
         assertThat(toAccount.getBalance()).isEqualByComparingTo("400.00");
         assertThat(response.getOriginalTransactionId()).isEqualTo(100L);

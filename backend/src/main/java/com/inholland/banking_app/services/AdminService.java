@@ -74,7 +74,7 @@ public class AdminService {
 
         return toResponse(user, profile);
     }
-
+    // Convert to DTO
     private EmployeeResponse toResponse(User user, EmployeeProfile profile) {
         EmployeeResponse response = new EmployeeResponse();
         response.setId(user.getId());
