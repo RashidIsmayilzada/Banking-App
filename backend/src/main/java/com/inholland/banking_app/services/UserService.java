@@ -14,8 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import java.math.BigDecimal;
 import java.util.function.Consumer;
 
 import org.springframework.stereotype.Service;
@@ -30,6 +28,8 @@ public class UserService {
     private final AccountService accountService;
     private final UserResponseMapper userResponseMapper;
 
+    // Get all users and map with the mapper class
+    // Return a paged user
     public Page<UserResponse> getAllUsers(Pageable pageable, UserFilterRequest userFilterRequest) {
         return userRepository.findAll(UserSpecification.fromFilter(userFilterRequest), pageable)
                 .map(userResponseMapper::toUserResponse);
@@ -39,13 +39,11 @@ public class UserService {
         return userResponseMapper.toUserResponse(findUserOrThrow(userId));
     }
 
+    // Set approval to transactional to reverse any changes if there is any error
     @Transactional
     public void approveCustomer(ApproveCustomerRequest approveCustomerRequest, Long userId) {
         User user = findUserOrThrow(userId);
-        setApprove(user,
-                approveCustomerRequest.getCheckingAbsoluteLimit(),
-                approveCustomerRequest.getCheckingDailyLimit(),
-                approveCustomerRequest.getSavingsDailyLimit());
+        setApprove(user, approveCustomerRequest);
     }
 
     @Transactional
@@ -63,26 +61,29 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
     }
 
+    /// Private Helper /////
 
-    ///  Private Helper /////
+    // set customer profile to approved and set user active true to allow login
+    private void setApprove(User user, ApproveCustomerRequest approveCustomer) {
+        getCustomerProfileOrThrow(user).setStatus(CustomerStatus.APPROVED);
+        user.setActive(true);
 
+        accountService.createDefaultAccounts(user, approveCustomer);
 
-    private void setApprove(User user, BigDecimal checkingAbsoluteLimit,
-                                       BigDecimal checkingDailyLimit,
-                                       BigDecimal savingsDailyLimit) {
-            getCustomerProfileOrThrow(user).setStatus(CustomerStatus.APPROVED);
-            user.setActive(true);
-            if (accountService.hasNoAccounts(user)) {
-                accountService.createDefaultAccounts(user, checkingAbsoluteLimit, checkingDailyLimit, savingsDailyLimit);
-            }
     }
 
-    private UserResponse setUserState(Long userId, boolean active, CustomerStatus status, Consumer<User> accountAction) {
+    // Set user state with the input status
+    private UserResponse setUserState(Long userId, boolean active, CustomerStatus status,
+            Consumer<User> accountAction) {
+
+        // find the user or throw exception
         User user = findUserOrThrow(userId);
+        // Check if user role before creating account
         if (user.getRole() == Role.EMPLOYEE) {
             user.setActive(active);
             userRepository.save(user);
         } else {
+            // if its not an employee get the status with a getCustomerProfileOrThrow func
             getCustomerProfileOrThrow(user).setStatus(status);
             accountAction.accept(user);
         }

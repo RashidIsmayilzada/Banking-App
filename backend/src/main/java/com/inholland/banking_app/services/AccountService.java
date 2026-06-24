@@ -3,6 +3,7 @@ package com.inholland.banking_app.services;
 import com.inholland.banking_app.dtos.AccountListResponse;
 import com.inholland.banking_app.dtos.AccountResponse;
 import com.inholland.banking_app.dtos.AccountUpdateRequest;
+import com.inholland.banking_app.dtos.ApproveCustomerRequest;
 import com.inholland.banking_app.exceptions.AccountStateException;
 import com.inholland.banking_app.mappers.AccountMapper;
 import com.inholland.banking_app.models.Account;
@@ -147,26 +148,25 @@ public class AccountService {
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
     }
 
-    // --Efe(Admin)
     private User getCurrentAdmin() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Current authenticated admin user not found"));
     }
 
-    // --- User account lifecycle (called by UserService) ---
 
-    public void createDefaultAccounts(User user, BigDecimal checkingAbsoluteLimit,
-                                      BigDecimal checkingDailyLimit, BigDecimal savingsDailyLimit) {
-        createAccount(user, AccountType.CHECKING, checkingAbsoluteLimit, checkingDailyLimit);
-        createAccount(user, AccountType.SAVINGS, null, savingsDailyLimit);
-    }
+    // ==================== Amazing code ====================
 
-    public boolean hasNoAccounts(User user) {
-        return accountRepository.findByCustomerId(user.getId(), Pageable.unpaged()).isEmpty();
+    // Creates the default CHECKING + SAVINGS accounts and 
+    // apply the account limit for a newly approved customer
+    public void createDefaultAccounts(User user, ApproveCustomerRequest approveCustomer) {
+        createAccount(user, AccountType.CHECKING, approveCustomer.getCheckingAbsoluteLimit(), approveCustomer.getCheckingDailyLimit());
+        createAccount(user, AccountType.SAVINGS, null, approveCustomer.getSavingsDailyLimit());
     }
 
     public void closeAllAccounts(User user) {
+        // Get all the user account and set status to close
+        // and set the datetime
         for (Account account : user.getAccounts()) {
             account.setStatus(AccountStatus.CLOSED);
             account.setClosedAt(LocalDateTime.now());
@@ -180,28 +180,38 @@ public class AccountService {
         }
     }
 
+    // Create Bank Account with Iban
     private void createAccount(User user, AccountType accountType,
-                               BigDecimal customAbsoluteLimit, BigDecimal customDailyLimit) {
+            BigDecimal customAbsoluteLimit, BigDecimal customDailyLimit) {
+        // generate Iban according to Netherlands standard
         String iban = generateIban(user.getId(), accountType);
+        // Use a linear operation to create two account account type
         Account account = accountType == AccountType.CHECKING
                 ? AccountFactory.createCheckingAccount(user, iban)
                 : AccountFactory.createSavingsAccount(user, iban);
+
+        // Apply account Limits
         applyLimits(account, customAbsoluteLimit, customDailyLimit);
+
+        // add account to user not DB yet
         user.getAccounts().add(account);
     }
 
-    private void applyLimits(Account account, BigDecimal absolute, BigDecimal daily) {
+        private void applyLimits(Account account, BigDecimal absolute, BigDecimal daily) {
         if (absolute != null) account.setAbsoluteTransferLimit(absolute);
         if (daily != null) account.setDailyTransferLimit(daily);
     }
 
+
     private String generateIban(Long userId, AccountType accountType) {
         long accountNumber = userId * 10 + (accountType == AccountType.CHECKING ? 1 : 2);
         String iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
+
         while (accountRepository.existsByIban(iban)) {
             accountNumber++;
             iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
         }
+
         return iban;
     }
 }
