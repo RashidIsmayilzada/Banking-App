@@ -9,6 +9,9 @@ import com.inholland.banking_app.mappers.AccountMapper;
 import com.inholland.banking_app.models.Account;
 import com.inholland.banking_app.models.User;
 import com.inholland.banking_app.models.enums.AccountStatus;
+import com.inholland.banking_app.models.enums.AccountType;
+import com.inholland.banking_app.models.enums.AuditAction;
+import com.inholland.banking_app.models.factory.AccountFactory;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -143,5 +146,72 @@ public class AccountService {
     private Account findAccountOrThrow(String iban) {
         return accountRepository.findById(iban)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found"));
+    }
+
+    private User getCurrentAdmin() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Current authenticated admin user not found"));
+    }
+
+
+    // ==================== Amazing code ====================
+
+    // Creates the default CHECKING + SAVINGS accounts and 
+    // apply the account limit for a newly approved customer
+    public void createDefaultAccounts(User user, ApproveCustomerRequest approveCustomer) {
+        createAccount(user, AccountType.CHECKING, approveCustomer.getCheckingAbsoluteLimit(), approveCustomer.getCheckingDailyLimit());
+        createAccount(user, AccountType.SAVINGS, null, approveCustomer.getSavingsDailyLimit());
+    }
+
+    public void closeAllAccounts(User user) {
+        // Get all the user account and set status to close
+        // and set the datetime
+        for (Account account : user.getAccounts()) {
+            account.setStatus(AccountStatus.CLOSED);
+            account.setClosedAt(LocalDateTime.now());
+        }
+    }
+
+    public void reopenAllAccounts(User user) {
+        for (Account account : user.getAccounts()) {
+            account.setStatus(AccountStatus.ACTIVE);
+            account.setClosedAt(null);
+        }
+    }
+
+    // Create Bank Account with Iban
+    private void createAccount(User user, AccountType accountType,
+            BigDecimal customAbsoluteLimit, BigDecimal customDailyLimit) {
+        // generate Iban according to Netherlands standard
+        String iban = generateIban(user.getId(), accountType);
+        // Use a linear operation to create two account account type
+        Account account = accountType == AccountType.CHECKING
+                ? AccountFactory.createCheckingAccount(user, iban)
+                : AccountFactory.createSavingsAccount(user, iban);
+
+        // Apply account Limits
+        applyLimits(account, customAbsoluteLimit, customDailyLimit);
+
+        // add account to user not DB yet
+        user.getAccounts().add(account);
+    }
+
+        private void applyLimits(Account account, BigDecimal absolute, BigDecimal daily) {
+        if (absolute != null) account.setAbsoluteTransferLimit(absolute);
+        if (daily != null) account.setDailyTransferLimit(daily);
+    }
+
+
+    private String generateIban(Long userId, AccountType accountType) {
+        long accountNumber = userId * 10 + (accountType == AccountType.CHECKING ? 1 : 2);
+        String iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
+
+        while (accountRepository.existsByIban(iban)) {
+            accountNumber++;
+            iban = String.format("NL%02dINHO%010d", accountType == AccountType.CHECKING ? 10 : 20, accountNumber);
+        }
+
+        return iban;
     }
 }
