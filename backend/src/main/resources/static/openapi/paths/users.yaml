@@ -95,10 +95,15 @@ userById:
         $ref: ../components/schemas/common.yaml#/Forbidden
       '404':
         $ref: ../components/schemas/common.yaml#/NotFound
+userApproval:
   patch:
     tags: [Users]
-    summary: Update a user's profile or status. Employees may set status and approval limits.
-    operationId: updateUser
+    summary: Approve or reject a customer. Employees only.
+    description: >
+      Sets the customer approval status (APPROVED / REJECTED / CLOSED). When the
+      status moves to APPROVED, the customer is activated and their default
+      CHECKING and SAVINGS accounts are created with optional daily limits.
+    operationId: approveUser
     security:
       - bearerAuth: []
     parameters:
@@ -108,10 +113,10 @@ userById:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/users.yaml#/UserUpdateRequest
+            $ref: ../components/schemas/users.yaml#/UserApprovalRequest
     responses:
       '200':
-        description: Updated user returned.
+        description: Status updated; updated user returned.
         content:
           application/json:
             schema:
@@ -122,21 +127,54 @@ userById:
         $ref: ../components/schemas/common.yaml#/Forbidden
       '404':
         $ref: ../components/schemas/common.yaml#/NotFound
-      '409':
-        $ref: ../components/schemas/common.yaml#/Conflict
       '422':
         $ref: ../components/schemas/common.yaml#/ValidationError
-  delete:
+
+userClose:
+  patch:
     tags: [Users]
-    summary: Delete a user. Employees only.
-    operationId: deleteUser
+    summary: Close a user. Employees only.
+    description: >
+      For customers: sets the profile to CLOSED and closes all of their accounts.
+      For employees: deactivates the employee (active=false).
+    operationId: closeUser
     security:
       - bearerAuth: []
     parameters:
       - $ref: ../components/schemas/common.yaml#/UserId
     responses:
-      '204':
-        description: User deleted.
+      '200':
+        description: User closed; updated user returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/users.yaml#/UserResponse
+      '401':
+        $ref: ../components/schemas/common.yaml#/Unauthorized
+      '403':
+        $ref: ../components/schemas/common.yaml#/Forbidden
+      '404':
+        $ref: ../components/schemas/common.yaml#/NotFound
+
+userReopen:
+  patch:
+    tags: [Users]
+    summary: Reopen a closed user. Employees only.
+    description: >
+      For customers: sets the profile back to APPROVED and reactivates all of
+      their accounts. For employees: reactivates the employee (active=true).
+    operationId: reopenUser
+    security:
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/schemas/common.yaml#/UserId
+    responses:
+      '200':
+        description: User reopened; updated user returned.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/users.yaml#/UserResponse
       '401':
         $ref: ../components/schemas/common.yaml#/Unauthorized
       '403':

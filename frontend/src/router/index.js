@@ -63,7 +63,41 @@ const routes = [
   { path: '/employee/transactions',  component: AllTransactionsView,  meta: { requiresAuth: true, role: 'EMPLOYEE' } },
   { path: '/employee/transfer',      component: EmployeeTransferView, meta: { requiresAuth: true, role: 'EMPLOYEE' } },
   { path: '/employee/limits/:id?',   component: SetLimitsView,        meta: { requiresAuth: true, role: 'EMPLOYEE' } },
+
+    // ── Admin ──────────────────────────────────────────
+    {
+        path: '/admin/dashboard',
+        name: 'AdminDashboard',
+        component: () => import('../views/admin/AdminDashboardView.vue'),
+        meta: { requiresAuth: true, role: 'ADMIN' }
+    },
+    {
+        path: '/admin/employees',
+        name: 'AdminEmployees',
+        component: () => import('../views/admin/AdminEmployeesView.vue'),
+        meta: { requiresAuth: true, role: 'ADMIN' }
+    },
+    {
+        path: '/admin/accounts',
+        name: 'AdminAccounts',
+        component: () => import('../views/admin/AdminAccountsView.vue'),
+        meta: { requiresAuth: true, role: 'ADMIN' }
+    },
+    {
+        path: '/admin/transactions',
+        name: 'AdminTransactions',
+        component: () => import('../views/admin/AdminTransactionsView.vue'),
+        meta: { requiresAuth: true, role: 'ADMIN' }
+    },
+    {
+        path: '/admin/audit-logs',
+        name: 'AdminAuditLogs',
+        component: () => import('../views/admin/AdminAuditLogsView.vue'),
+        meta: { requiresAuth: true, role: 'ADMIN' }
+    },
 ]
+
+
 
 const router = createRouter({
   history: createWebHistory(),

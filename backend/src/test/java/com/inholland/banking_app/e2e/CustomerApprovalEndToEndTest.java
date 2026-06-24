@@ -10,6 +10,7 @@ import com.inholland.banking_app.models.enums.CustomerStatus;
 import com.inholland.banking_app.models.enums.Role;
 import com.inholland.banking_app.repositories.AccountRepository;
 import com.inholland.banking_app.repositories.CustomerProfileRepository;
+import com.inholland.banking_app.repositories.TransactionRepository;
 import com.inholland.banking_app.repositories.UserRepository;
 import com.inholland.banking_app.services.UserService;
 import org.junit.jupiter.api.AfterEach;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -48,7 +50,7 @@ class CustomerApprovalEndToEndTest {
     private AccountRepository accountRepository;
 
     @Autowired
-    private com.inholland.banking_app.repositories.TransactionRepository transactionRepository;
+    private TransactionRepository transactionRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -79,12 +81,10 @@ class CustomerApprovalEndToEndTest {
 
     @Test
     @DisplayName("Re-approving an already-approved customer does not create duplicate accounts")
-    void approve_isIdempotent() {
+    void approve_isIdempotent(ApproveCustomerRequest request ) {
         User customer = persistPendingCustomer();
-
         userService.approveCustomer(approvedRequest(), customer.getId());
         userService.approveCustomer(approvedRequest(), customer.getId());
-
         assertThat(accountsOf(customer)).hasSize(2);
     }
 
@@ -96,7 +96,9 @@ class CustomerApprovalEndToEndTest {
 
     private ApproveCustomerRequest approvedRequest() {
         ApproveCustomerRequest request = new ApproveCustomerRequest();
-        request.setStatus(CustomerStatus.APPROVED);
+        request.setCheckingAbsoluteLimit(BigDecimal.valueOf(-500));
+        request.setCheckingDailyLimit(BigDecimal.valueOf(1000));
+        request.setSavingsDailyLimit(BigDecimal.valueOf(1500));
         return request;
     }
 

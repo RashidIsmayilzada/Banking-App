@@ -38,9 +38,12 @@ public class AccountController {
             Authentication authentication) {
         boolean employee = authentication.getAuthorities()
                 .contains(new SimpleGrantedAuthority("ROLE_EMPLOYEE"));
-        AccountListResponse body = employee
-                ? accountService.listAccounts(userId, pageable)
-                : accountService.listAccountsOwnedBy(authentication.getName(), pageable);
+        AccountListResponse body;
+        if (employee) {
+            body = accountService.listAccounts(userId, pageable);
+        } else {
+            body = accountService.listAccountsOwnedBy(authentication.getName(), pageable);
+        }
         return ResponseEntity.ok(body);
     }
 

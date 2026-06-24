@@ -11,18 +11,19 @@ import java.time.LocalDateTime;
 
 public final class UserFactory {
 
-    public static User createUser(UserRequest request){
-        if(request.getRole() == Role.CUSTOMER){
-            return createPendingCustomer(request);
-        }
-        return createEmployee(request);
+    public static User createUser(UserRequest request) {
+        return switch (request.getRole()) {
+            case CUSTOMER -> createPendingCustomer(request);
+            case EMPLOYEE -> createEmployee(request);
+            default -> throw new IllegalArgumentException("Unsupported role: " + request.getRole());
+        };
     }
 
     public static User createPendingCustomer(UserRequest request) {
         return createPendingCustomer(request, LocalDateTime.now());
     }
 
-    private static CustomerProfile createCustomer(UserRequest request, LocalDateTime now) {
+    private static CustomerProfile createCustomerProfile(UserRequest request, LocalDateTime now) {
         CustomerProfile profile = new CustomerProfile();
         profile.setFirstName(request.getFirstName());
         profile.setLastName(request.getLastName());
@@ -43,26 +44,23 @@ public final class UserFactory {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
 
-        CustomerProfile profile = createCustomer(request, now);
+        CustomerProfile profile = createCustomerProfile(request, now);
         profile.setUser(user);
         user.setCustomerProfile(profile);
         return user;
     }
 
-    // Employee factory
-
     public static User createEmployee(UserRequest request) {
         return createEmployee(request, LocalDateTime.now());
     }
 
-    private static EmployeeProfile createEmployeeProfile(User user, UserRequest request) {
+    private static EmployeeProfile createEmployeeProfile(UserRequest request, LocalDateTime now) {
         EmployeeProfile profile = new EmployeeProfile();
-        profile.setUser(user);
         profile.setFirstName(request.getFirstName());
         profile.setLastName(request.getLastName());
         profile.setEmployeeNumber("EMP-" + request.getEmployeeNumber());
         profile.setEnabled(true);
-        profile.setCreatedAt(LocalDateTime.now());
+        profile.setCreatedAt(now);
         return profile;
     }
 
@@ -76,7 +74,8 @@ public final class UserFactory {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
 
-        EmployeeProfile profile =  createEmployeeProfile(user, request);
+        EmployeeProfile profile = createEmployeeProfile(request, now);
+        profile.setUser(user);
         user.setEmployeeProfile(profile);
         return user;
     }
